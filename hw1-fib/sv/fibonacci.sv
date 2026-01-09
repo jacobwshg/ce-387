@@ -17,26 +17,29 @@ module fibonacci(
   state_t state;
   state_t nx_state;
 
-  typedef logic[15:0] u16_t;
-  u16_t counter, r0, r1;
-  u16_t nx_counter, nx_r0, nx_r1;
+  typedef logic [15:0] u16_t;
+  u16_t itercnt, r0, r1;
+  u16_t nx_itercnt, nx_r0, nx_r1;
+
+  localparam FIB0 = 0;
+  localparam FIB1 = 1;
 
   /* state regs */
   always_ff @ (posedge clk, posedge reset)
   begin
-    if ( reset == 1'b1 ) 
+    if ( reset ) 
     begin
       /* Implement reset signals */
       state <= S_IDLE;
-      counter <= 16'd0;
-      r0 <= 16'd0;
-      r1 <= 16'd1;
+      itercnt <= 'b1;
+      r0 <= FIB0;
+      r1 <= FIB1;
     end 
     else 
     begin
       /* Implement clocked signals */
       state <= nx_state;
-      counter <= nx_counter;
+      itercnt <= nx_itercnt;
       r0 <= nx_r0;
       r1 <= nx_r1; 
     end
@@ -46,14 +49,14 @@ module fibonacci(
   always_comb
   begin
     nx_state = S_IDLE;
-    nx_counter = 16'd0;
-    nx_r0 = 16'd0;
-    nx_r1 = 16'd1;
+    nx_itercnt = 'b1;
+    nx_r0 = FIB0;
+    nx_r1 = FIB1;
     unique case ( state )
       S_IDLE:
       begin
         nx_state = start? S_RUN: S_IDLE;
-        nx_counter = counter;
+        nx_itercnt = itercnt;
         nx_r0 = r0;
         nx_r1 = r1;
       end
@@ -62,14 +65,14 @@ module fibonacci(
         if ( done )
         begin
           nx_state = S_IDLE;
-          nx_counter = counter;
+          nx_itercnt = itercnt;
           nx_r0 = r0;
           nx_r1 = r1;
         end
         else
         begin
           nx_state = S_RUN;
-          nx_counter = counter + 1;
+          nx_itercnt = itercnt + 1;
           nx_r0 = r1;
           nx_r1 = r0 + r1;
         end
@@ -83,8 +86,9 @@ module fibonacci(
   /* output logic */
   always_comb
   begin
-    dout = r1;
-    done = (counter >= din);
+    /* handle 0th fib number (0) */
+    dout = din? r1: r0;
+    done = (itercnt >= din);
   end
 
 endmodule
