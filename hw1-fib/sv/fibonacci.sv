@@ -17,10 +17,10 @@ module fibonacci(
   typedef logic [15:0] u16_t;
 
   state_t state;
-  state_t nx_state;
+  state_t state_c;
 
   u16_t itercnt, r0, r1;
-  u16_t nx_itercnt, nx_r0, nx_r1;
+  u16_t itercnt_c, r0_c, r1_c;
 
   logic done_c;
   u16_t dout_c;
@@ -31,33 +31,33 @@ module fibonacci(
   /* next state logic */
   always_comb
   begin
-    nx_state = state;
-    nx_itercnt = itercnt;
-    nx_r0 = r0;
-    nx_r1 = r1;
+    state_c = state;
+    itercnt_c = itercnt;
+    r0_c = r0;
+    r1_c = r1;
     case ( state )
       S_IDLE:
       begin
-        nx_state = start? S_RUN: S_IDLE;
-        //nx_itercnt = itercnt;
-        //nx_r0 = r0;
-        //nx_r1 = r1;
+        state_c = start? S_RUN: S_IDLE;
+        //itercnt_c = itercnt;
+        //r0_c = r0;
+        //r1_c = r1;
       end
       S_RUN:
       begin
         if ( done )
         begin
-          nx_state = S_IDLE;
-          //nx_itercnt = itercnt;
-          //nx_r0 = r0;
-          //nx_r1 = r1;
+          state_c = S_IDLE;
+          //itercnt_c = itercnt;
+          //r0_c = r0;
+          //r1_c = r1;
         end
         else
         begin
-          //nx_state = S_RUN;
-          nx_itercnt = itercnt + 1;
-          nx_r0 = r1;
-          nx_r1 = r0 + r1;
+          //state_c = S_RUN;
+          itercnt_c = itercnt + 1;
+          r0_c = r1;
+          r1_c = r0 + r1;
         end
       end
       default:
@@ -95,10 +95,10 @@ module fibonacci(
     else 
     begin
       /* Implement clocked signals */
-      state <= nx_state;
-      itercnt <= nx_itercnt;
-      r0 <= nx_r0;
-      r1 <= nx_r1; 
+      state <= state_c;
+      itercnt <= itercnt_c;
+      r0 <= r0_c;
+      r1 <= r1_c; 
     end
   end
 
