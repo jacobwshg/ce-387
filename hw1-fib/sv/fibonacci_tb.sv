@@ -46,6 +46,7 @@ module fibonacci_tb;
     else
       $display("INCORRECT RESULT: %d, SHOULD BE: 5", dout);
 
+    #500;
 
     /* ----------------------
      *    TEST MORE INPUTS 

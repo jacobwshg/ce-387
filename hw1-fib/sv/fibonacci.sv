@@ -45,7 +45,7 @@ module fibonacci(
       end
       S_RUN:
       begin
-        if ( done )
+        if ( done_c )
         begin
           state_c = S_IDLE;
           //itercnt_c = itercnt;
@@ -69,7 +69,7 @@ module fibonacci(
   /* output logic */
   always_comb
   begin
-    done_c = (itercnt >= din);
+    done_c = (itercnt == din);
     /* Design: keep DOUT to 0 and update to final result once.
      * 
      * Use DONE_C for latest done status. Since tb immediately samples DOUT 
@@ -78,7 +78,7 @@ module fibonacci(
      * tb samples it.
      *
      * */
-    dout_c = (done_c && (din > 0))? r1: FIB0;
+    dout_c = done_c? r0: 'b0;
   end
 
   /* state regs */
@@ -88,7 +88,7 @@ module fibonacci(
     begin
       /* Implement reset signals */
       state <= S_IDLE;
-      itercnt <= 'b1;
+      itercnt <= 'b0;
       r0 <= FIB0;
       r1 <= FIB1;
     end 
