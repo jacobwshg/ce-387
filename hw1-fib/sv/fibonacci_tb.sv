@@ -9,6 +9,7 @@ module fibonacci_tb;
   logic [15:0] dout;
   logic done;
 
+
   // instantiate your design
   fibonacci fib(clk, reset, din, start, dout, done);
 
@@ -21,32 +22,50 @@ module fibonacci_tb;
     #5;
   end
 
+  /* software registers ( I also used to drive DIN ) */
+  logic [16] i, r0, r1, nxt_r1;
+
   initial
   begin
-    // Reset
-    #0 reset = 0;
-    #10 reset = 1;
-    #10 reset = 0;
+    #0
+    reset = 0;
 
-    /* ------------- Input of 5 ------------- */
-    // Inputs into module/ Assert start
-    #10;
-    din = 16'd5; // change
-    start = 1'b1;
-    #10 start = 1'b0;
+    /* iteratively compute and test Fibonacci numbers within 16 bits */
+    for (
+      i = 0, r0 = 0, r1 = 1; 
+      i < 25; 
+      ++i
+    )
+    begin
 
-    // Wait until calculation is done	
-    #10 wait (done == 1'b1);
+      #10;
+      reset = 1;
+      #10;
+      reset = 0;
 
-    // Display Result
-    $display("-----------------------------------------");
-    $display("Input: %d", din);
-    if (dout === 5)
-      $display("CORRECT RESULT: %d, GOOD JOB!", dout);
-    else
-      $display("INCORRECT RESULT: %d, SHOULD BE: 5", dout);
+      #10;
+      din = i; // change
+      start = 1'b1;
+      #10;
+      start = 1'b0;
 
-    #500;
+      // Wait until calculation is done	
+       wait (done == 1'b1);
+
+      // Display Result
+      $display("-----------------------------------------");
+      $display("Input: %0d", din);
+      if (dout === r0)
+        $display("CORRECT RESULT: %0d, GOOD JOB!", dout);
+      else
+        $display("INCORRECT RESULT: %0d, SHOULD BE: %0d", dout, r0);
+
+      #100;
+
+      nxt_r1 = r0 + r1;
+      r0 = r1;
+      r1 = nxt_r1;
+    end
 
     /* ----------------------
      *    TEST MORE INPUTS 
@@ -54,9 +73,6 @@ module fibonacci_tb;
      */
 
     // Done
-
-
-
     $stop;
   end
 endmodule
