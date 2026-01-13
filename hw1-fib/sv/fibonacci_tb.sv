@@ -50,11 +50,12 @@ module fibonacci_tb;
       start = 1'b0;
 
       // Wait until calculation is done	
-       wait (done == 1'b1);
+      wait (done == 1'b1);
 
       // Display Result
       $display("-----------------------------------------");
       $display("Input: %0d", din);
+      $display("Software fib(%0d) = %0d", i, r0);
       if (dout === r0)
         $display("CORRECT RESULT: %0d, GOOD JOB!", dout);
       else
