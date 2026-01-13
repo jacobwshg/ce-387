@@ -45,6 +45,12 @@ module fibonacci(
       end
       S_RUN:
       begin
+        /*
+         * Use latest DONE_C; don't wait for DONE to reflect DONE_C in the next 
+         * cycle. In that case, although TB will instantaneously sample 
+         * DOUT = R0 = fib(DIN) as desired, the former two will update for one 
+         * more cycle and settle to fib(DIN+1).
+         * */
         if ( done_c )
         begin
           state_c = S_IDLE;
@@ -72,10 +78,10 @@ module fibonacci(
     done_c = (itercnt == din);
     /* Design: keep DOUT to 0 and update to final result once.
      * 
-     * Use DONE_C for latest done status. Since tb immediately samples DOUT 
+     * Use DONE_C for latest done status. Since TB immediately samples DOUT 
      * when DONE is set, we want DOUT to be set at the exact same clock edge.
      * If we used DONE to compute DOUT_C, DOUT won't receive the update before
-     * tb samples it.
+     * TB samples it.
      *
      * */
     dout_c = done_c? r0: 'b0;
@@ -88,7 +94,7 @@ module fibonacci(
     begin
       /* Implement reset signals */
       state <= S_IDLE;
-      itercnt <= 'b0;
+      itercnt <= 'd0;
       r0 <= FIB0;
       r1 <= FIB1;
     end 
