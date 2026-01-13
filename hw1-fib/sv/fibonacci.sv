@@ -35,32 +35,26 @@ module fibonacci(
     itercnt_c = itercnt;
     r0_c = r0;
     r1_c = r1;
+
     case ( state )
       S_IDLE:
       begin
-        state_c = start? S_RUN: S_IDLE;
-        //itercnt_c = itercnt;
-        //r0_c = r0;
-        //r1_c = r1;
+        if ( start )
+          state_c = S_RUN;
       end
       S_RUN:
       begin
         /*
-         * Use latest DONE_C; don't wait for DONE to reflect DONE_C in the next 
-         * cycle. In that case, although TB will instantaneously sample 
-         * DOUT = R0 = fib(DIN) as desired, the former two will update for one 
-         * more cycle and settle to fib(DIN+1).
-         * */
+         * For transition back to S_IDLE, use latest DONE_C; don't wait for 
+         * DONE to reflect DONE_C in the next cycle. In that case, although TB 
+         * will instantaneously sample DOUT = R0 = fib(DIN) as desired, R0 
+         * will update for one more cycle (down the `else` branch) and 
+         * settle to fib(DIN+1), which will also propagate to DOUT.
+         */
         if ( done_c )
-        begin
           state_c = S_IDLE;
-          //itercnt_c = itercnt;
-          //r0_c = r0;
-          //r1_c = r1;
-        end
         else
         begin
-          //state_c = S_RUN;
           itercnt_c = itercnt + 1;
           r0_c = r1;
           r1_c = r0 + r1;
@@ -76,12 +70,12 @@ module fibonacci(
   always_comb
   begin
     done_c = (itercnt == din);
-    /* Design: keep DOUT to 0 and update to final result once.
+    /* Design: keep DOUT_C (and thus DOUT) to 0 and update to final result once.
      * 
      * Use DONE_C for latest done status. Since TB immediately samples DOUT 
-     * when DONE is set, we want DOUT to be set at the exact same clock edge.
-     * If we used DONE to compute DOUT_C, DOUT won't receive the update before
-     * TB samples it.
+     * when DONE is set, we want DOUT to be set by DOUT_C at the exact same 
+     * clock edge when DONE is set by DONE_C.  If we used DONE to compute 
+     * DOUT_C, DOUT wouldn't receive the update before TB samples it.
      *
      * */
     dout_c = done_c? r0: 'b0;
