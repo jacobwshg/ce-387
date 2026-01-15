@@ -1,7 +1,7 @@
 #--  Synopsys, Inc.
 #--  Version O-2018.09-SP1
 #--  Project file /home/qep7929/Documents/ce387/hw1-fib/syn/fib.prj
-#--  Written on Mon Jan 12 11:56:24 2026
+#--  Written on Wed Jan 14 11:41:18 2026
 
 
 #project files
@@ -36,7 +36,7 @@ set_option -reporting_ctd slack
 set_option -rw_check_on_ram 1
 
 # mapper_without_write_options
-set_option -frequency 1
+set_option -frequency 100
 set_option -srs_instrumentation 1
 
 # mapper_options

@@ -17,23 +17,27 @@ module banked_bram
 	 * For reading - if each bank stores a column, then read the same row; 
 	 * if each bank stores a row, then read the same column.
  	 */
-	input  logic we;
+	input  logic we,
 	input  logic [ DATA_WIDTH-1 : 0 ] din,
 	input  logic [ BANK_ID_WIDTH-1 : 0 ] bank_w_id,
 	input  logic [ BANK_ADDR_WIDTH-1 : 0 ] bank_w_addr,
 	input  logic [ BANK_ADDR_WIDTH-1 : 0 ] bank_r_addr,
-	output logic [ BANK_CNT ] [ DATA_WIDTH-1 : 0 ] dout
+	output logic [ BANK_CNT-1 : 0 ] [ DATA_WIDTH-1 : 0 ] dout
 );
-	logic [ BANK_CNT ] bank_we;
-	foreach ( bank_we[i] )
+	logic [ BANK_CNT-1 : 0 ] bank_we;
+
+	always_comb
 	begin
-		assign bank_we[i] = we && ( i == bank_w_id );
+		foreach ( bank_we[i] )
+		begin
+			bank_we[i] = we && ( i == bank_w_id );
+		end
 	end
 
 	bram #(
 		.BRAM_ADDR_WIDTH( BANK_ADDR_WIDTH ),
 		.BRAM_DATA_WIDTH( DATA_WIDTH )
-	) banks [ BANK_CNT ] (
+	) banks [ BANK_CNT-1 : 0 ] (
 		.clock( clock ),
 		.rd_addr( bank_r_addr ),
 		.wr_addr( bank_w_addr ),

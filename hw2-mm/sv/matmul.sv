@@ -3,12 +3,6 @@
  * the X and Y read-addrs sampled by out regs and provided to bram
  * should be 1 ahead of the Z write-addr
  * */
-
-typedef enum logic
-{
-	FALSE = 'b0, TRUE = 'b1
-} bool_t;
-
 module matmul
 #(
 	parameter DATA_WIDTH    = 32,
@@ -23,8 +17,8 @@ module matmul
 	input logic clk,
 	input logic rst,
 	input logic strt,
-	input logic [ MAT_DIM_SIZE ] [ DATA_WIDTH-1 : 0 ] x_r_row,
-	input logic [ MAT_DIM_SIZE ] [ DATA_WIDTH-1 : 0 ] y_r_col,
+	input logic [ MAT_DIM_SIZE-1 : 0 ] [ DATA_WIDTH-1 : 0 ] x_r_row,
+	input logic [ MAT_DIM_SIZE-1 : 0 ] [ DATA_WIDTH-1 : 0 ] y_r_col,
 	output logic [ MAT_DIM_WIDTH-1 : 0 ] i,
 	output logic [ MAT_DIM_WIDTH-1 : 0 ] j,
 	output logic z_we,
@@ -47,7 +41,7 @@ module matmul
 	addr_t i_c, j_c, z_addr_c;
 
 	data_t z_w_data_c;
-	bool_t z_we_c, done_c;
+	logic z_we_c, done_c;
 
 	/*
 	function addr_t

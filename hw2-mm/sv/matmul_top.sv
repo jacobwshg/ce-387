@@ -4,7 +4,7 @@ module matmul_top
 	parameter MAT_DIM_WIDTH = 3,
 	parameter MAT_DIM_SIZE = 2 ** MAT_DIM_WIDTH,
 	parameter ADDR_WIDTH = MAT_DIM_WIDTH * 2,
-	parameter MAT_SIZE = 2 ** ADDR_WIDTH,
+	parameter MAT_SIZE = 2 ** ADDR_WIDTH
 )
 (
 	input logic clk,
@@ -31,7 +31,7 @@ module matmul_top
 		y_r_bank_id,
 		x_r_bank_addr,
 		y_r_bank_addr;
-	logic [ MAT_DIM_SIZE- : 0 ][ DATA_WIDTH-1 : 0 ] 
+	logic [ MAT_DIM_SIZE-1 : 0 ][ DATA_WIDTH-1 : 0 ] 
 		x_r_row,
 		y_r_col;
 	logic z_we;
@@ -43,12 +43,12 @@ module matmul_top
 		.BRAM_ADDR_WIDTH( ADDR_WIDTH ),
 		.BRAM_DATA_WIDTH( DATA_WIDTH )
 	) z_inst (
-		.clock( clk ),
-		.rd_addr( z_r_addr ),
-		.wr_addr( z_w_addr ),
-		.wr_en( z_we ),
-		.din( z_w_data ),
-		.dout( z_r_data )
+		.clock   ( clk ),
+		.rd_addr ( z_r_addr ),
+		.wr_addr ( z_w_addr ),
+		.wr_en   ( z_we ),
+		.din     ( z_w_data ),
+		.dout    ( z_r_data )
 	);
 
 	/* X, Y as banked BRAMs */
@@ -61,7 +61,7 @@ module matmul_top
 	)
 	x_inst (
 		.clock       ( clk ),
-		.we          ( x_we )
+		.we          ( x_we ),
 		.din         ( x_w_data ),
 		.bank_w_id   ( x_w_bank_id ),
 		.bank_w_addr ( x_w_bank_addr ),
@@ -70,7 +70,7 @@ module matmul_top
 	),
 	y_inst (
 		.clock       ( clk ),
-		.we          ( y_we )
+		.we          ( y_we ),
 		.din         ( y_w_data ),
 		.bank_w_id   ( y_w_bank_id ),
 		.bank_w_addr ( y_w_bank_addr ),
