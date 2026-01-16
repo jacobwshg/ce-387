@@ -27,7 +27,7 @@ module banked_bram
 	(* rom_style = "block" *) 
 	logic [BANK_CNT-1:0] [BANK_SIZE-1:0] [DATA_WIDTH-1:0] mem;
 
-	always_ff @(posedge clock)
+	always_ff @ ( posedge clock )
 	begin
     	for (int i = 0; i < BANK_CNT; i++)
 		begin

@@ -4,13 +4,18 @@ module matmul_tb();
 
 	localparam DATA_WIDTH = 32;
 	localparam MAT_DIM_WIDTH = 2;
+	//localparam MAT_DIM_WIDTH = 6;
 	localparam MAT_DIM_SIZE = 2 ** MAT_DIM_WIDTH;
 	localparam ADDR_WIDTH = MAT_DIM_WIDTH * 2;
 	localparam MAT_SIZE = 2 ** ADDR_WIDTH;
 
-	localparam X_PATH = "../X.log";
-	localparam Y_PATH = "../Y.log";
-	localparam Z_PATH = "../Z.log";
+	localparam X_PATH = "../X.tv";
+	localparam Y_PATH = "../Y.tv";
+	localparam Z_PATH = "../Z.tv";
+
+	//localparam X_PATH = "../x.txt";
+	//localparam Y_PATH = "../y.txt";
+	//localparam Z_PATH = "../z.txt";
 
 	localparam PERIOD = 10;
 
@@ -75,9 +80,9 @@ module matmul_tb();
 	initial
 	begin
 		#0;
-		$readmemh( "../X.log", x_buf );
-		$readmemh( "../Y.log", y_buf );
-		$readmemh( "../Z.log", z_buf );
+		$readmemh( X_PATH, x_buf );
+		$readmemh( Y_PATH, y_buf );
+		$readmemh( Z_PATH, z_buf );
 
 		/* Load X and Y */
 		#PERIOD;

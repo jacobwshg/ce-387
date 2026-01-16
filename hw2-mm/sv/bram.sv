@@ -14,8 +14,12 @@ module bram
 
   logic [2**BRAM_ADDR_WIDTH-1:0] [BRAM_DATA_WIDTH-1:0] mem;
 
+  //logic [ BRAM_ADDR_WIDTH-1 : 0 ] read_addr;
+  //assign dout = mem[read_addr];
+
   always_ff @(posedge clock) begin
     dout <= mem[rd_addr];
+    //read_addr <= rd_addr;
     if (wr_en)
 		mem[wr_addr] <= din; 
   end

@@ -27,7 +27,7 @@ module matmul
 	output logic done
 );
 
-	typedef enum logic [2]
+	typedef enum logic [ 1:0 ]
 	{
 		S_IDLE, S_RUN
 	} state_t;
@@ -73,8 +73,16 @@ module matmul
 
 			i <= i_c;
 			j <= j_c;
-			z_addr <= z_addr_c;
+
+			/* dirty fix */
+			z_addr <= z_addr_c - 1;
 			z_w_data <= z_w_data_c;
+/*
+			$display(
+				"MM state: z_addr_c %0d, z_w_data_c %0d",
+				z_addr_c, z_w_data_c
+			);
+*/
 			z_we <= z_we_c;
 			done <= done_c;
 		end
@@ -102,18 +110,23 @@ module matmul
 			S_RUN:
 			begin
 				/* compute dot product of X row and Y col */
+/*
 				$display(
 					"MM Z[%0d][%0d]", 
 					i, j
 				);
+*/
 				foreach ( x_r_row[k] )
 				begin
+/*
 					$display(
 						"\tX row [%0d]: %0d, Y col [%0d]: %0d",
 						k, x_r_row[k], k, y_r_col[k]
 					);
+*/
 					z_w_data_c += ( x_r_row[k] * y_r_col[k] );
 				end
+
 				/* use current indices to compute Z write addr*/
 				//$display( z_w_data_c );
 				z_addr_c = (i * MAT_DIM_SIZE) + j;
@@ -135,8 +148,17 @@ module matmul
 				if ( done_c )
 				begin
 					state_c = S_IDLE;
-					z_we_c = 'b0;
 				end
+			end
+			default:
+			begin
+				state_c = S_IDLE;
+				i_c = 'hx;
+				j_c = 'hx;
+				z_addr_c = 'hx;
+				z_w_data_c = 'hx;
+				z_we_c = 'hx;
+				done_c = 'hx;
 			end
 		endcase
 	end
