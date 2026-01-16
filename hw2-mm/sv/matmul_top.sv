@@ -11,8 +11,8 @@ module matmul_top
 	input logic rst,
 	input logic strt,
 
-	input logic x_we,
-	input logic y_we,
+	input logic /*[ MAT_DIM_SIZE-1 : 0 ]*/ x_we,
+	input logic /*[ MAT_DIM_SIZE-1 : 0 ]*/ y_we,
 	input logic [ DATA_WIDTH-1 : 0 ] x_w_data,
 	input logic [ DATA_WIDTH-1 : 0 ] y_w_data,
 	input logic [ MAT_DIM_WIDTH-1 : 0 ] x_w_bank_id,

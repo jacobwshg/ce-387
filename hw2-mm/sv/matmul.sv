@@ -107,6 +107,7 @@ module matmul
 					z_w_data_c += ( x_r_row[k] * y_r_col[k] );
 				end
 				/* use current indices to compute Z write addr*/
+				//$display( z_w_data_c );
 				z_addr_c = (i * MAT_DIM_SIZE) + j;
 				z_we_c = 'b1;
 

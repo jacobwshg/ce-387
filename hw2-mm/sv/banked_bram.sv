@@ -24,26 +24,20 @@ module banked_bram
 	input  logic [ BANK_ADDR_WIDTH-1 : 0 ] bank_r_addr,
 	output logic [ BANK_CNT-1 : 0 ] [ DATA_WIDTH-1 : 0 ] dout
 );
-	logic [ BANK_CNT-1 : 0 ] bank_we;
+	(* rom_style = "block" *) 
+	logic [BANK_CNT-1:0] [BANK_SIZE-1:0] [DATA_WIDTH-1:0] mem;
 
-	always_comb
+	always_ff @(posedge clock)
 	begin
-		foreach ( bank_we[i] )
+    	for (int i = 0; i < BANK_CNT; i++)
 		begin
-			bank_we[i] = we && ( i == bank_w_id );
-		end
+        	dout[i] <= mem[i][bank_r_addr];
+        	if (we && (i == bank_w_id))
+			begin
+            	mem[i][bank_w_addr] <= din;
+			end
+    	end
 	end
 
-	bram #(
-		.BRAM_ADDR_WIDTH( BANK_ADDR_WIDTH ),
-		.BRAM_DATA_WIDTH( DATA_WIDTH )
-	) banks [ BANK_CNT-1 : 0 ] (
-		.clock( clock ),
-		.rd_addr( bank_r_addr ),
-		.wr_addr( bank_w_addr ),
-		.wr_en( bank_we ),
-		.din( din ),
-		.dout( dout )
-	); 
 endmodule
 

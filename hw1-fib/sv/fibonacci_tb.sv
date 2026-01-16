@@ -38,7 +38,6 @@ module fibonacci_tb;
       ++i
     )
     begin
-
       #10;
       reset = 'b1;
       #10;

@@ -4,7 +4,7 @@ module bram
   parameter BRAM_DATA_WIDTH = 8
 ) 
 (
-input  logic clock,
+  input  logic clock,
   input  logic [BRAM_ADDR_WIDTH-1:0] rd_addr,
   input  logic [BRAM_ADDR_WIDTH-1:0] wr_addr,
   input  logic wr_en,
@@ -12,14 +12,12 @@ input  logic clock,
   output logic [BRAM_DATA_WIDTH-1:0] dout
 );
 
-  logic [2**BRAM_ADDR_WIDTH-1:0][BRAM_DATA_WIDTH-1:0] mem;
-  logic [BRAM_ADDR_WIDTH-1:0] read_addr;
-  
-  assign dout = mem[read_addr];
-  
+  logic [2**BRAM_ADDR_WIDTH-1:0] [BRAM_DATA_WIDTH-1:0] mem;
+
   always_ff @(posedge clock) begin
-    read_addr <= rd_addr;
-    if (wr_en) mem[wr_addr] <= din; 
+    dout <= mem[rd_addr];
+    if (wr_en)
+		mem[wr_addr] <= din; 
   end
 
 endmodule
