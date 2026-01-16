@@ -87,7 +87,7 @@ module matmul_tb();
 			begin
 				@ ( negedge clk );
 				x_w_data = x_buf[ i * MAT_DIM_SIZE + j ];
-				y_w_data = x_buf[ i * MAT_DIM_SIZE + j ];
+				y_w_data = y_buf[ i * MAT_DIM_SIZE + j ];
 				/* X is read one row at a time, so each bank stores a 
  				 * column */
 				x_w_bank_id   = j;

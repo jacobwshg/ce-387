@@ -101,9 +101,17 @@ module matmul
 			end
 			S_RUN:
 			begin
-				/* compute dot product of X row and Y col */	
+				/* compute dot product of X row and Y col */
+				$display(
+					"MM Z[%0d][%0d]", 
+					i, j
+				);
 				foreach ( x_r_row[k] )
 				begin
+					$display(
+						"\tX row [%0d]: %0d, Y col [%0d]: %0d",
+						k, x_r_row[k], k, y_r_col[k]
+					);
 					z_w_data_c += ( x_r_row[k] * y_r_col[k] );
 				end
 				/* use current indices to compute Z write addr*/
