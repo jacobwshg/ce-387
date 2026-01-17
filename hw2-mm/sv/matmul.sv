@@ -6,10 +6,8 @@
 module matmul
 #(
 	parameter DATA_WIDTH    = 32,
-	/* default matrix dimension = 8 */
-	parameter MAT_DIM_WIDTH = 6,
+	parameter MAT_DIM_WIDTH = 2,
 	parameter MAT_DIM_SIZE  = 2**MAT_DIM_WIDTH,
-	/* default total matrix size = 8x8 = 64 */
 	parameter ADDR_WIDTH    = MAT_DIM_WIDTH*2,
 	parameter MAT_SIZE      = 2**ADDR_WIDTH
 )
@@ -19,6 +17,11 @@ module matmul
 	input logic strt,
 	input logic [ MAT_DIM_SIZE-1 : 0 ] [ DATA_WIDTH-1 : 0 ] x_r_row,
 	input logic [ MAT_DIM_SIZE-1 : 0 ] [ DATA_WIDTH-1 : 0 ] y_r_col,
+	/*
+ 	 * I and J are "requests" made respectively to the X and Y BRAMs.
+ 	 * In the next cycle, they will respectively return X's row I in X_R_ROW
+ 	 * and Y's column Y in Y_R_COL.
+ 	 */
 	output logic [ MAT_DIM_WIDTH-1 : 0 ] i,
 	output logic [ MAT_DIM_WIDTH-1 : 0 ] j,
 	output logic z_we,
@@ -33,15 +36,20 @@ module matmul
 	} state_t;
 
 	typedef logic [ DATA_WIDTH-1 : 0 ] data_t;
-	typedef logic [ ADDR_WIDTH-1 : 0 ] addr_t;
+	/* keep overflow bit for internal addresses */
+	typedef logic [ ADDR_WIDTH : 0 ] addr_t;
 
 	state_t state;
 	state_t state_c;
 
+	addr_t i_o, j_o;
 	addr_t i_c, j_c, z_addr_c;
 
 	data_t z_w_data_c;
 	logic z_we_c, done_c;
+
+	assign i = i_o[ MAT_DIM_WIDTH-1 : 0 ];
+	assign j = j_o[ MAT_DIM_WIDTH-1 : 0 ];
 
 	/*
 	function addr_t
@@ -60,8 +68,8 @@ module matmul
 		begin
 			state <= S_IDLE;
 
-			i <= 'h0;
-			j <= 'h0;
+			i_o <= 'h0;
+			j_o <= 'h0;
 			z_addr <= 'h0;
 			z_w_data <= 'h0;
 			z_we <= 'b0;
@@ -71,18 +79,11 @@ module matmul
 		begin
 			state <= state_c;
 
-			i <= i_c;
-			j <= j_c;
+			i_o <= i_c;
+			j_o <= j_c;
 
-			/* dirty fix */
-			z_addr <= z_addr_c - 1;
+			z_addr <= z_addr_c;
 			z_w_data <= z_w_data_c;
-/*
-			$display(
-				"MM state: z_addr_c %0d, z_w_data_c %0d",
-				z_addr_c, z_w_data_c
-			);
-*/
 			z_we <= z_we_c;
 			done <= done_c;
 		end
@@ -92,8 +93,8 @@ module matmul
 	always_comb
 	begin
 		state_c = state;
-		i_c = i;
-		j_c = j;
+		i_c = i_o;
+		j_c = j_o;
 		z_addr_c = z_addr;
 		z_w_data_c = 'h0;
 		z_we_c = 'b0;
@@ -109,46 +110,33 @@ module matmul
 			end
 			S_RUN:
 			begin
-				/* compute dot product of X row and Y col */
-/*
-				$display(
-					"MM Z[%0d][%0d]", 
-					i, j
-				);
-*/
 				foreach ( x_r_row[k] )
 				begin
-/*
-					$display(
-						"\tX row [%0d]: %0d, Y col [%0d]: %0d",
-						k, x_r_row[k], k, y_r_col[k]
-					);
-*/
 					z_w_data_c += ( x_r_row[k] * y_r_col[k] );
 				end
 
-				/* use current indices to compute Z write addr*/
-				//$display( z_w_data_c );
-				z_addr_c = (i * MAT_DIM_SIZE) + j;
+				/* use X/Y read indices to backward compute Z write addr*/
+				z_addr_c = (i_o * MAT_DIM_SIZE) + j_o - 1;
 				z_we_c = 'b1;
 
 				/* update X row idx and Y col idx to fetch in next cycle */
-				j_c = j + 1;
+				j_c = j_o + 1;
 				if ( j_c == MAT_DIM_SIZE )
 				begin
 					j_c = 0;
-					i_c = i + 1;
+					i_c = i_o + 1;
 				end
-				if ( i_c == MAT_DIM_SIZE )
+
+				if ( (i_c == MAT_DIM_SIZE) && (j_c > 0) )
 				begin
 					done_c = 'b1;
-					i_c = 0;
 				end
 
 				if ( done_c )
 				begin
 					state_c = S_IDLE;
 				end
+
 			end
 			default:
 			begin

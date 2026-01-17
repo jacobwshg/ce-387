@@ -20,3 +20,5 @@ vsim \
 
 run -all
 
+quit
+
