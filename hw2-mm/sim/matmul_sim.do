@@ -4,7 +4,8 @@ vlib work
 vmap work work
 
 vlog -work work "../sv/bram.sv"
-vlog -work work "../sv/banked_bram.sv"
+vlog -work work "../sv/bram_block.sv"
+# vlog -work work "../sv/banked_bram.sv"
 vlog -work work "../sv/matmul.sv"
 vlog -work work "../sv/matmul_top.sv"
 vlog -work work "../sv/matmul_tb.sv"

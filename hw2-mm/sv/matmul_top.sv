@@ -11,12 +11,12 @@ module matmul_top
 	input logic rst,
 	input logic strt,
 
-	input logic /*[ MAT_DIM_SIZE-1 : 0 ]*/ x_we,
-	input logic /*[ MAT_DIM_SIZE-1 : 0 ]*/ y_we,
+	input logic [ MAT_DIM_SIZE-1 : 0 ] x_we,
+	input logic [ MAT_DIM_SIZE-1 : 0 ] y_we,
 	input logic [ DATA_WIDTH-1 : 0 ] x_w_data,
 	input logic [ DATA_WIDTH-1 : 0 ] y_w_data,
-	input logic [ MAT_DIM_WIDTH-1 : 0 ] x_w_bank_id,
-	input logic [ MAT_DIM_WIDTH-1 : 0 ] y_w_bank_id,
+	//input logic [ MAT_DIM_WIDTH-1 : 0 ] x_w_bank_id,
+	//input logic [ MAT_DIM_WIDTH-1 : 0 ] y_w_bank_id,
 	input logic [ MAT_DIM_WIDTH-1 : 0 ] x_w_bank_addr,
 	input logic [ MAT_DIM_WIDTH-1 : 0 ] y_w_bank_addr,
 
@@ -27,8 +27,8 @@ module matmul_top
 
 	/* used by MM unit */
 	logic [ MAT_DIM_WIDTH-1 : 0 ]
-		x_r_bank_id,
-		y_r_bank_id,
+		//x_r_bank_id,
+		//y_r_bank_id,
 		x_r_bank_addr,
 		y_r_bank_addr;
 	logic [ MAT_DIM_SIZE-1 : 0 ][ DATA_WIDTH-1 : 0 ] 
@@ -51,7 +51,7 @@ module matmul_top
 		.dout    ( z_r_data )
 	);
 
-	/* X, Y as banked BRAMs */
+	/*
 	banked_bram #(
 		.DATA_WIDTH      ( DATA_WIDTH ),
 		.BANK_ID_WIDTH   ( MAT_DIM_WIDTH ),
@@ -76,6 +76,29 @@ module matmul_top
 		.bank_w_addr ( y_w_bank_addr ),
 		.bank_r_addr ( y_r_bank_addr ),
 		.dout        ( y_r_col )
+	);
+	*/
+	bram_block #(
+		.BRAM_ADDR_WIDTH ( MAT_DIM_WIDTH ),
+		.BANK_DATA_WIDTH ( DATA_WIDTH ),
+		.BANK_CNT        ( MAT_DIM_SIZE ),
+		.BRAM_DATA_WIDTH ( DATA_WIDTH * MAT_DIM_SIZE )
+	)
+	x_inst (
+		.clock   ( clk ),
+		.rd_addr ( x_r_bank_addr ),
+		.wr_addr ( x_w_bank_addr ),
+		.wr_en   ( x_we ),
+		.din     ( x_w_data ),
+		.dout    ( x_r_row )
+	),
+	y_inst (
+		.clock   ( clk ),
+		.rd_addr ( y_r_bank_addr ),
+		.wr_addr ( y_w_bank_addr ),
+		.wr_en   ( y_we ),
+		.din     ( y_w_data ),
+		.dout    ( y_r_col )
 	);
 
 	/* MM unit */
