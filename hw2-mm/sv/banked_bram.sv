@@ -29,14 +29,14 @@ module banked_bram
 
 	always_ff @ ( posedge clock )
 	begin
-    	for (int i = 0; i < BANK_CNT; i++)
+		for (int i = 0; i < BANK_CNT; i++)
 		begin
-        	dout[i] <= mem[i][bank_r_addr];
-        	if (we && (i == bank_w_id))
+			dout[i] <= mem[i][bank_r_addr];
+			if (we && (i == bank_w_id))
 			begin
-            	mem[i][bank_w_addr] <= din;
+				mem[i][bank_w_addr] <= din;
 			end
-    	end
+		end
 	end
 
 endmodule

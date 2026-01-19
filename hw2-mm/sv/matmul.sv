@@ -6,7 +6,7 @@
 module matmul
 #(
 	parameter DATA_WIDTH    = 32,
-	parameter MAT_DIM_WIDTH = 2,
+	parameter MAT_DIM_WIDTH = 3,
 	parameter MAT_DIM_SIZE  = 2**MAT_DIM_WIDTH,
 	parameter ADDR_WIDTH    = MAT_DIM_WIDTH*2,
 	parameter MAT_SIZE      = 2**ADDR_WIDTH
@@ -127,7 +127,8 @@ module matmul
 					i_c = i_o + 1;
 				end
 
-				if ( (i_c == MAT_DIM_SIZE) && (j_c > 0) )
+				if ( z_addr_c == MAT_SIZE )
+				/* next Z write addr is past valid range */
 				begin
 					done_c = 'b1;
 				end

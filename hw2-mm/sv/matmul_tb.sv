@@ -3,19 +3,19 @@
 module matmul_tb();
 
 	localparam DATA_WIDTH = 32;
-	localparam MAT_DIM_WIDTH = 2;
+	localparam MAT_DIM_WIDTH = 3; /* 8x8 */
 	//localparam MAT_DIM_WIDTH = 6;
 	localparam MAT_DIM_SIZE = 2 ** MAT_DIM_WIDTH;
 	localparam ADDR_WIDTH = MAT_DIM_WIDTH * 2;
 	localparam MAT_SIZE = 2 ** ADDR_WIDTH;
 
-	localparam X_PATH = "../X.tv";
-	localparam Y_PATH = "../Y.tv";
-	localparam Z_PATH = "../Z.tv";
+	//localparam X_PATH = "../X.tv";
+	//localparam Y_PATH = "../Y.tv";
+	//localparam Z_PATH = "../Z.tv";
 
-	//localparam X_PATH = "../x.txt";
-	//localparam Y_PATH = "../y.txt";
-	//localparam Z_PATH = "../z.txt";
+	localparam X_PATH = "../x.txt";
+	localparam Y_PATH = "../y.txt";
+	localparam Z_PATH = "../z.txt";
 
 	localparam PERIOD = 10;
 
@@ -76,6 +76,8 @@ module matmul_tb();
 		x_buf [ MAT_SIZE-1 : 0 ],
 		y_buf [ MAT_SIZE-1 : 0 ],
 		z_buf [ MAT_SIZE-1 : 0 ];
+	
+	logic[64] starttime = 0;
 
 	initial
 	begin
@@ -107,7 +109,8 @@ module matmul_tb();
 			end
 		end
 
-		$display( "@%0d\tX, Y load complete", $time );
+		$display( "@ %0d\tX, Y load complete", $time );
+		starttime = $time;
 
 		/* run MM */
 		#PERIOD;
@@ -120,7 +123,11 @@ module matmul_tb();
 		strt = 'b0;
 
 		wait ( done );
-		$display( "@%0d\tMatmul complete", $time );
+		$display(
+			"@ %0d\tMatmul complete, took ~%0d cycles", 
+			$time,
+			($time - starttime) / (PERIOD)
+		);
 
 		/* inspect results in Z */
 		#PERIOD;
