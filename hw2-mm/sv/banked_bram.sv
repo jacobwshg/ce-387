@@ -24,8 +24,9 @@ module banked_bram
 	input  logic [ BANK_ADDR_WIDTH-1 : 0 ] bank_r_addr,
 	output logic [ BANK_CNT-1 : 0 ] [ DATA_WIDTH-1 : 0 ] dout
 );
-	(* rom_style = "block" *) 
-	logic [BANK_CNT-1:0] [BANK_SIZE-1:0] [DATA_WIDTH-1:0] mem;
+	logic [BANK_CNT-1:0] [BANK_SIZE-1:0] [DATA_WIDTH-1:0] mem
+	/* synthesis syn_ramstyle = "block_ram" */
+	;
 
 	always_ff @ ( posedge clock )
 	begin
