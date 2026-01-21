@@ -11,15 +11,12 @@ module bram
   input  logic [BRAM_DATA_WIDTH-1:0] din, 
   output logic [BRAM_DATA_WIDTH-1:0] dout
 );
-
-  logic [2**BRAM_ADDR_WIDTH-1:0] [BRAM_DATA_WIDTH-1:0] mem;
-
-  //logic [ BRAM_ADDR_WIDTH-1 : 0 ] read_addr;
-  //assign dout = mem[read_addr];
+  logic [BRAM_DATA_WIDTH-1:0] mem [2**BRAM_ADDR_WIDTH-1:0] 
+  /* synthesis syn_ramstyle = "block_ram" */
+  ;
 
   always_ff @(posedge clock) begin
     dout <= mem[rd_addr];
-    //read_addr <= rd_addr;
     if (wr_en)
 		mem[wr_addr] <= din; 
   end

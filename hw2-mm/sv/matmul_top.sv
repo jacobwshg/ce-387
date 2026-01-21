@@ -51,33 +51,6 @@ module matmul_top
 		.dout    ( z_r_data )
 	);
 
-	/*
-	banked_bram #(
-		.DATA_WIDTH      ( DATA_WIDTH ),
-		.BANK_ID_WIDTH   ( MAT_DIM_WIDTH ),
-		.BANK_CNT        ( MAT_DIM_SIZE ),
-		.BANK_ADDR_WIDTH ( MAT_DIM_WIDTH ),
-		.BANK_SIZE       ( MAT_DIM_SIZE )
-	)
-	x_inst (
-		.clock       ( clk ),
-		.we          ( x_we ),
-		.din         ( x_w_data ),
-		.bank_w_id   ( x_w_bank_id ),
-		.bank_w_addr ( x_w_bank_addr ),
-		.bank_r_addr ( x_r_bank_addr ),
-		.dout        ( x_r_row )
-	),
-	y_inst (
-		.clock       ( clk ),
-		.we          ( y_we ),
-		.din         ( y_w_data ),
-		.bank_w_id   ( y_w_bank_id ),
-		.bank_w_addr ( y_w_bank_addr ),
-		.bank_r_addr ( y_r_bank_addr ),
-		.dout        ( y_r_col )
-	);
-	*/
 	bram_block #(
 		.BRAM_ADDR_WIDTH ( MAT_DIM_WIDTH ),
 		.BANK_DATA_WIDTH ( DATA_WIDTH ),

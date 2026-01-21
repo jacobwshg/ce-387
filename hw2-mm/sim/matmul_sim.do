@@ -16,8 +16,8 @@ vsim \
 	-L work work.matmul_tb \
 	-wlf matmul.wlf
 
-#add wave -noupdate -group matmul_tb
-#add wave -noupdate -group matmul_tb -radix decimal /matmul_tb/*
+add wave -noupdate -group matmul_tb
+add wave -noupdate -group matmul_tb -radix decimal /matmul_tb/*
 
 run -all
 
