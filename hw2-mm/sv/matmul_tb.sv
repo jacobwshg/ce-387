@@ -25,15 +25,15 @@ module matmul_tb();
 		strt = 'b0,
 		done;
 
-	logic
+	logic [ MAT_DIM_SIZE-1 : 0 ]
 		x_we = 'b0,
 		y_we = 'b0;
 	logic [ DATA_WIDTH-1 : 0 ] 
 		x_w_data = 'b0,
 		y_w_data = 'b0;
 	logic [ MAT_DIM_WIDTH-1 : 0 ]
-		x_w_bank_id = 'b0,
-		y_w_bank_id = 'b0,
+		//x_w_bank_id = 'b0,
+		//y_w_bank_id = 'b0,
 		x_w_bank_addr = 'b0,
 		y_w_bank_addr = 'b0;
 
@@ -55,8 +55,8 @@ module matmul_tb();
 		.y_we( y_we ),
 		.x_w_data ( x_w_data ),
 		.y_w_data ( y_w_data ),
-		.x_w_bank_id ( x_w_bank_id ),
-		.y_w_bank_id ( y_w_bank_id ),
+		//.x_w_bank_id ( x_w_bank_id ),
+		//.y_w_bank_id ( y_w_bank_id ),
 		.x_w_bank_addr ( x_w_bank_addr ),
 		.y_w_bank_addr ( y_w_bank_addr ),
 		.z_r_addr( z_r_addr ),
@@ -97,12 +97,12 @@ module matmul_tb();
 				y_w_data = y_buf[ i * MAT_DIM_SIZE + j ];
 				/* X is read one row at a time, so each bank stores a 
  				 * column */
-				x_w_bank_id   = j;
+				//x_w_bank_id   = j;
 				x_w_bank_addr = i;
-				y_w_bank_id   = i;
+				//y_w_bank_id   = i;
 				y_w_bank_addr = j;
-				x_we = 'b1;
-				y_we = 'b1;
+				x_we[j] = 'b1;
+				y_we[i] = 'b1;
 				@ ( negedge clk );
 				x_we = 'b0;
 				y_we = 'b0;

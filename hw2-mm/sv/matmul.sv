@@ -73,7 +73,7 @@ module matmul
 			z_addr <= 'h0;
 			z_w_data <= 'h0;
 			z_we <= 'b0;
-			done <= 'h0;
+			done <= 'b0;
 		end
 		else
 		begin
@@ -110,13 +110,16 @@ module matmul
 			end
 			S_RUN:
 			begin
+				/* compute X row dot Y col */
 				foreach ( x_r_row[k] )
 				begin
 					z_w_data_c += ( x_r_row[k] * y_r_col[k] );
 				end
 
-				/* use X/Y read indices to backward compute Z write addr*/
-				z_addr_c = (i_o * MAT_DIM_SIZE) + j_o - 1;
+				/* Update Z cell addr to write
+ 				 * At the beginning, stagger Z addr by 1 behind the X/Y fetch
+ 				 * addrs as instructed by the observation at top of file */
+				z_addr_c = ( i_c == 0 && j_c == 1 )? 0: z_addr + 1;
 				z_we_c = 'b1;
 
 				/* update X row idx and Y col idx to fetch in next cycle */
@@ -127,7 +130,7 @@ module matmul
 					i_c = i_o + 1;
 				end
 
-				if ( z_addr_c == MAT_SIZE )
+				if ( i_c == MAT_DIM_SIZE && j_c > 0 )
 				/* next Z write addr is past valid range */
 				begin
 					done_c = 'b1;
@@ -146,8 +149,8 @@ module matmul
 				j_c = 'hx;
 				z_addr_c = 'hx;
 				z_w_data_c = 'hx;
-				z_we_c = 'hx;
-				done_c = 'hx;
+				z_we_c = 'bx;
+				done_c = 'bx;
 			end
 		endcase
 	end
