@@ -1,0 +1,7 @@
+
+module grayscale(
+
+);
+
+endmodule
+
