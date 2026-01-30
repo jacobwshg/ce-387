@@ -23,6 +23,8 @@ module motion_detect_top
 	output logic [23:0] hl_out_dout
 );
 
+localparam FIFO_SIZE = 32;
+
 logic [23:0] bg_gs_dout;
 logic        bg_gs_empty;
 logic        bg_gs_re;
@@ -61,7 +63,7 @@ logic frame_hl_re;
 logic frame_hl_empty;
 
 fifo #(
-	.FIFO_BUFFER_SIZE(64),
+	.FIFO_BUFFER_SIZE(FIFO_SIZE),
 	.FIFO_DATA_WIDTH(24)
 ) bg_gs_fifo (
 	.reset (reset),
@@ -76,7 +78,7 @@ fifo #(
 );
 
 fifo #(
-	.FIFO_BUFFER_SIZE(64),
+	.FIFO_BUFFER_SIZE(FIFO_SIZE),
 	.FIFO_DATA_WIDTH(24)
 ) frame_gs_fifo (
 	.reset (reset),
@@ -91,7 +93,7 @@ fifo #(
 );
 
 fifo #(
-	.FIFO_BUFFER_SIZE(64),
+	.FIFO_BUFFER_SIZE(FIFO_SIZE),
 	.FIFO_DATA_WIDTH(24)
 ) hl_out_fifo (
 	.reset (reset),
@@ -106,7 +108,7 @@ fifo #(
 );
 
 fifo #(
-	.FIFO_BUFFER_SIZE(64),
+	.FIFO_BUFFER_SIZE(FIFO_SIZE),
 	.FIFO_DATA_WIDTH(8)
 ) bg_sub_fifo (
 	.reset (reset),
@@ -121,7 +123,7 @@ fifo #(
 );
 
 fifo #(
-	.FIFO_BUFFER_SIZE(64),
+	.FIFO_BUFFER_SIZE(FIFO_SIZE),
 	.FIFO_DATA_WIDTH(8)
 ) frame_sub_fifo (
 	.reset (reset),
@@ -136,7 +138,7 @@ fifo #(
 );
 
 fifo #(
-	.FIFO_BUFFER_SIZE(64),
+	.FIFO_BUFFER_SIZE(FIFO_SIZE),
 	.FIFO_DATA_WIDTH(8)
 ) sub_hl_fifo (
 	.reset (reset),
@@ -151,7 +153,7 @@ fifo #(
 );
 
 fifo #(
-	.FIFO_BUFFER_SIZE(64),
+	.FIFO_BUFFER_SIZE(FIFO_SIZE),
 	.FIFO_DATA_WIDTH(24)
 ) frame_hl_fifo (
 	.reset (reset),

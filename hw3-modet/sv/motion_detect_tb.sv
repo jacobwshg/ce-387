@@ -38,7 +38,9 @@ logic        hl_out_empty;
 logic [23:0] hl_out_dout;
 
 logic   hold_clock	= '0;
-logic   in_write_done = '0;
+logic   bg_gs_write_done = '0;
+logic   frame_gs_write_done = '0;
+logic   frame_hl_write_done = '0;
 logic   out_read_done = '0;
 integer out_errors	= '0;
 
@@ -86,7 +88,8 @@ initial begin
 	reset = 1'b0;
 end
 
-initial begin : tb_process
+initial
+begin : driver
 	longint unsigned start_time, end_time;
 
 	@(negedge reset);
@@ -112,35 +115,28 @@ initial begin : tb_process
 end
 
 initial
-begin : img_read_process
+begin : read_bg
 
-	int infile_bg, infile_frame_gs, infile_frame_hl;
-
+	int infile_bg;
 	int r;
-
 	logic [7:0] bmp_header [0:BMP_HEADER_SIZE-1];
 
 	@(negedge reset);
-	$display("@ %0t: Loading file %s...", $time, INFILE_BG);
-	$display("@ %0t: Loading file %s...", $time, INFILE_FRAME);
+	$display("@ %0t: Loading bg for grayscale %s...", $time, INFILE_BG);
 	infile_bg       = $fopen(INFILE_BG, "rb");
-	infile_frame_gs = $fopen(INFILE_FRAME, "rb");
-	infile_frame_hl = $fopen(INFILE_FRAME, "rb");
-
 	bg_gs_we = 1'b0;
-	frame_gs_we = 1'b0;
-	frame_hl_we = 1'b0;
 
 	// Skip BMP header
 	r = $fread(bmp_header, infile_bg, 0, BMP_HEADER_SIZE);
-	r = $fread(bmp_header, infile_frame_gs, 0, BMP_HEADER_SIZE);
-	r = $fread(bmp_header, infile_frame_hl, 0, BMP_HEADER_SIZE);
 
 	// Read data from image file; kick off streaming
 	for( int i_bg=0; i_bg<BMP_DATA_SIZE; ) 
 	begin
 		@(negedge clock);
 		bg_gs_we = 1'b0;
+
+		/////////
+		//$display("@ %0t, i_bg: %0d\n", $time, i_bg);
 
 		if ( !bg_gs_full )
 		begin
@@ -153,10 +149,36 @@ begin : img_read_process
 		end
 	end
 
+	@(negedge clock);
+	bg_gs_we = 1'b0;
+	$fclose(infile_bg);
+	bg_gs_write_done = 1'b1;
+end
+
+initial
+begin : read_gs_frame
+
+	int infile_frame_gs;
+
+	int r;
+
+	logic [7:0] bmp_header [0:BMP_HEADER_SIZE-1];
+
+	@(negedge reset);
+	$display("@ %0t: Loading frame for grayscale %s...", $time, INFILE_FRAME);
+
+	infile_frame_gs = $fopen(INFILE_FRAME, "rb");
+	frame_gs_we = 1'b0;
+
+	r = $fread(bmp_header, infile_frame_gs, 0, BMP_HEADER_SIZE);
+
 	for( int i_frame_gs=0; i_frame_gs<BMP_DATA_SIZE; ) 
 	begin
 		@(negedge clock);
 		frame_gs_we = 1'b0;
+
+		/////////
+		//$display("@ %0t, i_frame_gs: %0d\n", $time, i_frame_gs);
 
 		if ( !frame_gs_full )
 		begin
@@ -169,10 +191,33 @@ begin : img_read_process
 		end
 	end
 
+	@ (negedge clock);
+	frame_gs_we = 1'b0;
+	$fclose(infile_frame_gs);
+	frame_gs_write_done = 1'b1;
+end 
+
+initial
+begin : read_hl_frame
+
+	int infile_frame_hl;
+	int r;
+	logic [7:0] bmp_header [0:BMP_HEADER_SIZE-1];
+
+	@(negedge reset);
+	$display("@ %0t: Loading frame for highlight %s...", $time, INFILE_FRAME);
+	infile_frame_hl = $fopen(INFILE_FRAME, "rb");
+	frame_hl_we = 1'b0;
+
+	r = $fread(bmp_header, infile_frame_hl, 0, BMP_HEADER_SIZE);
+
 	for( int i_frame_hl=0; i_frame_hl<BMP_DATA_SIZE; ) 
 	begin
 		@(negedge clock);
 		frame_hl_we = 1'b0;
+
+		/////////
+		//$display("@ %0t, i_frame_hl: %0d\n", $time, i_frame_hl);
 
 		if ( !frame_hl_full )
 		begin
@@ -185,19 +230,14 @@ begin : img_read_process
 		end
 	end
 
-	@(negedge clock);
-	//in_wr_en = 1'b0;
-	bg_gs_we = 1'b0;
-	frame_gs_we = 1'b0;
+	@ (negedge clock);
 	frame_hl_we = 1'b0;
-	$fclose(infile_bg);
-	$fclose(infile_frame_gs);
 	$fclose(infile_frame_hl);
-	in_write_done = 1'b1;
-end
+	frame_hl_write_done = 1'b1;
+end 
 
 initial 
-begin : img_write_process
+begin : write_hl
 	int r;
 	int outfile;
 	int cmpfile;
@@ -215,7 +255,8 @@ begin : img_write_process
 	
 	// Copy the BMP header
 	r = $fread(bmp_header, cmpfile, 0, BMP_HEADER_SIZE);
-	for ( int i=0; i<BMP_HEADER_SIZE; ++i ) begin
+	foreach ( bmp_header[i] )
+	begin
 		$fwrite(outfile, "%c", bmp_header[i]);
 	end
 
@@ -223,19 +264,23 @@ begin : img_write_process
 	begin
 		@(negedge clock);
 		hl_out_re = 1'b0;
+
+		/////////
+		//$display("@ %0t, out i: %0d\n", $time, i);
+
 		if ( !hl_out_empty )
 		begin
 			r = $fread(cmp_dout, cmpfile, BMP_HEADER_SIZE+i, BYTES_PER_PIXEL);
-			$fwrite(outfile, "%c%c%c", hl_out_dout, hl_out_dout, hl_out_dout);
 
-			if ( cmp_dout != { 3{hl_out_dout} } ) 
+			if ( cmp_dout != hl_out_dout ) 
 			begin
 				out_errors += 1;
 				$write(
-					"@ %0t: %s(%0d): ERROR: %x != %x at address 0x%x.\n", 
-					$time, OUTFILE, i+1, {3{hl_out_dout}}, cmp_dout, i
+					"@ %0t: %s(%0d): ERROR: actual %x !=  expected %x at address 0x%x.\n", 
+					$time, OUTFILE, i+1, hl_out_dout, cmp_dout, i
 				);
 			end
+			$fwrite(outfile, "%c%c%c", hl_out_dout[23:16], hl_out_dout[15:8], hl_out_dout[7:0]);
 			hl_out_re = 1'b1;
 			i += BYTES_PER_PIXEL;
 		end
