@@ -24,7 +24,7 @@ logic [23:0] bg_in_dout;
 logic        bg_in_empty;
 logic        bg_in_re;
 fifo #(
-	.FIFO_BUFFER_SIZE(128),
+	.FIFO_BUFFER_SIZE(64),
 	.FIFO_DATA_WIDTH(24)
 ) bg_in_fifo (
 	.reset(reset),
@@ -42,7 +42,7 @@ logic [23:0] frame_in_dout;
 logic        frame_in_empty;
 logic        frame_in_re;
 fifo #(
-	.FIFO_BUFFER_SIZE(128),
+	.FIFO_BUFFER_SIZE(64),
 	.FIFO_DATA_WIDTH(24)
 ) frame_in_fifo (
 	.reset(reset),
@@ -61,7 +61,7 @@ logic [7:0]  hl_out_din;
 logic        hl_out_full;
 logic        hl_out_we;
 fifo #(
-	.FIFO_BUFFER_SIZE(128),
+	.FIFO_BUFFER_SIZE(64),
 	.FIFO_DATA_WIDTH(24)
 ) hl_out_fifo (
 	.reset(reset),
@@ -82,7 +82,7 @@ logic [7:0] bg_gs_dout;
 logic bg_gs_re;
 logic bg_gs_empty;
 fifo #(
-	.FIFO_BUFFER_SIZE(128),
+	.FIFO_BUFFER_SIZE(64),
 	.FIFO_DATA_WIDTH(8)
 ) bg_gs_fifo (
 	.reset(reset),
@@ -103,7 +103,7 @@ logic [7:0] frame_gs_dout;
 logic frame_gs_re;
 logic frame_gs_empty;
 fifo #(
-	.FIFO_BUFFER_SIZE(128),
+	.FIFO_BUFFER_SIZE(64),
 	.FIFO_DATA_WIDTH(8)
 ) frame_gs_fifo (
 	.reset(reset),
@@ -124,7 +124,7 @@ logic [7:0] sub_hl_dout;
 logic sub_hl_re;
 logic sub_hl_empty;
 fifo #(
-	.FIFO_BUFFER_SIZE(128),
+	.FIFO_BUFFER_SIZE(64),
 	.FIFO_DATA_WIDTH(8)
 ) sub_hl_fifo (
 	.reset(reset),
@@ -145,7 +145,7 @@ logic [23:0] frame_hl_dout;
 logic frame_hl_re;
 logic frame_hl_empty;
 fifo #(
-	.FIFO_BUFFER_SIZE(128),
+	.FIFO_BUFFER_SIZE(64),
 	.FIFO_DATA_WIDTH(24)
 ) frame_hl_fifo (
 	.reset(reset),
