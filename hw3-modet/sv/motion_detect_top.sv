@@ -56,9 +56,6 @@ logic [7:0] sub_hl_dout;
 logic sub_hl_re;
 logic sub_hl_empty;
 
-logic [23:0] frame_hl_din;
-logic frame_hl_we;
-logic frame_hl_full;
 logic [23:0] frame_hl_dout;
 logic frame_hl_re;
 logic frame_hl_empty;
