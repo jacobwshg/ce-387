@@ -92,6 +92,8 @@ initial
 begin : driver
 	longint unsigned start_time, end_time;
 
+	string diffcmd; 
+
 	@(negedge reset);
 	@(posedge clock);
 	start_time = $time;
@@ -106,9 +108,18 @@ begin : driver
 	end_time = $time;
 
 	// report metrics
+	$display();
 	$display("@ %0t: Simulation completed.", end_time);
 	$display("Total simulation cycle count: %0d", (end_time-start_time)/CLOCK_PERIOD);
 	$display("Total error count: %0d", out_errors);
+
+	
+	$display("---------------------------------------");
+	$display("Output file diff:");
+	$swrite( diffcmd, "diff %s %s", OUTFILE, CMPFILE );
+	$display( "$ %s\n", diffcmd );
+	$system( diffcmd );
+	$display("\nEnd diff");
 
 	// end the simulation
 	$finish;
@@ -134,9 +145,6 @@ begin : read_bg
 	begin
 		@(negedge clock);
 		bg_gs_we = 1'b0;
-
-		/////////
-		//$display("@ %0t, i_bg: %0d\n", $time, i_bg);
 
 		if ( !bg_gs_full )
 		begin
@@ -177,9 +185,6 @@ begin : read_gs_frame
 		@(negedge clock);
 		frame_gs_we = 1'b0;
 
-		/////////
-		//$display("@ %0t, i_frame_gs: %0d\n", $time, i_frame_gs);
-
 		if ( !frame_gs_full )
 		begin
 			r = $fread(
@@ -216,9 +221,6 @@ begin : read_hl_frame
 		@(negedge clock);
 		frame_hl_we = 1'b0;
 
-		/////////
-		//$display("@ %0t, i_frame_hl: %0d\n", $time, i_frame_hl);
-
 		if ( !frame_hl_full )
 		begin
 			r = $fread(
@@ -242,7 +244,7 @@ begin : write_hl
 	int outfile;
 	int cmpfile;
 	logic [23:0] cmp_dout;
-	logic [7:0] bmp_header [0:BMP_HEADER_SIZE-1];
+	logic [0:BMP_HEADER_SIZE-1] [7:0] bmp_header;
 
 	@(negedge reset);
 	@(negedge clock);
@@ -281,6 +283,7 @@ begin : write_hl
 				);
 			end
 			$fwrite(outfile, "%c%c%c", hl_out_dout[23:16], hl_out_dout[15:8], hl_out_dout[7:0]);
+			//$fwrite(outfile, "%u", hl_out_dout);
 			hl_out_re = 1'b1;
 			i += BYTES_PER_PIXEL;
 		end
