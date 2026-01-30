@@ -20,7 +20,7 @@ logic		in_wr_en  = '0;
 logic [23:0] in_din	= '0;
 logic		out_rd_en;
 logic		out_empty;
-logic  [7:0] out_dout;
+logic  [7:0] hl_out_dout;
 */
 
 logic        bg_gs_we;
@@ -114,21 +114,24 @@ end
 initial
 begin : img_read_process
 
+	int infile_bg, infile_frame_gs, infile_frame_hl;
+
+	int r;
+
 	logic [7:0] bmp_header [0:BMP_HEADER_SIZE-1];
 
 	@(negedge reset);
 	$display("@ %0t: Loading file %s...", $time, INFILE_BG);
 	$display("@ %0t: Loading file %s...", $time, INFILE_FRAME);
-	int infile_bg       = $fopen(INFILE_BG, "rb");
-	int infile_frame_gs = $fopen(INFILE_FRAME, "rb");
-	int infile_frame_hl = $fopen(INFILE_FRAME, "rb");
+	infile_bg       = $fopen(INFILE_BG, "rb");
+	infile_frame_gs = $fopen(INFILE_FRAME, "rb");
+	infile_frame_hl = $fopen(INFILE_FRAME, "rb");
 
 	bg_gs_we = 1'b0;
 	frame_gs_we = 1'b0;
 	frame_hl_we = 1'b0;
 
 	// Skip BMP header
-	int r;
 	r = $fread(bmp_header, infile_bg, 0, BMP_HEADER_SIZE);
 	r = $fread(bmp_header, infile_frame_gs, 0, BMP_HEADER_SIZE);
 	r = $fread(bmp_header, infile_frame_hl, 0, BMP_HEADER_SIZE);
@@ -223,14 +226,14 @@ begin : img_write_process
 		if ( !hl_out_empty )
 		begin
 			r = $fread(cmp_dout, cmpfile, BMP_HEADER_SIZE+i, BYTES_PER_PIXEL);
-			$fwrite(outfile, "%c%c%c", out_dout, out_dout, out_dout);
+			$fwrite(outfile, "%c%c%c", hl_out_dout, hl_out_dout, hl_out_dout);
 
-			if ( cmp_dout != { 3{out_dout} } ) 
+			if ( cmp_dout != { 3{hl_out_dout} } ) 
 			begin
 				out_errors += 1;
 				$write(
 					"@ %0t: %s(%0d): ERROR: %x != %x at address 0x%x.\n", 
-					$time, OUTFILE, i+1, {3{out_dout}}, cmp_dout, i
+					$time, OUTFILE, i+1, {3{hl_out_dout}}, cmp_dout, i
 				);
 			end
 			hl_out_re = 1'b1;
