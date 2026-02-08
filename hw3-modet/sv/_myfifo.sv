@@ -34,8 +34,6 @@ module fifo #(
 	logic [FIFO_DATA_WIDTH-1:0] fifo_buf [FIFO_BUFFER_SIZE-1:0];
 	logic [FIFO_ADDR_WIDTH-1:0] wr_addr, rd_addr;
 
-	//logic empty_c;
-
 	assign empty = ( wr_addr == rd_addr );
 	assign full = 
 		(wr_addr[FIFO_ADDR_WIDTH-2:0] == rd_addr[FIFO_ADDR_WIDTH-2:0]) 
@@ -47,10 +45,13 @@ module fifo #(
 		begin
 			wr_addr <= 'b0;
 		end
-		else if ( (wr_en == 1'b1) && (full == 1'b0) )
+		else 
 		begin
-			fifo_buf[ wr_addr[FIFO_ADDR_WIDTH-2:0] ] <= din;
-			wr_addr <= wr_addr + 1'h1;
+			if ( wr_en & !full )
+			begin
+				fifo_buf[ wr_addr[FIFO_ADDR_WIDTH-2:0] ] <= din;
+				wr_addr <= wr_addr + 1'h1;
+			end
 		end
 	end
 
@@ -59,16 +60,14 @@ module fifo #(
 		if ( reset )
 		begin
 			rd_addr <= 'b0;
-			//empty <= 1'b1;
 		end
 		else 
 		begin
-			if ( (rd_en == 1'b1) && (empty == 1'b0) )
+			if ( rd_en & ~empty )
 			begin
 				dout <= to01(fifo_buf[ rd_addr[FIFO_ADDR_WIDTH-2:0] ]);
 				rd_addr <= rd_addr + 1'h1;
 			end
-			//empty <= empty_c;
 		end
 	end
 
