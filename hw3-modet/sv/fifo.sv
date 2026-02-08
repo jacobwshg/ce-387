@@ -28,13 +28,13 @@ module fifo #(
 
 	localparam FIFO_ADDR_WIDTH = $clog2(FIFO_BUFFER_SIZE) + 1;
 	logic [FIFO_DATA_WIDTH-1:0] fifo_buf [FIFO_BUFFER_SIZE-1:0];
-	logic [FIFO_ADDR_WIDTH-1:0] wr_addr, wr_addr_t;
-	logic [FIFO_ADDR_WIDTH-1:0] rd_addr, rd_addr_t;
-	logic full_t, empty_t;
+	logic [FIFO_ADDR_WIDTH-1:0] wr_addr, wr_addr_c;
+	logic [FIFO_ADDR_WIDTH-1:0] rd_addr, rd_addr_c;
+	logic full_c, empty_c;
 
 	always_ff @(posedge wr_clk) 
 	begin : p_write_buffer
-		if ( (wr_en == 1'b1) && (full_t == 1'b0) ) begin
+		if ( (wr_en == 1'b1) && (full_c == 1'b0) ) begin
 			fifo_buf[$unsigned(wr_addr[FIFO_ADDR_WIDTH-2:0])] <= din;
 		end
 	end
@@ -44,12 +44,12 @@ module fifo #(
 		if ( reset == 1'b1 ) 
 			wr_addr <= '0;
 		else
-			wr_addr <= wr_addr_t;
+			wr_addr <= wr_addr_c;
 	end
 
 	always_ff @(posedge rd_clk) 
 	begin : p_rd_buffer
-		dout <= to01(fifo_buf[$unsigned(rd_addr_t[FIFO_ADDR_WIDTH-2:0])]);
+		dout <= to01(fifo_buf[$unsigned(rd_addr_c[FIFO_ADDR_WIDTH-2:0])]);
 	end
 
 	always_ff @(posedge rd_clk, posedge reset) 
@@ -57,7 +57,7 @@ module fifo #(
 		if ( reset == 1'b1 ) 
 			rd_addr <= '0;
 		else
-			rd_addr <= rd_addr_t;
+			rd_addr <= rd_addr_c;
 	end
 
 	always_ff @(posedge rd_clk, posedge reset) 
@@ -65,14 +65,15 @@ module fifo #(
 		if ( reset == 1'b1 ) 
 			empty <= '1;
 		else
-			empty <= (wr_addr == rd_addr_t) ? 1'b1 : 1'b0;
+			empty <= (wr_addr == rd_addr_c) ? 1'b1 : 1'b0;
 	end
 
-	assign rd_addr_t = (rd_en == 1'b1 && empty_t == 1'b0) ? ($unsigned(rd_addr) + 'h1) : rd_addr;
-	assign wr_addr_t = (wr_en == 1'b1 && full_t == 1'b0) ? ($unsigned(wr_addr) + 'h1) : wr_addr;
-	assign empty_t = (wr_addr == rd_addr) ? 1'b1 : 1'b0;
-	assign full_t = (wr_addr[FIFO_ADDR_WIDTH-2:0] == rd_addr[FIFO_ADDR_WIDTH-2:0]) &&
+	assign rd_addr_c = (rd_en == 1'b1 && empty_c == 1'b0) ? ($unsigned(rd_addr) + 'h1) : rd_addr;
+	assign wr_addr_c = (wr_en == 1'b1 && full_c == 1'b0) ? ($unsigned(wr_addr) + 'h1) : wr_addr;
+	assign empty_c = (wr_addr == rd_addr) ? 1'b1 : 1'b0;
+	assign full_c = (wr_addr[FIFO_ADDR_WIDTH-2:0] == rd_addr[FIFO_ADDR_WIDTH-2:0]) &&
 		(wr_addr[FIFO_ADDR_WIDTH-1] != rd_addr[FIFO_ADDR_WIDTH-1]) ? 1'b1 : 1'b0;
-	assign full = full_t;
+	assign full = full_c;
 
 endmodule
+
