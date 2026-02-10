@@ -1,7 +1,9 @@
 
 module sobel #(
 	parameter IMG_WIDTH = 720,
-	parameter IMG_HEIGHT = 576
+	parameter IMG_HEIGHT = 576,
+	parameter IROW_WIDTH = 10,
+	parameter ICOL_WIDTH = 10
 )
 (
 	input  logic clk,
@@ -16,8 +18,6 @@ module sobel #(
 	output logic [7:0] out_din
 );
 
-	localparam IROW_WIDTH = $clog( IMG_WIDTH );
-	localparam ICOL_WIDTH = $clog( IMG_HEIGHT );
 
 	localparam BOX_DIM = 3;
 
@@ -100,7 +100,7 @@ module sobel #(
 			box   <= 'h0;
 			irow  <= 'h0;
 			icol  <= 'h0;
-			top_row, mid_row, bot_row <= { 2'h0, 2'h1, 2'h2 };
+			{ top_row, mid_row, bot_row } <= { 2'h0, 2'h1, 2'h2 };
 		end
 		else
 		begin
@@ -108,7 +108,7 @@ module sobel #(
 			box   <= box_c;
 			irow  <= irow_c;
 			icol  <= icol_c;
-			top_row, mid_row, bot_row <= { top_row_c, mid_row_c, bot_row_c };
+			{ top_row, mid_row, bot_row } <= { top_row_c, mid_row_c, bot_row_c };
 		end
 	end
 
@@ -138,8 +138,8 @@ module sobel #(
 		out_din   = 8'h0;
 		state_c   = state;
 		box_c     = box;
-		irow_c, icol_c = { irow, icol };
-		top_row_c, mid_row_c, bot_row_c = { top_row, mid_row, bot_row };
+		{ irow_c, icol_c } = { irow, icol };
+		{ top_row_c, mid_row_c, bot_row_c } = { top_row, mid_row, bot_row };
 		bot_px_c  = 8'h0;
 		result_c  = 10'h0;
 
@@ -163,7 +163,7 @@ module sobel #(
  					 */
 					icol_c = 'h0;
 					irow_c = irow + 1'h1;
-					top_row_c, mid_row_c, bot_row_c = { mid_row, bot_row, top_row };
+					{ top_row_c, mid_row_c, bot_row_c } = { mid_row, bot_row, top_row };
 				end
 				state_c = S_READ;
 			end
@@ -202,7 +202,7 @@ module sobel #(
 						10'( rowbuf_dout[ top_row ] ),
 						10'( rowbuf_dout[ mid_row ] ),
 						10'( bot_px_c )
-					}
+					};
 
 					rowbuf_we[ bot_row ] = 1'b1;
 
@@ -269,7 +269,7 @@ module sobel #(
 				box_c     = 'hx;
 				irow_c    = 'hx;
 				icol_c    = 'hx;
-				top_row_c, mid_row_c, bot_row_c = 'hx;
+				{ top_row_c, mid_row_c, bot_row_c } = 'hx;
 				bot_px_c  = 'hx;
 				result_c  = 'hx;
 			end
