@@ -15,7 +15,7 @@ module sobel #(
 
 	output logic in_rd_en,
 	output logic out_wr_en,
-	output logic [7:0] out_din
+	output logic [ 7:0 ] out_din
 );
 
 
@@ -115,8 +115,12 @@ module sobel #(
 	always_comb
 	begin
 		/*
- 		 * Compute sobel gradients anytime based on whatever is in the box;
- 		 * we only use the result in S_WRITE
+ 		 * Compute sobel gradients anytime based on whatever is in the box.
+ 		 *
+ 		 * New box values shift in on the clk edge from read state to write
+ 		 * state. Result stabilizes during the write state cycle, and get
+ 		 * pushed to downstream fifo on the clk edge going out of write state.
+ 		 *
  		 */	
 		hgrad_c = 
 			    - box[0][0]
@@ -150,7 +154,7 @@ module sobel #(
  				 * Compute index register updates; 
  				 *
  				 * The new combinational indices will be applied at the nearest next clk edge,
- 				 * so the clocked values used in S_RDFIFO below will be the same as 
+ 				 * so the clocked values used in read state below will be the same as 
  				 * the combinational ones computed in this state.
  				 */
 				icol_c = icol + 1'h1;
