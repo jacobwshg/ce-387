@@ -5,7 +5,7 @@ module edge_detect_tb();
 
 	localparam string INFILE  = "base.bmp";
 	localparam string OUTFILE = "output.bmp";
-	localparam string CMPFILE = "img_out.bmp";
+	localparam string CMPFILE = "stage2_sobel.bmp";
 	localparam CLOCK_PERIOD = 10;
 
 	logic clock = 1'b1;
