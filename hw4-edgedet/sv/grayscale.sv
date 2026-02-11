@@ -75,3 +75,4 @@ module grayscale (
 	end
 
 endmodule
+

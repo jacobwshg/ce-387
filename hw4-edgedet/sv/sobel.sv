@@ -30,7 +30,7 @@ module sobel #(
 	state_t state, state_c;
 
 	/* store box in column-major order */
-	logic signed [ BOX_DIM-1:0 ][ BOX_DIM-1:0 ][ 9:0 ] 
+	logic signed [ BOX_DIM-1:0 ][ BOX_DIM-1:0 ][ 11:0 ] 
 		box, box_c; 
 
 	/*
@@ -41,9 +41,9 @@ module sobel #(
 	logic [ ICOL_WIDTH-1:0 ]
 		icol, icol_c;
 
-	logic [ 3:0 ] rowbuf_we;
+	logic [ BOX_DIM-1:0 ] rowbuf_we;
 
-	logic [ 3:0 ] [ 7:0 ] rowbuf_dout;
+	logic [ BOX_DIM-1:0 ] [ 7:0 ] rowbuf_dout;
 
 	logic [ 1:0 ]
 		top_row, mid_row, bot_row,
@@ -54,7 +54,7 @@ module sobel #(
  	 */
 	logic [ 7:0 ] bot_px_c;
 
-	logic signed [9:0] 
+	logic signed [ 11:0 ] 
 		hgrad_c, vgrad_c,
 		result_c;
 
@@ -143,9 +143,11 @@ module sobel #(
 		state_c   = state;
 		box_c     = box;
 		{ irow_c, icol_c } = { irow, icol };
+
+		rowbuf_we = 'h0;
 		{ top_row_c, mid_row_c, bot_row_c } = { top_row, mid_row, bot_row };
 		bot_px_c  = 8'h0;
-		result_c  = 10'h0;
+		result_c  = 12'h0;
 
 		case (state)
 			S_UPDATE_IDX:
@@ -203,9 +205,9 @@ module sobel #(
 					box_c[1] = box[2];
 					box_c[2] =
 					{
-						10'( rowbuf_dout[ top_row ] ),
-						10'( rowbuf_dout[ mid_row ] ),
-						10'( bot_px_c )
+						12'( rowbuf_dout[ top_row ] ),
+						12'( rowbuf_dout[ mid_row ] ),
+						12'( bot_px_c )
 					};
 
 					rowbuf_we[ bot_row ] = 1'b1;
@@ -239,25 +241,26 @@ module sobel #(
  					 * - When row idx reaches IMG_HEIGHT, center px is
  					 *   in the img's bottom edge and should default to zero.
  					 *
- 					 * # When col idx is 0 or IMG_WIDTH, center px is in
- 					 *   the img's left or right edges abd should default to
+ 					 * # When bottom right col idx is 0 or 1, center px is in
+ 					 *   the img's right or left edge and should default to
  					 *   zero.
  					 *
  					 */
+					// take average of absolute gradient values
 					result_c = (
-						  ( hgrad_c[9] ? -hgrad_c : hgrad_c )
-						+ ( vgrad_c[9] ? -vgrad_c : vgrad_c )
+						  ( hgrad_c[11] ? -hgrad_c : hgrad_c )
+						+ ( vgrad_c[11] ? -vgrad_c : vgrad_c )
 					) >> 1;
 
 					if (
-						| { ( irow<=1 ), ( irow>=IMG_HEIGHT ), ( icol==0 ), ( icol==IMG_WIDTH ) }
+						| { ( irow<=1 ), ( irow>=IMG_HEIGHT ), ( icol<=1 ) }
 					)
 					begin
 						out_din = 8'h0;
 					end
 					else
 					begin
-						out_din = (| result_c[ 9:8 ]) ? 8'hff : result_c[ 7:0 ];
+						out_din = ( | result_c[ 11:8 ] ) ? 8'hff : result_c[ 7:0 ];
 					end
 					out_wr_en = 1'b1;
 					state_c = S_UPDATE_IDX;
