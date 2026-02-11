@@ -12,26 +12,39 @@ vlog -work work "../sv/edge_detect_tb.sv"
 
 
 # uvm library
-#vlog -work work +incdir+$env(UVM_HOME)/src $env(UVM_HOME)/src/uvm.sv
-#vlog -work work +incdir+$env(UVM_HOME)/src $env(UVM_HOME)/src/uvm_macros.svh
-#vlog -work work +incdir+$env(UVM_HOME)/src $env(MTI_HOME)/verilog_src/questa_uvm_pkg-1.2/src/questa_uvm_pkg.sv
+vlog -work work +incdir+$env(UVM_HOME)/src $env(UVM_HOME)/src/uvm.sv
+vlog -work work +incdir+$env(UVM_HOME)/src $env(UVM_HOME)/src/uvm_macros.svh
+vlog -work work +incdir+$env(UVM_HOME)/src $env(MTI_HOME)/verilog_src/questa_uvm_pkg-1.2/src/questa_uvm_pkg.sv
 
 # uvm package
-#vlog -work work +incdir+$env(UVM_HOME)/src "../uvm/my_uvm_pkg.sv"
-#vlog -work work +incdir+$env(UVM_HOME)/src "../uvm/my_uvm_tb.sv"
+vlog -work work +incdir+$env(UVM_HOME)/src "../uvm/my_uvm_pkg.sv"
+vlog -work work +incdir+$env(UVM_HOME)/src "../uvm/my_uvm_tb.sv"
+
+# start basic simulation
+#vsim -classdebug -voptargs=+acc +notimingchecks -L work work.edge_detect_tb -wlf edge_detect.wlf
+#add wave -noupdate -group edge_detect_tb
+#add wave -noupdate -group edge_detect_tb -radix hexadecimal /edge_detect_tb/*
+#add wave -noupdate -group edge_detect_tb/edge_detect_top_inst
+#add wave -noupdate -group edge_detect_tb/edge_detect_top_inst -radix hexadecimal /edge_detect_tb/edge_detect_top_inst/*
+#add wave -noupdate -group edge_detect_tb/edge_detect_top_inst/gs_inst
+#add wave -noupdate -group edge_detect_tb/edge_detect_top_inst/gs_inst -radix hexadecimal /edge_detect_tb/edge_detect_top_inst/gs_inst/*
+#add wave -noupdate -group edge_detect_tb/edge_detect_top_inst/sobel_inst
+#add wave -noupdate -group edge_detect_tb/edge_detect_top_inst/sobel_inst -radix hexadecimal /edge_detect_tb/edge_detect_top_inst/sobel_inst/*
 
 # start uvm simulation
-#vsim -classdebug -voptargs=+acc +notimingchecks -L work work.my_uvm_tb -wlf my_uvm_tb.wlf -sv_lib lib/uvm_dpi -dpicpppath /usr/bin/gcc +incdir+$env(MTI_HOME)/verilog_src/questa_uvm_pkg-1.2/src/
+vsim -classdebug -voptargs=+acc +notimingchecks -L work work.my_uvm_tb -wlf my_uvm_tb.wlf -sv_lib lib/uvm_dpi -dpicpppath /usr/bin/gcc +incdir+$env(MTI_HOME)/verilog_src/questa_uvm_pkg-1.2/src/
 
+#add wave -noupdate -group my_uvm_tb
+#add wave -noupdate -group my_uvm_tb -radix hexadecimal /my_uvm_tb/*
 
+add wave -noupdate -group my_uvm_tb/edge_detect_top_inst
+add wave -noupdate -group my_uvm_tb/edge_detect_top_inst -radix hexadecimal /my_uvm_tb/edge_detect_top_inst/*
 
-vsim -classdebug -voptargs=+acc +notimingchecks -L work work.edge_detect_tb -wlf edge_detect.wlf
+add wave -noupdate -group my_uvm_tb/edge_detect_top_inst/gs_inst
+add wave -noupdate -group my_uvm_tb/edge_detect_top_inst/gs_inst -radix hexadecimal /my_uvm_tb/edge_detect_top_inst/gs_inst/*
 
-add wave -noupdate -group edge_detect_tb
-add wave -noupdate -group edge_detect_tb -radix hexadecimal /edge_detect_tb/*
-
-add wave -noupdate -group edge_detect_tb/edge_detect_top_inst
-add wave -noupdate -group edge_detect_tb/edge_detect_top_inst -radix hexadecimal /edge_detect_tb/edge_detect_top_inst/*
+add wave -noupdate -group my_uvm_tb/edge_detect_top_inst/sobel_inst
+add wave -noupdate -group my_uvm_tb/edge_detect_top_inst/sobel_inst	-radix hexadecimal /my_uvm_tb/edge_detect_top_inst/sobel_inst/*
 
 run -all
 

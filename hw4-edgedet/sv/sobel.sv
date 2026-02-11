@@ -230,7 +230,7 @@ module sobel #(
 				begin
 					/*
  					 * Box bottom right indices (0, 0) through (1, 0) 
- 					 * corresponds to center px indices (-1, -1) through (0, -1),
+ 					 * correspond to center px indices (-1, -1) through (0, -1),
  					 * which lie outside of the logical img and should not be
  					 * output to downstream fifo. The operator result is not 
  					 * valid either. Simply return to update state. 
