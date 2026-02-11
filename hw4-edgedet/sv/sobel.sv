@@ -34,7 +34,10 @@ module sobel #(
 		box, box_c; 
 
 	/*
- 	 * take the logical img indices of the bottom right px in the box
+ 	 * Track the logical img indices of the bottom right px in the box.
+ 	 * This is due to the fact that the box proceeds right and down through
+ 	 * the img, thus the px from upstream fifo must be the bottom
+ 	 * right one in the next box.
  	 */
 	logic [ IROW_WIDTH-1:0 ]
 		irow, irow_c;
@@ -49,11 +52,15 @@ module sobel #(
 		top_row, mid_row, bot_row,
 		top_row_c, mid_row_c, bot_row_c;
 
-	/* the bottom row px fetched from upstream fifo (wired from the less
+	/* 
+ 	 * The bottom right px fetched from upstream fifo (wired from the less
  	 * descriptive in_dout when valid), to be written to rowbuf
  	 */
 	logic [ 7:0 ] bot_px_c;
 
+	/*
+ 	 * Reserve enough bit width for gradient results
+ 	 */
 	logic signed [ 11:0 ] 
 		hgrad_c, vgrad_c,
 		result_c;
@@ -222,28 +229,26 @@ module sobel #(
 				if ( (irow == 0) | (irow==1 & icol==0) )
 				begin
 					/*
- 					 * When bottom row idx is 0, the box center px lies above the img
- 					 * ( row -1 ) and shouldn't be written to downstream fifo. 
- 					 * The operator result is not valid either. Simply return to update state. 
+ 					 * Box bottom right indices (0, 0) through (1, 0) 
+ 					 * corresponds to center px indices (-1, -1) through (0, -1),
+ 					 * which lie outside of the logical img and should not be
+ 					 * output to downstream fifo. The operator result is not 
+ 					 * valid either. Simply return to update state. 
  					 */
 					state_c = S_UPDATE_IDX;
 				end
 				else if ( ~out_full )
 				begin
 					/*
- 					 * - When bottom row idx is 1, center px is in the img's top edge
- 					 *   and should default to zero.
+ 					 * - When box bottom row idx equals 1 or IMG_HEIGHT, center px 
+ 					 *   is on the img's horizontal border and should default to zero.
  					 *
- 					 * - When 1 < row idx < IMG_HEIGHT, center px is the valid
- 					 *   result of the sobel operator. Saturate to 255 if
- 					 *   necessary, and put to fifo.
- 					 *
- 					 * - When row idx reaches IMG_HEIGHT, center px is
- 					 *   in the img's bottom edge and should default to zero.
- 					 *
- 					 * # When bottom right col idx is 0 or 1, center px is in
- 					 *   the img's right or left edge and should default to
+ 					 * - When box right col idx equals 0 or 1, center px
+ 					 *   is on the img's vertical border and should default to
  					 *   zero.
+ 					 *
+ 					 * - Else, center px is the valid result of the sobel operator. 
+ 					 *   Saturate to 255 if necessary, and put to fifo.
  					 *
  					 */
 					// take average of absolute gradient values
