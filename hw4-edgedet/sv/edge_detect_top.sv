@@ -1,8 +1,8 @@
 
 module edge_detect_top 
 #(
-	parameter WIDTH  = 768,
-	parameter HEIGHT = 576
+	parameter WIDTH  = 720,
+	parameter HEIGHT = 540
 )
 (
 	input  logic clock,
@@ -85,8 +85,8 @@ module edge_detect_top
 		.empty ( sobel_out_empty )
 	);
 
-	grayscale #(
-	) gs_inst (
+	grayscale
+	gs_inst (
 		.clock( clock ),
 		.reset( reset ),
 
@@ -100,6 +100,8 @@ module edge_detect_top
 	);
 
 	sobel #(
+		.IMG_WIDTH ( WIDTH ),
+		.IMG_HEIGHT( HEIGHT )
 	) sobel_inst (
 		.clk( clock ),
 		.rst( reset ),
