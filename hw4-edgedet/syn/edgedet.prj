@@ -1,7 +1,7 @@
 #--  Synopsys, Inc.
 #--  Version O-2018.09-SP1
 #--  Project file /home/qep7929/Documents/ce387/hw4-edgedet/syn/edgedet.prj
-#--  Written on Tue Feb 10 18:11:19 2026
+#--  Written on Tue Feb 10 20:10:07 2026
 
 
 #project files
@@ -39,6 +39,7 @@ set_option -use_fsm_explorer 0
 set_option -distributed_compile 1
 
 # altera_options
+set_option -synthesis_strategy routability
 set_option -rw_check_on_ram 1
 
 # mapper_without_write_options

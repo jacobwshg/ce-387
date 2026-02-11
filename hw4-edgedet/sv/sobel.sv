@@ -219,7 +219,7 @@ module sobel #(
 
 			S_WRITE:
 			begin
-				if ( irow == 0 )
+				if ( (irow == 0) | (irow==1 & icol==0) )
 				begin
 					/*
  					 * When bottom row idx is 0, the box center px lies above the img
