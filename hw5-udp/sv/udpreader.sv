@@ -6,9 +6,11 @@ module udpreader
 
 	input logic [ 7:0 ] in_dout,
 	input logic in_rd_sof,
+	input logic out_full,
 
 	output logic in_re,
-	output logic out_we
+	output logic out_we,
+	output logic out_din,
 )
 
 	localparam PCAP_HEADER_BYTES      = 24;
@@ -44,29 +46,33 @@ module udpreader
 	localparam TIME_TO_LIVE           = 'he;
 	localparam UDP_PROTOCOL_DEF       = 'h11;
 
-	typedef enum logic [ 5:0 ]
+	typedef enum logic [ 6:0 ]
 	{
 		S_WAIT_SOF,
 		S_ETH_DST, S_ETH_SRC, S_ETH_PROT,
 		S_IP_VER, S_IP_HDR, S_IP_TYPE, S_IP_LEN, S_IP_ID,
 		S_IP_FLAG, S_IP_TIME, S_IP_PROT, S_IP_SUM, S_IP_SRC, S_IP_DST,
-		S_UDP_DST, S_UDP_SRC, S_UDP_LEN, S_UDP_SUM,
-		S_FINALIZE_SUM
+		S_UDP_DST, S_UDP_SRC, S_UDP_LEN, S_UDP_SUM, S_UDP_DATA,
+		S_VERIFY_SUM
 	} state_t;
 
-	typedef enum logic { FALSE, TRUE } bool_t;
+	typedef enum logic { FALSE = 1'b0, TRUE = 1'b1 } bool_t;
 
 	state_t state, state_c;
-
-	logic [ 31:0 ] sum, sum_c;
 
 	/* flag for whether current state participates in sum calculation */
 	bool_t sum_state, sum_state_c;
 
+	logic [ 32:0 ]
+		sum, sum_c,
+		ref_sum, ref_sum_c;
+
 	logic [ 31:0 ] i, i_c;
 
 	/* buffer lower byte of every pair of bytes */
-	logic [ 7:0 ] byte0, byte0_c;
+	logic [ 7:0 ] bytebuf, bytebuf_c;
+
+	logic [ 31:0 ] udp_data_len, udp_data_len_c;
 
 	always_ff @ ( posedge clk, posedge rst )
 	begin
@@ -74,17 +80,21 @@ module udpreader
 		begin
 			state <= S_WAIT_SOF;
 			sum <= 32'h0;
+			ref_sum <= 32'h0;
 			sum_state <= FALSE;
 			i <= 32'h0;
-			byte0 <= 8'h0;
+			bytebuf <= 8'h0;
+			udp_data_len <= 32'd0;
 		end
 		else
 		begin
 			state <= state_c;
 			sum <= sum_c;
+			ref_sum <= ref_sum_c;
 			sum_state <= sum_state_c;
 			i <= i_c;
-			byte0 <= byte0_c;
+			bytebuf <= bytebuf_c;
+			udp_data_len <= udp_data_len_c;
 		end
 	end
 
@@ -92,21 +102,36 @@ module udpreader
 	begin
 		state_c = state;
 		sum_c = sum;
+		ref_sum_c = ref_sum;
 		sum_state_c = sum_state;
 		i_c = i;
-		byte0_c = byte0;
+		bytebuf_c = bytebuf;
+		udp_data_len_c = udp_data_len;
 
 		in_re = 1'b0;
 		out_we = 1'b0;
 
+		if ( sum_state & ~in_empty )
+		begin
+			bytebuf_c = in_dout;
+			if ( i[0] )
+			begin
+				sum_c = sum + 16'( { 8'( bytebuf ), 8'( in_dout ) } );
+			end
+		end
+
 		case ( state )
 			S_WAIT_SOF:
 			begin
+				sum_c = 32'h0;
+				ref_sum_c = 32'h0;
+				i_c = 1'h0;
 				if ( ~in_empty )
 				begin
 					if ( in_rd_sof )
 					begin
 						state_c = S_ETH_DST;
+						sum_state_c = FALSE;
 					end
 					else
 					begin
@@ -124,6 +149,7 @@ module udpreader
 					if ( i_c == ETH_DST_ADDR_BYTES )
 					begin
 						state_c = S_ETH_SRC;
+						sum_state_c = FALSE;
 						i_c = 1'h0;
 					end
 				end
@@ -138,6 +164,7 @@ module udpreader
 					if ( i_c == ETH_SRC_ADDR_BYTES )
 					begin
 						state_c = S_ETH_PROT;
+						sum_state_c = FALSE;
 						i_c = 1'h0;
 					end
 				end
@@ -149,17 +176,22 @@ module udpreader
 				begin
 					in_re = 1'b1;
 					i_c = i + 1'h1;
-					if ( i_c == ETH_PROTOCOL_BYTES )
+					bytebuf_c = in_dout;
+					if (
+						( 1'h1 == i ) 
+						& ( IP_PROTOCOL_DEF != 16'( { 8'(bytebuf), 8'(in_dout) } ) )
+					)
 					begin
+						state_c = S_WAIT_SOF;
+						sum_state_c = FALSE;
 						i_c = 1'h0;
-						state_c = 
-							( IP_PROTOCOL_DEF == 16'( { 8'(byte0), 8'(in_dout) } ) )
-							? S_IP_VER
-							: S_WAIT_SOF;
 					end
-					else
+
+					if ( ETH_PROTOCOL_BYTES == i_c )
 					begin
-						byte0_c = in_dout;
+						state_c = S_IP_VER;
+						sum_state_c = FALSE;
+						i_c = 1'h0;
 					end
 				end
 			end
@@ -169,31 +201,308 @@ module udpreader
 				if ( ~in_empty )
 				begin
 					in_re = 1'b1;
-					//byte0_c = in_dout;
-					state_c = 
-						( IP_VERSION_DEF == (in_dout >> 4) )
-						? S_IP_HDR
-						: S_WAIT_SOF;
-					i_c = 1'h0;
+					i_c = i + 1'h1;
+					if (
+						( 1'h0 == i ) 
+						& ( IP_VERSION_DEF != (in_dout >> 4) )
+					)
+					begin
+						state_c = S_WAIT_SOF;
+						sum_state_c = FALSE;
+						i_c = 1'h0;
+					end
+
+					if ( IP_VERSION_BYTES == i_c )
+					begin
+						state_c = S_IP_HDR;
+						sum_state_c = FALSE;
+						i_c = 1'h0;
+					end
 				end
 			end
 
 			S_IP_HDR:
 			begin
 				state_c = S_IP_TYPE;
+				sum_state_c = FALSE;
 				i_c = 1'h0;
 			end
 
-			
+			S_IP_TYPE:		
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+					if ( IP_TYPE_BYTES == i_c )
+					begin
+						state_c = S_IP_LEN;
+						sum_state_c = TRUE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+			S_IP_LEN:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+
+					if ( i[0] )
+					begin
+						sum_c = sum_c - 'd20;
+					end
+
+					if ( IP_LENGTH_BYTES == i_c )
+					begin
+						state_c = S_IP_ID;
+						sum_state_c = FALSE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+			S_IP_ID:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+					if ( IP_ID_BYTES == i_c )
+					begin
+						state_c = S_IP_FLAG;
+						sum_state_c = FALSE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+			S_IP_FLAG:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+					if ( IP_FLAG_BYTES == i_c )
+					begin
+						state_c = S_IP_TIME;
+						sum_state_c = FALSE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+
+			S_IP_TIME:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+					if ( IP_TIME_BYTES == i_c )
+					begin
+						state_c = S_IP_PROT;
+						/* Even though IP protocol technically participates in
+						 * checksum, it doesn't follow the byte-pair pattern */
+						sum_state_c = FALSE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+			S_IP_PROT:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+
+					if ( 1'h1 == i_c )
+					begin
+						sum_c = sum + 8'( in_dout );
+						if ( UDP_PROTOCOL_DEF != in_dout )
+						begin
+							state_c = S_WAIT_SOF;
+							sum_state_c = FALSE;
+							i_c = 1'h0;
+						end
+					end
+
+					if ( IP_PROTOCOL_BYTES == i_c )
+					begin
+						state_c = S_IP_SUM;
+						sum_state_c = FALSE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+			S_IP_SUM:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+					if ( IP_CHECKSUM_BYTES == i_c )
+					begin
+						state_c = S_IP_SRC;
+						sum_state_c = TRUE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+			S_IP_SRC:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+
+					if ( IP_SRC_ADDR_BYTES == i_c )
+					begin
+						state_c = S_IP_DST;
+						sum_state_c = TRUE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+
+			S_IP_DST:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+
+					if ( IP_DST_ADDR_BYTES == i_c )
+					begin
+						state_c = S_UDP_DST;
+						sum_state_c = TRUE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+			S_UDP_DST:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+
+					if ( UDP_DST_PORT_BYTES == i_c )
+					begin
+						state_c = S_UDP_SRC;
+						sum_state_c = TRUE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+			S_UDP_SRC:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+
+					if ( UDP_SRC_PORT_BYTES == i_c )
+					begin
+						state_c = S_UDP_LEN;
+						sum_state_c = TRUE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+			S_UDP_LEN:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+
+					if ( 2'h2 == i_c )
+					begin
+						/* Compute full UDP packet length */
+						udp_data_length_c = 32'( { 8'( bytebuf ), 8'( in_dout ) } );
+					end
+					if ( UDP_LENGTH_BYTES == i_c )
+					begin
+						state_c = S_UDP_SUM;
+						sum_state_c = FALSE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+			S_UDP_SUM:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+					bytebuf_c = in_dout;
+					if ( 2'h2 == i_c )
+					begin
+						/* Extract reference checksum in packet */
+						ref_sum_c == 32'( { 8'( bytebuf_c ), 8'( in_dout ) } );
+					end
+					if ( UDP_CHECKSUM_BYTES == i_c )
+					begin
+						/* Compute final UDP payload length */
+						udp_data_length_c = 
+							udp_data_length
+							- (
+								UDP_CHECKSUM_BYTES 
+								+ UDP_LENGTH_BYTES 
+								+ UDP_DST_PORT_BYTES 
+								+ UDP_SRC_PORT_BYTES
+							);
+						state_c = S_UDP_DATA;
+						sum_state_c = TRUE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+			S_UDP_DATA:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+
+					if ( udp_data_len == i_c )
+					begin
+						if ( udp_data_len[0] )
+						begin
+							sum_c = sum + 16'( { 8'( bytebuf ), 8'h0 } );
+						end
+						state_c = S_VERIFY_SUM;
+						sum_state_c = FALSE;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+			S_VERIFY_SUM:
+			begin
+				if ( | sum[ 31:16 ] )
+				begin
+					sum_c = sum[ 15:0 ] + sum[ 31:16 ];
+				end
+				else
+				begin
+					sum_c = ~sum;
+				end
+			end
 
 		endcase
-
-		/*
-		if ( sum_state & i[0] )
-		begin
-			sum_c = sum + 16'( { 8'(byte0), 8'(in_dout) } );
-		end
-		*/
 
 	end
 
