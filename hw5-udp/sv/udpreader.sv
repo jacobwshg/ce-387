@@ -68,8 +68,9 @@ module udpreader
 	/* flag for whether current state participates in sum calculation */
 	bool_t sum_state, sum_state_c;
 
-	logic [ 32:0 ]
-		sum, sum_c,
+	logic [ 31:0 ]
+		sum, sum_c;
+	logic [ 15:0 ]
 		ref_sum, ref_sum_c;
 
 	logic [ 31:0 ] i, i_c;
@@ -89,7 +90,7 @@ module udpreader
 			//state <= S_WAIT_SOF;
 			state <= S_PCAP_HDR;
 			sum <= 32'h0;
-			ref_sum <= 32'h0;
+			ref_sum <= 16'h0;
 			sum_state <= FALSE;
 			i <= 32'h0;
 			bytebuf <= 8'h0;
@@ -157,7 +158,7 @@ module udpreader
 			S_PCAP_DATA_HDR:
 			begin
 				sum_c = 32'h0;
-				ref_sum_c = 32'h0;
+				ref_sum_c = 16'h0;
 				sum_true = 1'b0;
 				udp_data_len_c = 32'h0;
 
@@ -178,7 +179,7 @@ module udpreader
 			S_WAIT_SOF:
 			begin
 				sum_c = 32'h0;
-				ref_sum_c = 32'h0;
+				ref_sum_c = 16'h0;
 				i_c = 1'h0;
 				if ( ~in_empty )
 				begin
@@ -505,13 +506,17 @@ module udpreader
 					in_re = 1'b1;
 					i_c = i + 1'h1;
 					bytebuf_c = in_dout;
-					if ( 2'h2 == i_c )
+					if ( 1'h1 == i )
 					begin
 						/* Extract reference checksum in packet */
-						ref_sum_c = 32'( { 8'( bytebuf_c ), 8'( in_dout ) } );
+						ref_sum_c = 16'( { 8'( bytebuf ), 8'( in_dout ) } );
+						//$display( "REF SUM: %h", ref_sum_c );
 					end
 					if ( UDP_CHECKSUM_BYTES == i_c )
 					begin
+
+						//$display( "checksum without udp data: %h", sum_c );
+
 						/* Compute final UDP payload length */
 						udp_data_len_c = 
 							udp_data_len
@@ -521,6 +526,7 @@ module udpreader
 								+ UDP_DST_PORT_BYTES 
 								+ UDP_SRC_PORT_BYTES
 							);
+						//$display( "udp data length: %0d", udp_data_len_c );
 						state_c = S_UDP_DATA;
 						sum_state_c = TRUE;
 						i_c = 1'h0;
@@ -543,11 +549,20 @@ module udpreader
 
 					end
 
+					if ( i[0] )
+					begin
+						//$display( "%h", sum_c );
+					end
+
 					if ( udp_data_len == i_c )
 					begin
+						//$display( "%h", ref_sum );
+						/* If data length is odd, then for the final byte pair, 
+ 						 * concatenate the fresh byte (instead of buffered)
+ 						 * with a zero byte */
 						if ( udp_data_len[0] )
 						begin
-							sum_c = sum + 16'( { 8'( bytebuf ), 8'h0 } );
+							sum_c = sum + 16'( { 8'( in_dout ), 8'h0 } );
 						end
 						state_c = S_VERIFY_SUM;
 						sum_state_c = FALSE;
@@ -558,14 +573,18 @@ module udpreader
 
 			S_VERIFY_SUM:
 			begin
+				/* While sum is longer than 16 bits, remain in state and add halves */
 				if ( | sum[ 31:16 ] )
 				begin
 					sum_c = sum[ 15:0 ] + sum[ 31:16 ];
+					//$display( "SUM: %h", sum_c );
 				end
 				else
 				begin
+					//$display( "\n\n" );
 					sum_c = ~sum;
-					sum_true = ( sum_c == ref_sum );
+					//$display( "%h, %h", ref_sum, sum_c[15:0] );
+					sum_true = ( sum_c[15:0] == ref_sum );
 
 					state_c = S_PCAP_DATA_HDR;
 					sum_state_c = FALSE;
@@ -578,7 +597,7 @@ module udpreader
 				//state_c = S_WAIT_SOF;
 				state_c = S_PCAP_HDR;
 				sum_c = 32'hx;
-				ref_sum_c = 32'hx;
+				ref_sum_c = 16'hx;
 				sum_state_c = FALSE;
 				i_c = 32'hx;
 				bytebuf_c = 8'hx;
