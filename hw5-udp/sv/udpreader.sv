@@ -1,17 +1,21 @@
 
 module udpreader
 (
-	input logic clk, 
-	input logic rst
+	input logic clock, 
+	input logic reset,
 
+	input logic in_empty,
 	input logic [ 7:0 ] in_dout,
 	input logic in_rd_sof,
 	input logic out_full,
 
 	output logic in_re,
 	output logic out_we,
-	output logic out_din,
-)
+	output logic [ 7:0 ] out_din,
+
+	output logic done,
+	output logic sum_true
+);
 
 	localparam PCAP_HEADER_BYTES      = 24;
 	localparam PCAP_DATA_HEADER_BYTES = 16;
@@ -46,8 +50,9 @@ module udpreader
 	localparam TIME_TO_LIVE           = 'he;
 	localparam UDP_PROTOCOL_DEF       = 'h11;
 
-	typedef enum logic [ 6:0 ]
+	typedef enum logic [ 7:0 ]
 	{
+		S_PCAP_HDR, S_PCAP_DATA_HDR,
 		S_WAIT_SOF,
 		S_ETH_DST, S_ETH_SRC, S_ETH_PROT,
 		S_IP_VER, S_IP_HDR, S_IP_TYPE, S_IP_LEN, S_IP_ID,
@@ -74,17 +79,22 @@ module udpreader
 
 	logic [ 31:0 ] udp_data_len, udp_data_len_c;
 
-	always_ff @ ( posedge clk, posedge rst )
+	logic done_r, sum_true_r;
+
+	always_ff @ ( posedge clock, posedge reset )
 	begin
-		if ( rst )
+		if ( reset )
 		begin
-			state <= S_WAIT_SOF;
+			//state <= S_WAIT_SOF;
+			state <= S_PCAP_HDR;
 			sum <= 32'h0;
 			ref_sum <= 32'h0;
 			sum_state <= FALSE;
 			i <= 32'h0;
 			bytebuf <= 8'h0;
 			udp_data_len <= 32'd0;
+			done_r <= 1'b0;
+			sum_true_r <= 1'b0;
 		end
 		else
 		begin
@@ -95,6 +105,8 @@ module udpreader
 			i <= i_c;
 			bytebuf <= bytebuf_c;
 			udp_data_len <= udp_data_len_c;
+			done_r <= done;
+			sum_true_r <= sum_true;
 		end
 	end
 
@@ -110,7 +122,8 @@ module udpreader
 
 		in_re = 1'b0;
 		out_we = 1'b0;
-
+		out_din = 8'h0;
+	
 		if ( sum_state & ~in_empty )
 		begin
 			bytebuf_c = in_dout;
@@ -121,6 +134,34 @@ module udpreader
 		end
 
 		case ( state )
+			S_PCAP_HDR:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+					if ( i_c == PCAP_HEADER_BYTES )
+					begin
+						state_c = S_PCAP_DATA_HDR;
+						i_c = 1'h0;
+					end
+				end
+			end
+
+			S_PCAP_DATA_HDR:
+			begin
+				if ( ~in_empty )
+				begin
+					in_re = 1'b1;
+					i_c = i + 1'h1;
+					if ( i_c == PCAP_DATA_HEADER_BYTES )
+					begin
+						state_c = S_ETH_DST;
+						i_c = 1'h0;
+					end
+				end
+			end
+
 			S_WAIT_SOF:
 			begin
 				sum_c = 32'h0;
@@ -429,7 +470,7 @@ module udpreader
 					if ( 2'h2 == i_c )
 					begin
 						/* Compute full UDP packet length */
-						udp_data_length_c = 32'( { 8'( bytebuf ), 8'( in_dout ) } );
+						udp_data_len_c = 32'( { 8'( bytebuf ), 8'( in_dout ) } );
 					end
 					if ( UDP_LENGTH_BYTES == i_c )
 					begin
@@ -450,13 +491,13 @@ module udpreader
 					if ( 2'h2 == i_c )
 					begin
 						/* Extract reference checksum in packet */
-						ref_sum_c == 32'( { 8'( bytebuf_c ), 8'( in_dout ) } );
+						ref_sum_c = 32'( { 8'( bytebuf_c ), 8'( in_dout ) } );
 					end
 					if ( UDP_CHECKSUM_BYTES == i_c )
 					begin
 						/* Compute final UDP payload length */
-						udp_data_length_c = 
-							udp_data_length
+						udp_data_len_c = 
+							udp_data_len
 							- (
 								UDP_CHECKSUM_BYTES 
 								+ UDP_LENGTH_BYTES 
@@ -474,8 +515,13 @@ module udpreader
 			begin
 				if ( ~in_empty )
 				begin
-					in_re = 1'b1;
-					i_c = i + 1'h1;
+					if ( ~out_full )
+					begin
+						out_din = in_dout;
+						out_we = 1'b1;
+						in_re = 1'b1;
+						i_c = i + 1'h1;
+					end
 
 					if ( udp_data_len == i_c )
 					begin
@@ -499,7 +545,27 @@ module udpreader
 				else
 				begin
 					sum_c = ~sum;
+					done = 1'b1;
+					sum_true = ( sum == ref_sum );
 				end
+			end
+
+			default:
+			begin
+				state_c = S_WAIT_SOF;
+				sum_c = 32'hx;
+				ref_sum_c = 32'hx;
+				sum_state_c = FALSE;
+				i_c = 32'hx;
+				bytebuf_c = 8'hx;
+				udp_data_len_c = 32'hx;
+
+				in_re = 1'b0;
+				out_we = 1'b0;
+				out_din = 8'hx;
+
+				done = 1'b0;
+				sum_true = 1'b0;
 			end
 
 		endcase
