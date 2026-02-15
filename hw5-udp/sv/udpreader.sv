@@ -6,7 +6,7 @@ module udpreader
 
 	input logic in_empty,
 	input logic [ 7:0 ] in_dout,
-	input logic in_rd_sof,
+	//input logic in_rd_sof,
 	input logic out_full,
 
 	output logic in_re,
@@ -53,7 +53,7 @@ module udpreader
 	typedef enum logic [ 7:0 ]
 	{
 		S_PCAP_HDR, S_PCAP_DATA_HDR,
-		S_WAIT_SOF,
+		//S_WAIT_SOF,
 		S_ETH_DST, S_ETH_SRC, S_ETH_PROT,
 		S_IP_VER, S_IP_HDR, S_IP_TYPE, S_IP_LEN, S_IP_ID,
 		S_IP_FLAG, S_IP_TIME, S_IP_PROT, S_IP_SUM, S_IP_SRC, S_IP_DST,
@@ -79,7 +79,8 @@ module udpreader
 
 	logic [ 31:0 ] udp_data_len, udp_data_len_c;
 
-	logic done_r, sum_true_r;
+	logic done_r;
+	logic sum_true_r;
 
 	always_ff @ ( posedge clock, posedge reset )
 	begin
@@ -99,6 +100,7 @@ module udpreader
 		else
 		begin
 			state <= state_c;
+			//$display( "@%0t, state %0d", $time, state_c );
 			sum <= sum_c;
 			ref_sum <= ref_sum_c;
 			sum_state <= sum_state_c;
@@ -123,7 +125,10 @@ module udpreader
 		in_re = 1'b0;
 		out_we = 1'b0;
 		out_din = 8'h0;
-	
+
+		done = done_r;
+		sum_true = sum_true_r;
+
 		if ( sum_state & ~in_empty )
 		begin
 			bytebuf_c = in_dout;
@@ -140,9 +145,10 @@ module udpreader
 				begin
 					in_re = 1'b1;
 					i_c = i + 1'h1;
-					if ( i_c == PCAP_HEADER_BYTES )
+					if ( PCAP_HEADER_BYTES == i_c )
 					begin
 						state_c = S_PCAP_DATA_HDR;
+						sum_state_c = FALSE;
 						i_c = 1'h0;
 					end
 				end
@@ -150,18 +156,25 @@ module udpreader
 
 			S_PCAP_DATA_HDR:
 			begin
+				sum_c = 32'h0;
+				ref_sum_c = 32'h0;
+				sum_true = 1'b0;
+				udp_data_len_c = 32'h0;
+
 				if ( ~in_empty )
 				begin
 					in_re = 1'b1;
 					i_c = i + 1'h1;
-					if ( i_c == PCAP_DATA_HEADER_BYTES )
+					if ( PCAP_DATA_HEADER_BYTES == i_c )
 					begin
 						state_c = S_ETH_DST;
+						sum_state_c = FALSE;
 						i_c = 1'h0;
 					end
 				end
 			end
 
+			/*
 			S_WAIT_SOF:
 			begin
 				sum_c = 32'h0;
@@ -180,6 +193,7 @@ module udpreader
 					end
 				end
 			end
+			*/
 
 			S_ETH_DST:
 			begin
@@ -223,7 +237,8 @@ module udpreader
 						& ( IP_PROTOCOL_DEF != 16'( { 8'(bytebuf), 8'(in_dout) } ) )
 					)
 					begin
-						state_c = S_WAIT_SOF;
+						//state_c = S_WAIT_SOF;
+						state_c = S_VERIFY_SUM;
 						sum_state_c = FALSE;
 						i_c = 1'h0;
 					end
@@ -248,7 +263,8 @@ module udpreader
 						& ( IP_VERSION_DEF != (in_dout >> 4) )
 					)
 					begin
-						state_c = S_WAIT_SOF;
+						//state_c = S_WAIT_SOF;
+						state_c = S_VERIFY_SUM;
 						sum_state_c = FALSE;
 						i_c = 1'h0;
 					end
@@ -365,7 +381,8 @@ module udpreader
 						sum_c = sum + 8'( in_dout );
 						if ( UDP_PROTOCOL_DEF != in_dout )
 						begin
-							state_c = S_WAIT_SOF;
+							//state_c = S_WAIT_SOF;
+							state_c = S_VERIFY_SUM;
 							sum_state_c = FALSE;
 							i_c = 1'h0;
 						end
@@ -521,6 +538,9 @@ module udpreader
 						out_we = 1'b1;
 						in_re = 1'b1;
 						i_c = i + 1'h1;
+
+						//$write( "%c", in_dout );
+
 					end
 
 					if ( udp_data_len == i_c )
@@ -545,14 +565,18 @@ module udpreader
 				else
 				begin
 					sum_c = ~sum;
-					done = 1'b1;
-					sum_true = ( sum == ref_sum );
+					sum_true = ( sum_c == ref_sum );
+
+					state_c = S_PCAP_DATA_HDR;
+					sum_state_c = FALSE;
+					i_c = 1'h0;
 				end
 			end
 
 			default:
 			begin
-				state_c = S_WAIT_SOF;
+				//state_c = S_WAIT_SOF;
+				state_c = S_PCAP_HDR;
 				sum_c = 32'hx;
 				ref_sum_c = 32'hx;
 				sum_state_c = FALSE;
