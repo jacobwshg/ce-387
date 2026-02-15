@@ -54,6 +54,19 @@ class my_uvm_monitor_output extends uvm_monitor;
 				begin
 					vif.out_rd_en = 1'b0;
 				end
+
+				if ( vif.done )
+				begin
+					if ( vif.sum_true )
+					begin
+						`uvm_info("MON_OUT_RUN", $sformatf( "Checksum match" ), UVM_LOW);
+					end
+					else
+					begin
+						`uvm_error("MON_OUT_RUN", $sformatf( "Checksum mismatch" ) );
+					end
+				end
+
 			end
 		end
 	endtask: run_phase

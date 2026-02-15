@@ -80,8 +80,7 @@ module udpreader
 
 	logic [ 31:0 ] udp_data_len, udp_data_len_c;
 
-	logic done_r;
-	logic sum_true_r;
+	logic done_c, sum_true_c;
 
 	always_ff @ ( posedge clock, posedge reset )
 	begin
@@ -95,8 +94,8 @@ module udpreader
 			i <= 32'h0;
 			bytebuf <= 8'h0;
 			udp_data_len <= 32'd0;
-			done_r <= 1'b0;
-			sum_true_r <= 1'b0;
+			done <= 1'b0;
+			sum_true <= 1'b0;
 		end
 		else
 		begin
@@ -108,8 +107,8 @@ module udpreader
 			i <= i_c;
 			bytebuf <= bytebuf_c;
 			udp_data_len <= udp_data_len_c;
-			done_r <= done;
-			sum_true_r <= sum_true;
+			done <= done_c;
+			sum_true <= sum_true_c;
 		end
 	end
 
@@ -127,8 +126,8 @@ module udpreader
 		out_we = 1'b0;
 		out_din = 8'h0;
 
-		done = done_r;
-		sum_true = sum_true_r;
+		done_c = done;
+		sum_true_c = sum_true;
 
 		if ( sum_state & ~in_empty )
 		begin
@@ -159,7 +158,8 @@ module udpreader
 			begin
 				sum_c = 32'h0;
 				ref_sum_c = 16'h0;
-				sum_true = 1'b0;
+				done_c = 1'b0;
+				sum_true_c = 1'b0;
 				udp_data_len_c = 32'h0;
 
 				if ( ~in_empty )
@@ -584,7 +584,8 @@ module udpreader
 					//$display( "\n\n" );
 					sum_c = ~sum;
 					//$display( "%h, %h", ref_sum, sum_c[15:0] );
-					sum_true = ( sum_c[15:0] == ref_sum );
+					sum_true_c = ( sum_c[15:0] == ref_sum );
+					done_c = 1'b1;
 
 					state_c = S_PCAP_DATA_HDR;
 					sum_state_c = FALSE;
@@ -607,8 +608,8 @@ module udpreader
 				out_we = 1'b0;
 				out_din = 8'hx;
 
-				done = 1'b0;
-				sum_true = 1'b0;
+				done_c = 1'b0;
+				sum_true_c = 1'b0;
 			end
 
 		endcase
