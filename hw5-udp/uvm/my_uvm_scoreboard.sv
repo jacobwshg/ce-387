@@ -45,13 +45,13 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 	endtask: run
 
 	virtual function void comparison();
-		if ( tx_out.ch != tx_cmp.ch )
+		if ( tx_out.bits[7:0] != tx_cmp.bits[7:0] )
 		begin
 			// use uvm_error to report errors and continue
 			// use uvm_fatal to halt the simulation on error
 			`uvm_info("SB_CMP", tx_out.sprint(), UVM_LOW);
 			`uvm_info("SB_CMP", tx_cmp.sprint(), UVM_LOW);
-			`uvm_error("SB_CMP", $sformatf( "Test: Failed! Expecting: `%c`, Received: `%c`", tx_cmp.ch, tx_out.ch ))
+			`uvm_error("SB_CMP", $sformatf( "Test: Failed! Expecting: `%c`, Received: `%c`", tx_cmp.bits[7:0], tx_out.bits[7:0] ))
 		end
 	endfunction: comparison
 

@@ -5,13 +5,12 @@ module udpreader
 	input logic reset,
 
 	input logic in_empty,
-	input logic [ 7:0 ] in_dout,
-	//input logic in_rd_sof,
+	input logic [ 9:0 ] in_out,
 	input logic out_full,
 
 	output logic in_re,
 	output logic out_we,
-	output logic [ 7:0 ] out_din,
+	output logic [ 9:0 ] out_in,
 
 	output logic done,
 	output logic sum_true
@@ -50,7 +49,10 @@ module udpreader
 	localparam TIME_TO_LIVE           = 'he;
 	localparam UDP_PROTOCOL_DEF       = 'h11;
 
-	typedef enum logic [ 7:0 ]
+	localparam SOF_BIT = 8;
+	localparam EOF_BIT = 9;
+
+	typedef enum logic [ 5:0 ]
 	{
 		S_PCAP_HDR, S_PCAP_DATA_HDR,
 		//S_WAIT_SOF,
@@ -62,6 +64,10 @@ module udpreader
 	} state_t;
 
 	typedef enum logic { FALSE = 1'b0, TRUE = 1'b1 } bool_t;
+
+	/* true data bits of fifo signals (excluding ctrl bits) */
+	logic [ 7:0 ] in_dout;
+	//logic [ 7:0 ] out_din;
 
 	state_t state, state_c;
 
@@ -114,6 +120,8 @@ module udpreader
 
 	always_comb
 	begin
+		in_dout = in_out[ 7:0 ];
+
 		state_c = state;
 		sum_c = sum;
 		ref_sum_c = ref_sum;
@@ -124,7 +132,8 @@ module udpreader
 
 		in_re = 1'b0;
 		out_we = 1'b0;
-		out_din = 8'h0;
+		//out_din = 8'h0;
+		out_in = 10'h0;
 
 		done_c = done;
 		sum_true_c = sum_true;
@@ -136,6 +145,13 @@ module udpreader
 			begin
 				sum_c = sum + 16'( { 8'( bytebuf ), 8'( in_dout ) } );
 			end
+		end
+
+		/* propagate EOF when it arrives */
+		if ( ( ~out_full ) & in_out[EOF_BIT] )
+		begin
+			out_in = in_out;
+			out_we = 1'b1;
 		end
 
 		case ( state )
@@ -239,7 +255,7 @@ module udpreader
 					)
 					begin
 						//state_c = S_WAIT_SOF;
-						state_c = S_VERIFY_SUM;
+						state_c = S_PCAP_DATA_HDR;
 						sum_state_c = FALSE;
 						i_c = 1'h0;
 					end
@@ -265,7 +281,7 @@ module udpreader
 					)
 					begin
 						//state_c = S_WAIT_SOF;
-						state_c = S_VERIFY_SUM;
+						state_c = S_PCAP_DATA_HDR;
 						sum_state_c = FALSE;
 						i_c = 1'h0;
 					end
@@ -383,7 +399,7 @@ module udpreader
 						if ( UDP_PROTOCOL_DEF != in_dout )
 						begin
 							//state_c = S_WAIT_SOF;
-							state_c = S_VERIFY_SUM;
+							state_c = S_PCAP_DATA_HDR;
 							sum_state_c = FALSE;
 							i_c = 1'h0;
 						end
@@ -540,7 +556,8 @@ module udpreader
 				begin
 					if ( ~out_full )
 					begin
-						out_din = in_dout;
+						//out_din = in_dout;
+						out_in = in_out;
 						out_we = 1'b1;
 						in_re = 1'b1;
 						i_c = i + 1'h1;
@@ -606,7 +623,8 @@ module udpreader
 
 				in_re = 1'b0;
 				out_we = 1'b0;
-				out_din = 8'hx;
+				//out_din = 8'hx;
+				out_in = 10'hx;
 
 				done_c = 1'b0;
 				sum_true_c = 1'b0;

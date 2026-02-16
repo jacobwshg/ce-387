@@ -16,12 +16,12 @@ module my_uvm_tb;
 		.reset( vif.reset ),
 
 		.in_we ( vif.in_wr_en ),
-		.in_din( vif.in_din ),
+		.in_in ( vif.in_in ),
 		.out_re( vif.out_rd_en ),
 
 		.in_full  ( vif.in_full ),
 		.out_empty( vif.out_empty ),
-		.out_dout ( vif.out_dout ),
+		.out_out  ( vif.out_out ),
 
 		.done( vif.done ),
 		.sum_true( vif.sum_true )
@@ -54,5 +54,4 @@ module my_uvm_tb;
 		#(CLOCK_PERIOD/2) vif.clock = ~vif.clock;
 	end
 endmodule
-
 

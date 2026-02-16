@@ -31,7 +31,6 @@ add wave -noupdate -group my_uvm_tb/udpreader_top_inst -radix hexadecimal /my_uv
 add wave -noupdate -group my_uvm_tb/udpreader_top_inst/reader_inst
 add wave -noupdate -group my_uvm_tb/udpreader_top_inst/reader_inst -radix hexadecimal /my_uvm_tb/udpreader_top_inst/reader_inst/*
 
-
 run -all
 
 quit

@@ -27,7 +27,7 @@ class my_uvm_driver extends uvm_driver#(my_uvm_transaction);
 		@(posedge vif.reset);
 		@(negedge vif.reset);
 
-		vif.in_din = 8'b0;
+		vif.in_in = 10'b0;
 		vif.in_wr_en = 1'b0;
 
 		forever
@@ -37,14 +37,14 @@ class my_uvm_driver extends uvm_driver#(my_uvm_transaction);
 				if ( ~vif.in_full )
 				begin
 					seq_item_port.get_next_item(tx);
-					vif.in_din = tx.ch;
+					vif.in_in = tx.bits;
 					vif.in_wr_en = 1'b1;
 					seq_item_port.item_done();
 				end
 				else
 				begin
 					vif.in_wr_en = 1'b0;
-					vif.in_din = 8'b0;
+					vif.in_in = 10'b0;
 				end
 			end
 		end

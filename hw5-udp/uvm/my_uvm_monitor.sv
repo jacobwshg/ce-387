@@ -45,8 +45,14 @@ class my_uvm_monitor_output extends uvm_monitor;
 			begin
 				if ( ~vif.out_empty )
 				begin
-					$fwrite( out_file, "%c", vif.out_dout );
-					tx_out.ch = vif.out_dout;
+
+					if ( vif.out_out[EOF_BIT] )
+					begin
+						break;
+					end
+
+					$fwrite( out_file, "%c", vif.out_out[7:0] );
+					tx_out.bits = vif.out_out;
 					mon_ap_output.write(tx_out);
 					vif.out_rd_en = 1'b1;
 				end
@@ -59,11 +65,11 @@ class my_uvm_monitor_output extends uvm_monitor;
 				begin
 					if ( vif.sum_true )
 					begin
-						`uvm_info("MON_OUT_RUN", $sformatf( "Checksum match" ), UVM_LOW);
+						`uvm_info("MON_OUT_RUN", $sformatf( "Packet checksum match\n" ), UVM_LOW);
 					end
 					else
 					begin
-						`uvm_error("MON_OUT_RUN", $sformatf( "Checksum mismatch" ) );
+						`uvm_error("MON_OUT_RUN", $sformatf( "Packet checksum mismatch\n" ) );
 					end
 				end
 
@@ -130,7 +136,7 @@ class my_uvm_monitor_compare extends uvm_monitor;
 				if ( ~vif.out_empty )
 				begin
 					n_bytes = $fread( ch, cmp_file, i, 1 );
-					tx_cmp.ch = ch;
+					tx_cmp.bits = { 2'b0, ch };
 					mon_ap_compare.write(tx_cmp);
 					++i;
 				end
