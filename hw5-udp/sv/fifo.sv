@@ -75,5 +75,5 @@ module fifo #(
 		(wr_addr[FIFO_ADDR_WIDTH-1] != rd_addr[FIFO_ADDR_WIDTH-1]) ? 1'b1 : 1'b0;
 	assign full = full_c;
 
-endmodule
+endmodule: fifo
 

@@ -1,7 +1,7 @@
 #--  Synopsys, Inc.
 #--  Version O-2018.09-SP1
 #--  Project file /home/qep7929/Documents/ce387/hw4-edgedet/syn/edgedet.prj
-#--  Written on Tue Feb 10 20:10:07 2026
+#--  Written on Wed Feb 11 18:41:32 2026
 
 
 #project files
@@ -40,10 +40,11 @@ set_option -distributed_compile 1
 
 # altera_options
 set_option -synthesis_strategy routability
+set_option -reporting_ctd slack
 set_option -rw_check_on_ram 1
 
 # mapper_without_write_options
-set_option -frequency auto
+set_option -frequency 150.000000
 set_option -srs_instrumentation 1
 
 # mapper_options
@@ -70,6 +71,9 @@ set_option -multi_file_compilation_unit 1
 
 # Compiler Options
 set_option -auto_infer_blackbox 0
+
+#timing report file option
+set_option -reporting_filename "rev_1/sobel.ta"
 
 #automatic place and route (vendor) options
 set_option -write_apr_constraint 1

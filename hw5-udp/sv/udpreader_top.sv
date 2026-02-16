@@ -76,5 +76,5 @@ module udpreader_top(
 		.sum_true( sum_true )
 	);
 
-endmodule
+endmodule: udpreader_top
 

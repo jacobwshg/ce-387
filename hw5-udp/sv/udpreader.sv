@@ -616,5 +616,5 @@ module udpreader
 
 	end
 
-endmodule
+endmodule: udpreader
 
