@@ -4,6 +4,7 @@ vlib work
 vmap work work
 
 vlog -work work "../sv/fifo.sv"
+vlog -work work "../sv/fifo_ctrl.sv"
 vlog -work work "../sv/udpreader.sv"
 vlog -work work "../sv/udpreader_top.sv"
 

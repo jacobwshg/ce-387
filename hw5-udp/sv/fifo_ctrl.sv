@@ -8,16 +8,16 @@ module fifo_ctrl #(
 
 	input logic wr_clk,
 	input logic wr_en,
+	input logic [ FIFO_DATA_WIDTH-1:0 ] din,
 	input logic sof_in,
 	input logic eof_in,
-	input logic [ FIFO_DATA_WIDTH-1:0 ] din,
 	output logic full,
 
 	input logic rd_clk,
 	input logic rd_en,
+	output logic [ FIFO_DATA_WIDTH-1:0 ] dout,
 	output logic sof_out,
 	output logic eof_out,
-	output logic [ FIFO_DATA_WIDTH-1:0 ] dout,
 	output logic empty
 );
 

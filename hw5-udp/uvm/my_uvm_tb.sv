@@ -17,13 +17,17 @@ module my_uvm_tb;
 
 		.in_we ( vif.in_wr_en ),
 		.in_din( vif.in_din ),
+		.in_sof_in( vif.in_sof_in ),
+		.in_eof_in( vif.in_eof_in ),
 		.out_re( vif.out_rd_en ),
 
 		.in_full  ( vif.in_full ),
 		.out_empty( vif.out_empty ),
 		.out_dout ( vif.out_dout ),
+		.out_sof_out( vif.out_sof_out ),
+		.out_eof_out( vif.out_eof_out ),
 
-		.done( vif.done ),
+		.pkt_done( vif.pkt_done ),
 		.sum_true( vif.sum_true )
 	);
 
@@ -53,6 +57,6 @@ module my_uvm_tb;
 	begin
 		#(CLOCK_PERIOD/2) vif.clock = ~vif.clock;
 	end
-endmodule
 
+endmodule: my_uvm_tb
 

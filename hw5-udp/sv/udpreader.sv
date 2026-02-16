@@ -6,14 +6,17 @@ module udpreader
 
 	input logic in_empty,
 	input logic [ 7:0 ] in_dout,
-	//input logic in_rd_sof,
 	input logic out_full,
+	input logic in_sof_out,
+	input logic in_eof_out,
 
 	output logic in_re,
 	output logic out_we,
 	output logic [ 7:0 ] out_din,
+	output logic out_sof_in,
+	output logic out_eof_in,
 
-	output logic done,
+	output logic pkt_done,
 	output logic sum_true
 );
 
@@ -80,7 +83,7 @@ module udpreader
 
 	logic [ 31:0 ] udp_data_len, udp_data_len_c;
 
-	logic done_c, sum_true_c;
+	logic pkt_done_c, sum_true_c;
 
 	always_ff @ ( posedge clock, posedge reset )
 	begin
@@ -94,20 +97,20 @@ module udpreader
 			i <= 32'h0;
 			bytebuf <= 8'h0;
 			udp_data_len <= 32'd0;
-			done <= 1'b0;
+			pkt_done <= 1'b0;
 			sum_true <= 1'b0;
 		end
 		else
 		begin
 			state <= state_c;
-			//$display( "@%0t, state %0d", $time, state_c );
+			$display( "@%0t, state %0d", $time, state_c );
 			sum <= sum_c;
 			ref_sum <= ref_sum_c;
 			sum_state <= sum_state_c;
 			i <= i_c;
 			bytebuf <= bytebuf_c;
 			udp_data_len <= udp_data_len_c;
-			done <= done_c;
+			pkt_done <= pkt_done_c;
 			sum_true <= sum_true_c;
 		end
 	end
@@ -126,9 +129,10 @@ module udpreader
 		out_we = 1'b0;
 		out_din = 8'h0;
 
-		done_c = done;
+		pkt_done_c = pkt_done;
 		sum_true_c = sum_true;
 
+		/* add byte pair to sum for participating states */
 		if ( sum_state & ~in_empty )
 		begin
 			bytebuf_c = in_dout;
@@ -138,6 +142,14 @@ module udpreader
 			end
 		end
 
+		/* propagate end-of-frame */
+/*
+		if ( (~out_full) & in_eof_out )
+		begin
+			out_eof_in = in_eof_out;
+			out_we = 1'b1;
+		end
+*/
 		case ( state )
 			S_PCAP_HDR:
 			begin
@@ -158,7 +170,7 @@ module udpreader
 			begin
 				sum_c = 32'h0;
 				ref_sum_c = 16'h0;
-				done_c = 1'b0;
+				pkt_done_c = 1'b0;
 				sum_true_c = 1'b0;
 				udp_data_len_c = 32'h0;
 
@@ -166,6 +178,7 @@ module udpreader
 				begin
 					in_re = 1'b1;
 					i_c = i + 1'h1;
+
 					if ( PCAP_DATA_HEADER_BYTES == i_c )
 					begin
 						state_c = S_ETH_DST;
@@ -183,7 +196,7 @@ module udpreader
 				i_c = 1'h0;
 				if ( ~in_empty )
 				begin
-					if ( in_rd_sof )
+					if ( in_sof_out )
 					begin
 						state_c = S_ETH_DST;
 						sum_state_c = FALSE;
@@ -239,7 +252,7 @@ module udpreader
 					)
 					begin
 						//state_c = S_WAIT_SOF;
-						state_c = S_VERIFY_SUM;
+						state_c = S_PCAP_DATA_HDR;
 						sum_state_c = FALSE;
 						i_c = 1'h0;
 					end
@@ -265,7 +278,7 @@ module udpreader
 					)
 					begin
 						//state_c = S_WAIT_SOF;
-						state_c = S_VERIFY_SUM;
+						state_c = S_PCAP_DATA_HDR;
 						sum_state_c = FALSE;
 						i_c = 1'h0;
 					end
@@ -383,7 +396,7 @@ module udpreader
 						if ( UDP_PROTOCOL_DEF != in_dout )
 						begin
 							//state_c = S_WAIT_SOF;
-							state_c = S_VERIFY_SUM;
+							state_c = S_PCAP_DATA_HDR;
 							sum_state_c = FALSE;
 							i_c = 1'h0;
 						end
@@ -585,7 +598,7 @@ module udpreader
 					sum_c = ~sum;
 					//$display( "%h, %h", ref_sum, sum_c[15:0] );
 					sum_true_c = ( sum_c[15:0] == ref_sum );
-					done_c = 1'b1;
+					pkt_done_c = 1'b1;
 
 					state_c = S_PCAP_DATA_HDR;
 					sum_state_c = FALSE;
@@ -608,7 +621,7 @@ module udpreader
 				out_we = 1'b0;
 				out_din = 8'hx;
 
-				done_c = 1'b0;
+				pkt_done_c = 1'b0;
 				sum_true_c = 1'b0;
 			end
 

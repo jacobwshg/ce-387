@@ -39,12 +39,19 @@ class my_uvm_monitor_output extends uvm_monitor;
 		vif.out_rd_en = 1'b0;
 
 		forever
-		//while ( ~vif.done )
 		begin
 			@(negedge vif.clock)
 			begin
 				if ( ~vif.out_empty )
 				begin
+					if ( vif.out_eof_out )
+					/* eof emitted by output fifo */
+					begin
+						break;
+					end
+
+					/* flush udp data character both to outfile and to monitor
+ 					 * for comparison */
 					$fwrite( out_file, "%c", vif.out_dout );
 					tx_out.ch = vif.out_dout;
 					mon_ap_output.write(tx_out);
@@ -55,7 +62,8 @@ class my_uvm_monitor_output extends uvm_monitor;
 					vif.out_rd_en = 1'b0;
 				end
 
-				if ( vif.done )
+				/* display checksum test result for each complete packet */
+				if ( vif.pkt_done )
 				begin
 					if ( vif.sum_true )
 					begin
