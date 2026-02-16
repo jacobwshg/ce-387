@@ -65,11 +65,11 @@ class my_uvm_monitor_output extends uvm_monitor;
 				begin
 					if ( vif.sum_true )
 					begin
-						`uvm_info("MON_OUT_RUN", $sformatf( "Packet checksum match\n" ), UVM_LOW);
+						`uvm_info("MON_OUT_RUN", $sformatf( "\n\tSuccess: Packet checksum match\n" ), UVM_LOW);
 					end
 					else
 					begin
-						`uvm_error("MON_OUT_RUN", $sformatf( "Packet checksum mismatch\n" ) );
+						`uvm_error("MON_OUT_RUN", $sformatf( "\n\tError: Packet checksum mismatch\n" ) );
 					end
 				end
 

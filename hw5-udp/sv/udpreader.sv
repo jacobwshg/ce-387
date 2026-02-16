@@ -79,6 +79,7 @@ module udpreader
 	logic [ 15:0 ]
 		ref_sum, ref_sum_c;
 
+	/* byte idx in current field */
 	logic [ 31:0 ] i, i_c;
 
 	/* buffer lower byte of every pair of bytes */
@@ -138,6 +139,7 @@ module udpreader
 		done_c = done;
 		sum_true_c = sum_true;
 
+		/* add byte pair to checksum in participating states */
 		if ( sum_state & ~in_empty )
 		begin
 			bytebuf_c = in_dout;
@@ -295,6 +297,8 @@ module udpreader
 				end
 			end
 
+			/* IP header is derived from IP version, so there's nothing to
+ 			 * read */
 			S_IP_HDR:
 			begin
 				state_c = S_IP_TYPE;
@@ -326,6 +330,9 @@ module udpreader
 
 					if ( i[0] )
 					begin
+						/* use `sum_c` because subtraction in this specific state 
+ 						 * depends on the addition ahead of the case block;
+ 						 * see above */
 						sum_c = sum_c - 'd20;
 					end
 
