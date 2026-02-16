@@ -32,6 +32,19 @@ add wave -noupdate -group my_uvm_tb/udpreader_top_inst -radix hexadecimal /my_uv
 add wave -noupdate -group my_uvm_tb/udpreader_top_inst/reader_inst
 add wave -noupdate -group my_uvm_tb/udpreader_top_inst/reader_inst -radix hexadecimal /my_uvm_tb/udpreader_top_inst/reader_inst/*
 
+add wave -noupdate -group my_uvm_tb/udpreader_top_inst/fifo_in_inst
+add wave -noupdate -group my_uvm_tb/udpreader_top_inst/fifo_in_inst -radix hexadecimal /my_uvm_tb/udpreader_top_inst/fifo_in_inst/*
+add wave -noupdate -group my_uvm_tb/udpreader_top_inst/fifo_in_inst/data_inst
+add wave -noupdate -group my_uvm_tb/udpreader_top_inst/fifo_in_inst/data_inst -radix hexadecimal /my_uvm_tb/udpreader_top_inst/fifo_in_inst/data_inst/*
+add wave -noupdate -group my_uvm_tb/udpreader_top_inst/fifo_in_inst/ctrl_inst
+add wave -noupdate -group my_uvm_tb/udpreader_top_inst/fifo_in_inst/ctrl_inst -radix hexadecimal /my_uvm_tb/udpreader_top_inst/fifo_in_inst/ctrl_inst/*
+
+add wave -noupdate -group my_uvm_tb/udpreader_top_inst/fifo_out_inst
+add wave -noupdate -group my_uvm_tb/udpreader_top_inst/fifo_out_inst -radix hexadecimal /my_uvm_tb/udpreader_top_inst/fifo_out_inst/*
+add wave -noupdate -group my_uvm_tb/udpreader_top_inst/fifo_out_inst/data_inst
+add wave -noupdate -group my_uvm_tb/udpreader_top_inst/fifo_out_inst/data_inst -radix hexadecimal /my_uvm_tb/udpreader_top_inst/fifo_out_inst/data_inst/*
+add wave -noupdate -group my_uvm_tb/udpreader_top_inst/fifo_out_inst/ctrl_inst
+add wave -noupdate -group my_uvm_tb/udpreader_top_inst/fifo_out_inst/ctrl_inst -radix hexadecimal /my_uvm_tb/udpreader_top_inst/fifo_out_inst/ctrl_inst/*
 
 run -all
 

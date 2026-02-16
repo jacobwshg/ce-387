@@ -3,7 +3,7 @@ import uvm_pkg::*;
 
 class my_uvm_transaction extends uvm_sequence_item;
 	logic [7:0] ch;
-	logic [1:0] sof;
+	logic sof;
 	logic eof;
 
 	function new(string name = "");
@@ -11,7 +11,9 @@ class my_uvm_transaction extends uvm_sequence_item;
 	endfunction: new
 
 	`uvm_object_utils_begin(my_uvm_transaction)
-		`uvm_field_int( ch, UVM_ALL_ON )
+		`uvm_field_int( ch,  UVM_ALL_ON )
+		`uvm_field_int( sof, UVM_ALL_ON )
+		`uvm_field_int( eof, UVM_ALL_ON )
 	`uvm_object_utils_end
 endclass: my_uvm_transaction
 
@@ -56,7 +58,7 @@ class my_uvm_sequence extends uvm_sequence#(my_uvm_transaction);
 			end
 
 			//////////
-			`uvm_info("SEQ_RUN", tx.sprint(), UVM_LOW);
+			//`uvm_info("SEQ_RUN", tx.sprint(), UVM_LOW);
 			finish_item(tx);
 			++i;
 

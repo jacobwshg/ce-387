@@ -103,7 +103,7 @@ module udpreader
 		else
 		begin
 			state <= state_c;
-			$display( "@%0t, state %0d", $time, state_c );
+			//$display( "@%0t, state %0d", $time, state_c );
 			sum <= sum_c;
 			ref_sum <= ref_sum_c;
 			sum_state <= sum_state_c;
@@ -143,13 +143,12 @@ module udpreader
 		end
 
 		/* propagate end-of-frame */
-/*
 		if ( (~out_full) & in_eof_out )
 		begin
 			out_eof_in = in_eof_out;
 			out_we = 1'b1;
 		end
-*/
+
 		case ( state )
 			S_PCAP_HDR:
 			begin

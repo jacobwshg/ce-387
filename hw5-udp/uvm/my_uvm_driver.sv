@@ -39,6 +39,7 @@ class my_uvm_driver extends uvm_driver#(my_uvm_transaction);
 				begin
 					seq_item_port.get_next_item(tx);
 					{ vif.in_din, vif.in_sof_in, vif.in_eof_in } = { tx.ch, tx.sof, tx.eof };
+					$display( "@%0t  in fifo not full, pushing tx item ( %c, %0b, %0b )", $time, tx.ch, tx.sof, tx.eof);
 
 					vif.in_wr_en = 1'b1;
 					seq_item_port.item_done();
