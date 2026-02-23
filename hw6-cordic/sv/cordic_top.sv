@@ -8,7 +8,7 @@ module cordic_top (
 	input logic out_re,
 
 	output logic in_full,
-	output logic [ 1:0 ] [ 15:0 ] out_dout,
+	output logic signed [ 1:0 ] [ 15:0 ] out_dout,
 	output logic out_empty
 );
 
@@ -67,3 +67,4 @@ module cordic_top (
 	);
 	
 endmodule: cordic_top
+
