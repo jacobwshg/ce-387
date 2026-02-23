@@ -1,5 +1,11 @@
 
-module cordic(
+module cordic #(
+	parameter FRAC_WIDTH = 16'd14,
+	// quantized constants based on FRAC_WIDTH
+	parameter PI = 32'sd51472,
+	parameter K  = 32'sd26981
+)
+(
 	input clk,
 	input rst,
 
@@ -26,20 +32,10 @@ module cordic(
 	localparam I_SIN = 0;
 	localparam I_COS = 1;
 
-	localparam FRAC_WIDTH = 14;
-
-	localparam real
-		PI_R = 3.14159265359,
-		K_R = 1.646760258121;
 	localparam logic signed [ 31:0 ]
-		//PI      = quantize( PI_R,     FRAC_WIDTH ),
-		//TWO_PI  = quantize( 2.0*PI_R, FRAC_WIDTH ),
-		//HALF_PI = quantize( 0.5*PI_R, FRAC_WIDTH ),
-		//K_INV   = quantize( 1.0/K_R,  FRAC_WIDTH );
-		PI = 32'( $floor( PI_R * ( 2.0 ** FRAC_WIDTH ) ) ),
-		TWO_PI = 32'( $rtoi( 2.0*PI_R * $itor( 1 << FRAC_WIDTH ) ) ),
-		HALF_PI = 32'( $rtoi( 0.5*PI_R * $itor( 1 << FRAC_WIDTH ) ) ),
-		K_INV = 32'( $rtoi( K_R * $itor( 1 << FRAC_WIDTH ) ) );
+		TWO_PI  = PI << 1,
+		HALF_PI = PI >> 1,
+		K_INV   = ( ( 32'd01<<FRAC_WIDTH ) << FRAC_WIDTH ) / K;
 
 	//typedef enum logic { S_STALL, S_OUT } state_t;
 
@@ -112,8 +108,8 @@ module cordic(
  		 * for stability; if using rad_c, sh_en may turn on before rad is
  		 * updated, causing stage 0 to get wrong z
  		 */
-		rad_large = rad > HALF_PI;
-		rad_small = rad < -HALF_PI;
+		rad_large = rad > HALF_PI ? TRUE : FALSE;
+		rad_small = rad < -HALF_PI ? TRUE : FALSE;
 
 		/*
  		 * When "ready" ( both fifos mobile, buffered radian is in range 
@@ -130,7 +126,7 @@ module cordic(
  		 * pushed to {x,y,z}_out[0], at which point stage 1 begins using them
  		 * to compute its new results.
  		 */
-		sh_en = ~( | { rad_large, rad_small, in_empty, out_full } );
+		sh_en = ( | { rad_large, rad_small, in_empty, out_full } ) ? FALSE : TRUE;
 		if ( sh_en )
 		begin
 			rad_c = in_dout;
@@ -170,7 +166,7 @@ module cordic(
 			x_in = -x_in;
 		end
 
-
 	end
 
 endmodule: cordic
+
