@@ -39,9 +39,9 @@ module cordic_stage
 	begin
 		sgn = z_in[ 15 ];
 		sgn16 = { 16{ sgn } };
-		x_c = x_in - ( ( ( y_in >>> k ) ^ sgn16 ) + $signed( 16'(sgn) ) );
-		y_c = y_in + ( ( ( x_in >>> k ) ^ sgn16 ) + $signed( 16'(sgn) ) );
-		z_c = z_in - ( (   c            ^ sgn16 ) + $signed( 16'(sgn) ) );
+		x_c = x_in - ( ( ( y_in >>> k ) ^ sgn16 ) + $signed( (sgn) ) );
+		y_c = y_in + ( ( ( x_in >>> k ) ^ sgn16 ) + $signed( (sgn) ) );
+		z_c = z_in - ( (   c            ^ sgn16 ) + $signed( (sgn) ) );
 	end
 
 endmodule: cordic_stage

@@ -44,7 +44,9 @@ module cordic #(
 	bool_t rad_large, rad_small;
 
 	logic signed [ STAGE_CNT-1:0 ] [ 15:0 ] x_out, y_out, z_out;
-	logic signed [ 15:0 ] x_in, y_in;
+	logic signed [ 15:0 ] 
+		x_in, x_in_c,
+		y_in;
 
 	genvar i;
 	generate
@@ -75,10 +77,12 @@ module cordic #(
 		if ( rst )
 		begin
 			rad <= 'h0;
+			x_in <= K_INV;
 		end
 		else
 		begin
 			rad <= rad_c;
+			x_in <= x_in_c;
 		end
 	end
 
@@ -90,7 +94,7 @@ module cordic #(
 		in_re = FALSE;
 		out_we = FALSE;
 
-		x_in = K_INV;
+		x_in_c = x_in;
 		y_in = 'h0;
 
 		rad_c = rad;
@@ -121,6 +125,7 @@ module cordic #(
 		if ( sh_en )
 		begin
 			rad_c = in_dout;
+			x_in_c = K_INV;
 			in_re = TRUE;
 			out_we = TRUE;
 		end
@@ -142,15 +147,18 @@ module cordic #(
 			rad_c += TWO_PI;
 		end
 
+		/*
+ 		 * x_in must be clocked to stay up to date with rad reduction
+ 		 */
 		if ( rad_c > HALF_PI )
 		begin
 			rad_c -= PI;
-			x_in = -x_in;
+			x_in_c = -x_in_c;
 		end
 		else if ( rad_c < -HALF_PI )
 		begin
 			rad_c += PI;
-			x_in = -x_in;
+			x_in_c = -x_in_c;
 		end
 
 	end

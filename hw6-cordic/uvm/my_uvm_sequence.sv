@@ -42,6 +42,7 @@ class my_uvm_sequence extends uvm_sequence#(my_uvm_transaction);
 			tx = my_uvm_transaction::type_id::create(.name("tx"), .contxt(get_full_name()));
 			start_item(tx);
 
+			tx.rad_r = rad_r;
 			tx.rad = rad;
 
 			//`uvm_info("SEQ_RUN", tx.sprint(), UVM_LOW);
