@@ -17,7 +17,7 @@ module cordic_stage
 );
 	logic signed [ 15:0 ] x_c, y_c, z_c;
 	logic sgn;
-	logic signed [ 15:0 ] sgn16;
+	logic signed [ 15:0 ] xtanc, ytanc;
 
 	always_ff @ ( posedge clk, posedge rst )
 	begin
@@ -38,10 +38,13 @@ module cordic_stage
 	always_comb
 	begin
 		sgn = z_in[ 15 ];
-		sgn16 = { 16{ sgn } };
-		x_c = x_in - ( ( ( y_in >>> k ) ^ sgn16 ) + $signed( (sgn) ) );
-		y_c = y_in + ( ( ( x_in >>> k ) ^ sgn16 ) + $signed( (sgn) ) );
-		z_c = z_in - ( (   c            ^ sgn16 ) + $signed( (sgn) ) );
+
+		xtanc = x_in >>> k;
+		ytanc = y_in >>> k;
+
+		x_c = x_in - ( sgn ? -ytanc : ytanc );
+		y_c = y_in + ( sgn ? -xtanc : xtanc );
+		z_c = z_in - ( sgn ? -c : c );
 	end
 
 endmodule: cordic_stage
