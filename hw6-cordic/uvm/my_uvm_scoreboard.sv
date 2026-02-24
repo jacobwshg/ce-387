@@ -46,18 +46,25 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 
 	virtual function void comparison();
 		begin
+			localparam real EB = 0.05;
+			real sin_err = tx_out.sin_r - tx_cmp.sin_r;
+			real cos_err = tx_out.cos_r - tx_cmp.cos_r;
+			string msg = $sformatf(
+				"\n\tdeg: %d, rad: %f\n\t\tSW sin: %f, HW sin (dequant): %f, error: %f\n\t\tSW cos: %f, HW cos (dequant): %f, error: %f\n",
+				tx_cmp.deg, tx_cmp.rad_r,
+				tx_cmp.sin_r, tx_out.sin_r, sin_err,
+				tx_cmp.cos_r, tx_out.cos_r, cos_err
+			);
 			// use uvm_error to report errors and continue
 			// use uvm_fatal to halt the simulation on error
-			`uvm_info(
-				"SB_CMP",
-				$sformatf(
-					"\n\tdeg: %d, rad: %f\n\t\tSW sin: %f, HW sin (dequant): %f, error: %f\n\t\tSW cos: %f, HW cos (dequant): %f, error: %f\n",
-					tx_cmp.deg, tx_cmp.rad_r,
-					tx_cmp.sin_r, tx_out.sin_r, ( tx_out.sin_r - tx_cmp.sin_r ),
-					tx_cmp.cos_r, tx_out.cos_r, ( tx_out.cos_r - tx_cmp.cos_r ) 
-				),
-				UVM_LOW
-			);
+			if ( sin_err < EB && sin_err > -EB && cos_err < EB && cos_err > -EB )
+			begin
+				`uvm_info( "SB_CMP", msg, UVM_LOW );
+			end
+			else
+			begin
+				`uvm_error( "SB_CMP", msg );
+			end
 		end
 	endfunction: comparison
 
