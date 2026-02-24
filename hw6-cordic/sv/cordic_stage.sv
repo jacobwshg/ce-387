@@ -19,6 +19,8 @@ module cordic_stage
 	logic sgn;
 	logic signed [ 15:0 ] xtanc, ytanc;
 
+	logic [ 15:0 ] sgnmsk;
+
 	always_ff @ ( posedge clk, posedge rst )
 	begin
 		if ( rst )
@@ -38,13 +40,19 @@ module cordic_stage
 	always_comb
 	begin
 		sgn = z_in[ 15 ];
+		sgnmsk = { 16{ sgn } };
 
 		xtanc = x_in >>> k;
 		ytanc = y_in >>> k;
 
+/*
 		x_c = x_in - ( sgn ? -ytanc : ytanc );
 		y_c = y_in + ( sgn ? -xtanc : xtanc );
 		z_c = z_in - ( sgn ? -c : c );
+*/
+		x_c = x_in - ( ( ytanc ^ sgnmsk ) + ( sgn ) );
+		y_c = y_in + ( ( xtanc ^ sgnmsk ) + ( sgn ) ) ;
+		z_c = z_in - ( ( c     ^ sgnmsk ) + ( sgn ) ) ;
 	end
 
 endmodule: cordic_stage
