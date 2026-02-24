@@ -138,19 +138,28 @@ module cordic #(
  		 * We'll testbench to determine whether to favor clock frequency 
  		 * or cycle count.
  		 */
+		/*
+ 		 * Reduce by 2*pi rad = 360 deg 
+		 */
+		if ( ( rad_c[15]? -rad_c: rad_c ) > PI )
+		begin
+			rad_c += ( rad_c[15]? TWO_PI: -TWO_PI );
+		end
+/*
 		if ( rad_c > PI )
 		begin
 			rad_c -= TWO_PI;
 		end
-		else if ( rad_c < -PI ) 
+		else if ( rad_c < -PI )
 		begin
 			rad_c += TWO_PI;
 		end
-
+*/
 		/*
+ 		 * Reduce by pi rad = 180 deg and flip sign
  		 * x_in must be clocked to stay up to date with rad reduction
  		 */
-		if ( rad_c > HALF_PI )
+		else if ( rad_c > HALF_PI )
 		begin
 			rad_c -= PI;
 			x_in_c = -x_in_c;
