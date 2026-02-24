@@ -108,14 +108,17 @@ class my_uvm_monitor_compare extends uvm_monitor;
 		begin
 			@(negedge vif.clock)
 			begin
-				if ( ~vif.out_empty ) // sync
+				if ( ~vif.out_empty ) // sync with DUT fifo sincos output
 				begin
 					/* ignore pipe warmup */
 					if ( idx++ < STAGE_CNT )
 					begin
-						//continue;
+						continue;
 					end
 					rad_r = torad( deg );
+
+					tx_cmp.deg = deg;
+					tx_cmp.rad_r = rad_r;
 					tx_cmp.sin_r = $sin( rad_r );
 					tx_cmp.cos_r = $cos( rad_r );	
 					mon_ap_compare.write(tx_cmp);

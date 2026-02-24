@@ -51,8 +51,10 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 			`uvm_info(
 				"SB_CMP",
 				$sformatf(
-					"\nSW sin: %f, HW sin: %f, SW cos: %f, HW cos: %f",
-					tx_cmp.sin_r, tx_out.sin_r, tx_cmp.cos_r, tx_out.cos_r
+					"\n\tdeg: %d, rad: %f\n\t\tSW sin: %f, HW sin (dequant): %f, error: %f\n\t\tSW cos: %f, HW cos (dequant): %f, error: %f\n",
+					tx_cmp.deg, tx_cmp.rad_r,
+					tx_cmp.sin_r, tx_out.sin_r, ( tx_out.sin_r - tx_cmp.sin_r ),
+					tx_cmp.cos_r, tx_out.cos_r, ( tx_out.cos_r - tx_cmp.cos_r ) 
 				),
 				UVM_LOW
 			);

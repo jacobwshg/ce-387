@@ -36,10 +36,11 @@ module cordic #(
 		TWO_PI  = PI << 1,
 		HALF_PI = PI >> 1,
 		K_INV   = ( ( 32'sd01<<FRAC_WIDTH ) << FRAC_WIDTH ) / K;
+		//K_INV = 32'sd9949;
 
 	//typedef enum logic { S_STALL, S_OUT } state_t;
 
-	typedef enum logic { FALSE, TRUE } bool_t;
+	typedef enum logic { FALSE = 1'b0, TRUE = 1'b1 } bool_t;
 
 	logic [ 0:STAGE_CNT-1 ] [ 15:0 ] CORDIC_TABLE = 
 		{
@@ -70,7 +71,7 @@ module cordic #(
 				.x_in( i==0 ? x_in : x_out[i-1] ),
 				.y_in( i==0 ? y_in : y_out[i-1] ),
 				.z_in( i==0 ? $signed( rad[ 15:0 ] ) : z_out[i-1] ),
-				.k( i ),
+				.k( 16'(i) ),
 				.c( CORDIC_TABLE[i] ),
 
 				.x_out( x_out[i] ),
@@ -157,6 +158,7 @@ module cordic #(
 			rad_c += TWO_PI;
 		end
 
+		else
 		if ( rad_c > HALF_PI )
 		begin
 			rad_c -= PI;

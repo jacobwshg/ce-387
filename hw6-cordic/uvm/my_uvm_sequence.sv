@@ -2,9 +2,9 @@ import uvm_pkg::*;
 
 
 class my_uvm_transaction extends uvm_sequence_item;
+	int  deg = 0;
+	real rad_r = 0.0;
 	logic signed [ 31:0 ] rad = 32'sd0;
-	//logic signed [ 15:0 ] sin = 15'sd0;
-	//logic signed [ 15:0 ] cos = 15'sd0;
 	real sin_r = 0.0;
 	real cos_r = 0.0;
 
@@ -13,6 +13,8 @@ class my_uvm_transaction extends uvm_sequence_item;
 	endfunction: new
 
 	`uvm_object_utils_begin(my_uvm_transaction)
+		`uvm_field_int( deg, UVM_ALL_ON )
+		`uvm_field_real( rad_r, UVM_ALL_ON )
 		`uvm_field_int( rad, UVM_ALL_ON )
 		`uvm_field_real( sin_r, UVM_ALL_ON )
 		`uvm_field_real( cos_r, UVM_ALL_ON )
