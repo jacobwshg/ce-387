@@ -23,7 +23,6 @@ module cordic_stage
 	begin
 		if ( rst )
 		begin
-			//{ x_out, y_out, z_out } <= 'h0;
 			x_out <= 'h0;
 			y_out <= 'h0;
 			z_out <= 'h0;
@@ -38,20 +37,11 @@ module cordic_stage
 
 	always_comb
 	begin
-		///*
-		sgn = z_in[ 15 ]; //
+		sgn = z_in[ 15 ];
 		sgn16 = { 16{ sgn } };
 		x_c = x_in - ( ( ( y_in >>> k ) ^ sgn16 ) + $signed( 16'(sgn) ) );
 		y_c = y_in + ( ( ( x_in >>> k ) ^ sgn16 ) + $signed( 16'(sgn) ) );
 		z_c = z_in - ( (   c            ^ sgn16 ) + $signed( 16'(sgn) ) );
-		//*/
-		/*
-		sgn = z_in[15];
-		sgn16 = { 16 { sgn } };
-		x_c = x_in - ( ( ( y_in >>> k ) ^ sgn16 ) - sgn16 );
-		y_c = y_in + ( ( ( x_in >>> k ) ^ sgn16 ) - sgn16 );
-		z_c = z_in - ( (   c            ^ sgn16 ) - sgn16 );
-		*/
 	end
 
 endmodule: cordic_stage

@@ -2,8 +2,8 @@
 module cordic #(
 	parameter FRAC_WIDTH = 16'd14,
 	// quantized constants based on FRAC_WIDTH
-	parameter PI = 32'sd51472,
-	parameter K  = 32'sd26981
+	parameter PI = 32'sd51472, // round( 3.14159265359 * (2**14) )
+	parameter K  = 32'sd26981  // round( 1.646760258121 * (2**14) )
 )
 (
 	input clk,
@@ -18,16 +18,6 @@ module cordic #(
 	output logic out_we
 );
 
-	/*
-	function automatic logic signed [ 31:0 ]
-	quantize(
-		r,
-		frac_width
-	);
-		return 32'( $rtoi( r * $itor( 1 << frac_width ) ) );
-	endfunction
-	*/
-
 	localparam STAGE_CNT = 16;
 	localparam I_SIN = 0;
 	localparam I_COS = 1;
@@ -37,8 +27,6 @@ module cordic #(
 		HALF_PI = PI >> 1,
 		K_INV   = ( ( 32'sd01<<FRAC_WIDTH ) << FRAC_WIDTH ) / K;
 		//K_INV = 32'sd9949;
-
-	//typedef enum logic { S_STALL, S_OUT } state_t;
 
 	typedef enum logic { FALSE = 1'b0, TRUE = 1'b1 } bool_t;
 
@@ -81,6 +69,7 @@ module cordic #(
 		end
 	endgenerate
 
+	/* single "run" state FSM */
 	always_ff @ ( posedge clk, posedge rst )
 	begin
 		if ( rst )
@@ -140,11 +129,6 @@ module cordic #(
  		 * Save some cycles by testing rad_c directly, potentially batching updates
  		 * before writing to rad at next clk edge.
  		 *
- 		 * For example, if sh_en is high and in_dout is equal to -230d, 
- 		 * we can compute -230d -> 130d -> -50d and write to rad once, avoiding
- 		 * spending two extra cycles for -230d and 130d to be written to rad 
- 		 * and testing them successively.
- 		 *
  		 * This causes the critical path within each cycle to become longer.
  		 * We'll testbench to determine whether to favor clock frequency 
  		 * or cycle count.
@@ -158,13 +142,12 @@ module cordic #(
 			rad_c += TWO_PI;
 		end
 
-		else
 		if ( rad_c > HALF_PI )
 		begin
 			rad_c -= PI;
 			x_in = -x_in;
 		end
-		else if ( rad_c < HALF_PI )
+		else if ( rad_c < -HALF_PI )
 		begin
 			rad_c += PI;
 			x_in = -x_in;
