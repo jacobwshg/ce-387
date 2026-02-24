@@ -142,12 +142,11 @@ module cordic #(
  		 * Reduce by 2*pi rad = 360 deg 
 		 */
 /*
-		if ( ( rad_c[15]? -rad_c: rad_c ) > PI )
+		if ( ( rad_c[ 31 ]? -rad_c: rad_c ) > PI )
 		begin
-			rad_c += ( rad_c[15]? TWO_PI: -TWO_PI );
+			rad_c += ( rad_c[ 31 ]? TWO_PI: -TWO_PI );
 		end
 */
-///*
 		if ( rad_c > PI )
 		begin
 			rad_c -= TWO_PI;
@@ -156,7 +155,7 @@ module cordic #(
 		begin
 			rad_c += TWO_PI;
 		end
-//*/
+
 		/*
  		 * Reduce by pi rad = 180 deg and flip sign
  		 * x_in must be clocked to stay up to date with rad reduction
