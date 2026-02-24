@@ -33,9 +33,10 @@ class my_uvm_sequence extends uvm_sequence#(my_uvm_transaction);
 		my_uvm_transaction tx;
 
 		// send quantized radians to DUT
-		for ( int deg = -360; deg <= 360; ++deg )
+		// send extra 16 to push final results out of pipeline
+		for ( int deg = -360; deg <= 360 + STAGE_CNT; ++deg )
 		begin
-			real rad_r = torad( deg );
+			real rad_r = deg <= 360 ? torad( deg ) : 0.0;
 			logic signed [ 31:0 ] rad = quantize( rad_r );
 
 			tx = my_uvm_transaction::type_id::create(.name("tx"), .contxt(get_full_name()));

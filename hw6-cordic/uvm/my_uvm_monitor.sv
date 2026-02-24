@@ -34,7 +34,10 @@ class my_uvm_monitor_output extends uvm_monitor;
 
 		vif.out_rd_en = 1'b0;
 
-		for ( int deg = -360; deg <= 360; )
+		/*
+ 		 * receive hardware sincos from output fifo 
+ 		 */
+		for ( int idx = -360-STAGE_CNT; idx <= 360; )
 		begin
 			@ (negedge vif.clock)
 			begin
@@ -46,7 +49,7 @@ class my_uvm_monitor_output extends uvm_monitor;
 					mon_ap_output.write(tx_out);
 
 					vif.out_rd_en = 1'b1;
-					++deg;
+					++idx;
 				end
 				else
 				begin
@@ -86,7 +89,6 @@ class my_uvm_monitor_compare extends uvm_monitor;
 
 	virtual task run_phase(uvm_phase phase);
 
-		logic [ 63:0 ] idx = 1'd0;
 		real rad_r = 0.0;
 
 		my_uvm_transaction tx_cmp;
@@ -103,18 +105,20 @@ class my_uvm_monitor_compare extends uvm_monitor;
 
 		tx_cmp = my_uvm_transaction::type_id::create(.name("tx_cmp"), .contxt(get_full_name()));
 
-		// generate software sin and cos values
-		for ( int deg = -360; deg <= 360; )
+		// generate software sin and cos values to compare
+		for ( int deg = -360-STAGE_CNT-1; deg < 360; )
 		begin
-			@(negedge vif.clock)
+			@ (negedge vif.clock)
 			begin
 				if ( ~vif.out_empty ) // sync with DUT fifo sincos output
 				begin
-					/* ignore pipe warmup */
-					if ( idx++ < STAGE_CNT )
+					++deg;
+					/* don't sync fifo output during pipe warmup */
+					if ( deg < -360 )
 					begin
 						continue;
 					end
+
 					rad_r = torad( deg );
 
 					tx_cmp.deg = deg;
@@ -122,7 +126,6 @@ class my_uvm_monitor_compare extends uvm_monitor;
 					tx_cmp.sin_r = $sin( rad_r );
 					tx_cmp.cos_r = $cos( rad_r );	
 					mon_ap_compare.write(tx_cmp);
-					++deg;
 				end
 			end
 		end	
