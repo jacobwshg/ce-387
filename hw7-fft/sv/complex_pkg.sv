@@ -1,9 +1,9 @@
 
-package my_complex;
+package complex_pkg;
 
 	localparam logic [ 0:0 ]
-		I_RE = 0,
-		I_IM = 1;
+		RE = 0,
+		IM = 1;
 
 	typedef logic signed [ 1:0 ] [ 31:0 ] complex_t;
 
@@ -13,5 +13,5 @@ package my_complex;
 		logic signed [ DATA_WIDTH-1:0 ] im;
 	};
 
-endpackage: my_complex
+endpackage: complex_pkg
 
