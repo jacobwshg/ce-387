@@ -19,7 +19,7 @@ module butterfly
 		return ( qq + ( 1 << (FRAC_WIDTH-1) ) ) >>> FRAC_WIDTH;
 	endfunction
 
-	logic signed [ DATA_WIDTH-1:0 ] v[RE], v[IM];
+	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] v;
 
 	always_comb
 	begin
