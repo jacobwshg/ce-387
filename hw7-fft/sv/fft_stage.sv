@@ -1,6 +1,4 @@
 
-import complex_pkg::*;
-
 module fft_stage #(
 	parameter int STAGE = 2,
 	parameter int N = 32,

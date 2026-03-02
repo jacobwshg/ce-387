@@ -1,6 +1,4 @@
 
-import complex_pkg::*;
-
 module fft_stage1 #(
 	parameter int N = 32,
 	parameter int DATA_WIDTH = 32

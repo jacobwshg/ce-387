@@ -60,8 +60,8 @@ module fft #(
 	typedef enum logic [ 1:0 ] { S_REORDER, S_RUN } state_t;
 	state_t state, state_c;
 
-	logic signed [ 1:STAGE_CNT ] [ 0:1 ] [ DATA_WIDTH-1:0 ] stages_dout;
-	logic signed [ 1:STAGE_CNT ] stages_out_valid;
+	logic signed [ STAGE_CNT-1:0 ] [ 0:1 ] [ DATA_WIDTH-1:0 ] stages_dout;
+	logic signed [ STAGE_CNT-1:0 ] stages_out_valid;
 
 	/*
 	 * in_idx = sequential, order of arrival from upstream FIFO
@@ -75,6 +75,14 @@ module fft #(
 	logic rob_wr_en;
 	logic rob_out_valid;
 
+	/*
+	* Stage 1 has its own template because its buffer is a 
+	* single element deep; with the normal stage template, 
+	* its buffer address will be of width 0, which is illegal.
+	* Also, it requires reading the only buffer element 
+	* immediately after it is written, which leads to its buffer
+	* being implemented with FF rather than BRAM.
+	*/
 	fft_stage1 #(
 		.N ( N ),
 		.DATA_WIDTH( DATA_WIDTH )
@@ -84,8 +92,8 @@ module fft #(
 		.w  ( twdls[1][0] ),
 		.din( rob_dout ),
 		.in_valid( rob_out_valid ),
-		.dout( stages_dout[1] ),
-		.out_valid( stages_out_valid[1] )
+		.dout( stages_dout[0] ),
+		.out_valid( stages_out_valid[0] )
 	);
 
 	genvar stage;
@@ -100,11 +108,11 @@ module fft #(
 				.clk( clk ), .rst( rst ),
 				.stage_twdls( twdls[stage] ),
 
-				.din     ( stages_dout[ stage-1 ] ),
-				.in_valid( stages_out_valid[ stage-1 ] ),
+				.din     ( stages_dout[ stage-2 ] ),
+				.in_valid( stages_out_valid[ stage-2 ] ),
 
-				.dout     ( stages_dout[ stage ] ),
-				.out_valid( stages_out_valid[ stage ] )
+				.dout     ( stages_dout[ stage-1 ] ),
+				.out_valid( stages_out_valid[ stage-1 ] )
 			);
 		end
 	endgenerate
@@ -141,22 +149,22 @@ module fft #(
 	begin
 		state_c = state;
 
-		stages_dout = 1'h0;
-		stages_out_valid = 1'h0;
+		stages_dout = '{ 'h0 };
+		stages_out_valid = '{ 'h0 };
 
 		rob_in_idx_c = rob_in_idx;
 		rob_wr_addr = 1'h0;
 		/* perform bit reversal */
-		foreach ( rob_in_idx[ b ] )
+		for ( int b=0; b<$clog2(N); ++b )
 		begin
 			rob_wr_addr[ $clog2(N)-1-b ] = rob_in_idx[ b ];
 		end
 		rob_rd_addr_c = rob_rd_addr;
-		rob_din = 1'h0;	
+		rob_din = '{ 'h0 };	
 		rob_wr_en = 1'b0;
 		rob_out_valid = 1'b0;
 
-		dout = 1'b0;
+		dout = '{ 'h0 };
 		out_valid = 1'b0;
 		out_wr_en = 1'b0;
 		in_rd_en = 1'b0;
@@ -189,7 +197,7 @@ module fft #(
 				begin
 					rob_out_valid = 1'h1;
 
-					dout = stages_dout[ STAGE_CNT ];
+					dout = stages_dout[ STAGE_CNT-1 ];
 					out_valid = stages_out_valid[ STAGE_CNT ];
 
 					out_wr_en = 1'b1;

@@ -1,6 +1,4 @@
 
-import complex_pkg::*;
-
 module butterfly
 #(
 	parameter int DATA_WIDTH = 32,
@@ -10,6 +8,11 @@ module butterfly
 	input  logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] w, in1, in2,
 	output logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] out1, out2
 );
+
+	localparam logic [ 0:0 ]
+		RE = 0,
+		IM = 1;
+
 	/*
  	 * Multiplying 2 quantized ints causes overquantization, so we dequantize
  	 * once
