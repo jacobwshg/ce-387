@@ -23,7 +23,7 @@ module fft #(
 	 * Actually only need at most N/2 instead of N twdl factors for each stage,
 	 * since each butterfly takes a pair of inputs
 	 */
-	localparam logic signed [ 1:STAGE_CNT ] [ 0:(N/2)-1 ] [ 0:1 ] [ DATA_WIDTH-1:0 ] twdls = 
+	localparam logic signed [ 0:STAGE_CNT-1 ] [ 0:(N/2)-1 ] [ 0:1 ] [ DATA_WIDTH-1:0 ] twdls = 
 	{
 		{
 			{32'sh00004000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000},
@@ -89,7 +89,7 @@ module fft #(
 	) stg1_inst (
 		.clk( clk ),
 		.rst( rst ),
-		.w  ( twdls[1][0] ),
+		.w  ( twdls[0][0] ),
 		.din( rob_dout ),
 		.in_valid( rob_out_valid ),
 		.dout( stages_dout[0] ),
@@ -106,7 +106,7 @@ module fft #(
 				.DATA_WIDTH( DATA_WIDTH )
 			) stg_inst (
 				.clk( clk ), .rst( rst ),
-				.stage_twdls( twdls[stage] ),
+				.stage_twdls( twdls[ stage-1 ] ),
 
 				.din     ( stages_dout[ stage-2 ] ),
 				.in_valid( stages_out_valid[ stage-2 ] ),
@@ -149,9 +149,6 @@ module fft #(
 	begin
 		state_c = state;
 
-		stages_dout = '{ 'h0 };
-		stages_out_valid = '{ 'h0 };
-
 		rob_in_idx_c = rob_in_idx;
 		rob_wr_addr = 1'h0;
 		/* perform bit reversal */
@@ -174,6 +171,11 @@ module fft #(
 			begin
 				if ( !in_empty )
 				begin
+					/*
+					 * As long as upstream FIFO has a value, we read one, but
+					 * don't commit the value to reorder buffer unless it is
+					 * valid (not a bubble)
+					 */
 					in_rd_en = 1'b1;
 					if ( in_valid )
 					begin

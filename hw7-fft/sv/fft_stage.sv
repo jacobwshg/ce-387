@@ -8,7 +8,7 @@ module fft_stage #(
 	input  logic clk,
 	input  logic rst,
 
-	input  logic signed [ 0:N-1 ] [ 0:1 ] [ DATA_WIDTH-1:0 ] stage_twdls,
+	input  logic signed [ 0:(N/2)-1 ] [ 0:1 ] [ DATA_WIDTH-1:0 ] stage_twdls,
 	input  logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] din,
 	input  logic in_valid,
 
@@ -69,7 +69,7 @@ module fft_stage #(
 		begin
 			idx <= 1'h0;
 			valid <= 1'h0;
-			din_r <= 1'h0;
+			din_r <= '{ 'h0 };
 		end
 		else
 		begin
@@ -82,6 +82,7 @@ module fft_stage #(
 	always_comb
 	begin
 		out_valid = 1'h0;
+		dout = '{ 'h0 };
 
 		{ step_idx, is_lower_step, wr_addr } =
 		{ idx[ LOG2_N:STAGE ], idx[ STAGE-1 ], idx[ STAGE-2:0 ] };
