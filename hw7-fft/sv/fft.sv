@@ -200,7 +200,7 @@ module fft #(
 					rob_out_valid = 1'h1;
 
 					dout = stages_dout[ STAGE_CNT-1 ];
-					out_valid = stages_out_valid[ STAGE_CNT ];
+					out_valid = stages_out_valid[ STAGE_CNT-1 ];
 
 					out_wr_en = 1'b1;
 					rob_rd_addr_c += 1;
