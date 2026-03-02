@@ -24,32 +24,32 @@ module fft #(
 	 * since each butterfly takes a pair of inputs
 	 */
 	localparam logic signed [ 0:STAGE_CNT-1 ] [ 0:(N/2)-1 ] [ 0:1 ] [ DATA_WIDTH-1:0 ] twdls = 
-	{
-		{
+	'{
+		'{
 			{32'sh00004000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000},
 			{32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000},
 			{32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000},
 			{32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}
 		},
-		{
+		'{
 			{32'sh00004000,32'sh00000000}, {32'sh00000000,32'shffffc000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000},
 			{32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000},
 			{32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000},
 			{32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}
 		},
-		{
+		'{
 			{32'sh00004000,32'sh00000000}, {32'sh00002d41,32'shffffd2bf}, {32'sh00000000,32'shffffc000}, {32'shffffd2bf,32'shffffd2bf},
 			{32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000},
 			{32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000},
 			{32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}
 		},
-		{
+		'{
 			{32'sh00004000,32'sh00000000}, {32'sh00003b20,32'shffffe783}, {32'sh00002d41,32'shffffd2bf}, {32'sh0000187d,32'shffffc4e0},
 			{32'sh00000000,32'shffffc000}, {32'shffffe783,32'shffffc4e0}, {32'shffffd2bf,32'shffffd2bf}, {32'shffffc4e0,32'shffffe783},
 			{32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000},
 			{32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}
 		},
-		{
+		'{
 			{32'sh00004000,32'sh00000000}, {32'sh00003ec5,32'shfffff384}, {32'sh00003b20,32'shffffe783}, {32'sh00003536,32'shffffdc72}, 
 			{32'sh00002d41,32'shffffd2bf}, {32'sh0000238e,32'shffffcaca}, {32'sh0000187d,32'shffffc4e0}, {32'sh00000c7c,32'shffffc13b},
 			{32'sh00000000,32'shffffc000}, {32'shfffff384,32'shffffc13b}, {32'shffffe783,32'shffffc4e0}, {32'shffffdc72,32'shffffcaca},
@@ -61,7 +61,7 @@ module fft #(
 	state_t state, state_c;
 
 	logic signed [ STAGE_CNT-1:0 ] [ 0:1 ] [ DATA_WIDTH-1:0 ] stages_dout;
-	logic signed [ STAGE_CNT-1:0 ] stages_out_valid;
+	logic [ STAGE_CNT-1:0 ] stages_out_valid;
 
 	/*
 	 * in_idx = sequential, order of arrival from upstream FIFO
@@ -209,6 +209,20 @@ module fft #(
 						state_c = S_REORDER;
 					end
 				end
+			end
+			default:
+			begin
+				state_c = S_REORDER;
+				rob_in_idx_c = 1'h0;
+				rob_wr_addr = 1'h0;
+				rob_rd_addr_c = 1'h0;
+				rob_din = '{ 'hx };
+				rob_wr_en = 1'b0;
+				rob_out_valid = 1'b0;
+				dout = '{ 'hx };
+				out_valid = 1'b0;
+				out_wr_en = 1'b0;
+				in_rd_en = 1'b0;
 			end
 		endcase
 	end

@@ -40,7 +40,7 @@ module fft_stage #(
 	logic [ STAGE-2:0 ] wr_addr, rd_addr;
 
 	/* Butterfly and buffer */
-	logic [ 0:1 ] [ DATA_WIDTH-1:0 ]
+	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ]
 		in1, in2, out1, out2, w,
 		buf_din, buf_dout;
 

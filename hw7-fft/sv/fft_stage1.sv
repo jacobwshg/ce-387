@@ -32,9 +32,9 @@ module fft_stage1 #(
 	/* There are no dedicated signals for buffer read/write addrs,
  	 * since the buffer at stage 1 has only a single element */
 
-	/* Butterfly signals */
-	logic [ 0:1 ] [ DATA_WIDTH-1:0 ]
-		in1, in2, out1, out2, w;
+	/* Butterfly signals (w is constant input) */
+	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ]
+		in1, in2, out1, out2;
 
 	butterfly #(
 		.DATA_WIDTH( DATA_WIDTH )
