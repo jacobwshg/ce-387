@@ -40,7 +40,7 @@ module fft_stage #(
 	/* Buffer read/write addrs; we only buffer half a step */
 	logic [ STAGE-2:0 ] wr_addr, rd_addr;
 
-	/* Butterfly and buffer */
+	/* Butterfly and buffer signals */
 	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ]
 		in1, in2, out1, out2, w,
 		buf_din, buf_dout;
@@ -68,7 +68,7 @@ module fft_stage #(
 	begin
 		if ( rst )
 		begin
-			idx <= 1'h0;
+			idx <= 'h0;
 		end
 		else
 		begin
@@ -82,7 +82,10 @@ module fft_stage #(
 		dout[0] = 'h0;
 		dout[1] = 'h0;
 
-		idx_c = 'd0;
+		buf_din[0] = 'h0;
+		buf_din[1] = 'h0;
+
+		idx_c = idx;
 		{ step_idx, is_lower_step, wr_addr } =
 		{ idx[ LOG2_N:STAGE ], idx[ STAGE-1 ], idx[ STAGE-2:0 ] };
 		/*
@@ -92,9 +95,6 @@ module fft_stage #(
 		 * valid
 		 */
 		rd_addr = wr_addr + 1 - HALF_STEP;
-
-		buf_din[0] = 'h0;
-		buf_din[1] = 'h0;
 
 		/*
 		 * Always drive butterfly so as to cut the critical path delay caused by
@@ -107,15 +107,20 @@ module fft_stage #(
 		in1 = buf_dout;
 		in2 = din;
 
+		$display( "stage %03d driving butterfly in1 = buf_dout = { %08h, %08h }, in2 = din = { %08h %08h }", STAGE, buf_dout[0], buf_dout[1], din[0], din[1] );
+
 		if ( in_valid )
 		begin
 
-			$display( "stage%d butterfly (valid): in1: %h+%hj, in2: %h+%hj, w: %h+%hj, out1: %h+%hj, out2: %h+%hj", 
-				STAGE, in1[RE], in1[IM], in2[RE], in2[IM], w[RE], w[IM], out1[RE], out1[IM], out2[RE], out2[IM] );
+			$display( "stage %0d butterfly (in valid): w: %h+%hj, in1: %h+%hj, in2: %h+%hj, out1: %h+%hj, out2: %h+%hj", 
+				STAGE, w[RE], w[IM], in1[RE], in1[IM], in2[RE], in2[IM], out1[RE], out1[IM], out2[RE], out2[IM] );
 
 			out_valid = ( ( step_idx==0 ) & ~is_lower_step ) ? 1'h0 : 1'h1;
 
-			idx_c += 1;
+			$display( "                             idx %8bb, step_idx %0d, is_lower_step %1b, wr_addr %0d, out_valid: %1b", idx, step_idx, is_lower_step, wr_addr, out_valid );
+
+
+			idx_c = idx_c + 1;
 			if ( is_lower_step )
 			begin
 				/*
