@@ -82,6 +82,7 @@ module fft_stage #(
 		dout[0] = 'h0;
 		dout[1] = 'h0;
 
+		idx_c = 'd0;
 		{ step_idx, is_lower_step, wr_addr } =
 		{ idx[ LOG2_N:STAGE ], idx[ STAGE-1 ], idx[ STAGE-2:0 ] };
 		/*
@@ -91,6 +92,9 @@ module fft_stage #(
 		 * valid
 		 */
 		rd_addr = wr_addr + 1 - HALF_STEP;
+
+		buf_din[0] = 'h0;
+		buf_din[1] = 'h0;
 
 		/*
 		 * Always drive butterfly so as to cut the critical path delay caused by

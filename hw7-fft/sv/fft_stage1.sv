@@ -60,6 +60,7 @@ module fft_stage1 #(
 		else
 		begin
 			buff <= buff_c;
+$display( "stage 1 buff_c: ( %h %h )", buff_c[0], buff_c[1] );
 			idx  <= idx_c;
 		end
 	end
@@ -71,6 +72,10 @@ module fft_stage1 #(
 		dout[1] = 'h0;
 
 		{ step_idx, is_lower_step } = { idx[ LOG2_N:1 ], idx[ 0 ] };
+		idx_c = 'd0;
+
+		buff_c[0] = 'sh0;
+		buff_c[1] = 'sh0;
 
 		/*
 		 * Always let butterfly run to cut the critical path delay caused by
@@ -85,7 +90,9 @@ module fft_stage1 #(
 		if ( in_valid )
 		begin
 
-			$display( "stage1 butterfly (valid): in1: %h+%hj, in2: %h+%hj, w: %h+%hj, out1: %h+%hj, out2: %h+%hj", in1[RE], in1[IM], in2[RE], in2[IM], w[RE], w[IM], out1[RE], out1[IM], out2[RE], out2[IM] );
+			$display( "stage1 butterfly (in valid): in1: %h+%hj, in2: %h+%hj, w: %h+%hj, out1: %h+%hj, out2: %h+%hj", in1[RE], in1[IM], in2[RE], in2[IM], w[RE], w[IM], out1[RE], out1[IM], out2[RE], out2[IM] );
+			$display( "                             step_idx %d, is_lower_step %b", step_idx, is_lower_step );
+
 
 			out_valid = ( ( step_idx==0 ) & ~is_lower_step ) ? 1'h0 : 1'h1;
 
@@ -96,6 +103,7 @@ module fft_stage1 #(
 				 * Buffer upstream input as butterfly's first input,
 				 * and output previous butterfly's second output if there is one
 				 */
+$display(" stage1 assigning din ( %h %h ) to buff_c ", din[0], din[1] );
 				buff_c = din;
 				dout   = buff;
 			end
