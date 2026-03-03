@@ -46,17 +46,18 @@ class my_uvm_sequence extends uvm_sequence#(my_uvm_transaction);
 			`uvm_fatal("SEQ_RUN", $sformatf( "Failed to open imag infile %s...", INFILE_IM ));
 		end
 
-		while ( i < N*2 ) // flush pipeline
+		while ( i < N*2 ) // send enough placeholder data to flush pipeline
 		begin
 			tx = my_uvm_transaction::type_id::create(.name("tx"), .contxt(get_full_name()));
 			start_item(tx);
 			if ( !$feof( infile_re ) && !$feof( infile_im ) )
 			begin
-				$readmemh( INFILE_RE, re );
-				$readmemh( INFILE_IM, im );
+				$fscanf( infile_re, "%08h", re );
+				$fscanf( infile_im, "%08h", im );
 				tx.re = re;
 				tx.im = im;
 				tx.valid = 1'b1;
+				`uvm_info( "SEQ_RUN", $sformatf("Sequencer sending data ( %h %h ), valid: %1b...", tx.re, tx.im, tx.valid), UVM_LOW ); 
 			end
 			//`uvm_info("SEQ_RUN", tx.sprint(), UVM_LOW);
 			finish_item(tx);

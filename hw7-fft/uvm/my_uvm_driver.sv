@@ -43,6 +43,9 @@ class my_uvm_driver extends uvm_driver#(my_uvm_transaction);
 					vif.in_din[RE] = tx.re;
 					vif.in_din[IM] = tx.im;
 					vif.in_valid = tx.valid;
+
+					`uvm_info( "DRVR", $sformatf("Driver sending data ( %h %h ), valid: %1b...", tx.re, tx.im, tx.valid), UVM_LOW ); 
+
 					vif.in_wr_en = 1'b1;
 					seq_item_port.item_done();
 				end

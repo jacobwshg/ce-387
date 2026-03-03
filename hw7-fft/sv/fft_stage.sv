@@ -1,4 +1,6 @@
 
+//import complex_pkg::*;
+
 module fft_stage #(
 	parameter int STAGE = 2,
 	parameter int N = 32,
@@ -15,6 +17,9 @@ module fft_stage #(
 	output logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] dout,
 	output logic out_valid
 );
+
+	localparam int RE = 0, IM = 1;
+
 	/*
 	 * Stage 2: step 4
 	 * Stage 3: step 8
@@ -100,6 +105,10 @@ module fft_stage #(
 
 		if ( in_valid )
 		begin
+
+			$display( "stage%d butterfly (valid): in1: %h+%hj, in2: %h+%hj, w: %h+%hj, out1: %h+%hj, out2: %h+%hj", 
+				STAGE, in1[RE], in1[IM], in2[RE], in2[IM], w[RE], w[IM], out1[RE], out1[IM], out2[RE], out2[IM] );
+
 			out_valid = ( ( step_idx==0 ) & ~is_lower_step ) ? 1'h0 : 1'h1;
 
 			idx_c += 1;

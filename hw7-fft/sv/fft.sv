@@ -161,6 +161,7 @@ module fft #(
 */
 			stages_dout <= stages_dout_c;
 			stages_out_valid <= stages_out_valid_c;
+
 		end
 	end	
 
@@ -175,6 +176,7 @@ module fft #(
 		begin
 			rob_wr_addr[ $clog2(N)-1-b ] = rob_in_idx[ b ];
 		end
+
 		rob_rd_addr_c = rob_rd_addr;
 		rob_din = 'h0;	
 		rob_wr_en = 1'b0;
@@ -200,19 +202,27 @@ module fft #(
 					 * valid (not a bubble)
 					 */
 					in_rd_en = 1'b1;
+					$display( "FFT in data: %h %h, in_valid: %1b", din[0], din[1], in_valid );
 					if ( in_valid )
 					begin
+
+						$display( "FFT data in valid. data: %08h %08h, rob_in_idx: %0bb, rob_wr_addr: %0bb", din[0], din[1], rob_in_idx, rob_wr_addr );
+
 						rob_din = { din[0], din[1] };
 						rob_wr_en = 1'b1;
 						/* data will write to the reordered rob_wr_addr */
 
 						rob_in_idx_c = rob_in_idx_c + 1;
 					end
-					if ( rob_in_idx_c == 0 )
-					begin
-						state_c = S_RUN;
-						rob_rd_addr_c = 1'h0;
-					end
+
+						//if ( rob_in_idx == { ($clog2(N)){1'b1} } )
+						if ( rob_in_idx_c == 0 )
+						begin
+							$display( "MOVING TO S_RUN" );
+							state_c = S_RUN;
+							rob_rd_addr_c = 1'h0;
+						end
+
 				end
 			end
 			S_RUN:
@@ -230,8 +240,10 @@ module fft #(
 					out_wr_en = 1'b1;
 
 					rob_rd_addr_c = rob_rd_addr_c + 1;
+
 					if ( rob_rd_addr_c == 0 )
 					begin
+						$display( "MOVING TO S_REORDER" );
 						state_c = S_REORDER;
 					end
 				end

@@ -1,7 +1,7 @@
 
 package complex_pkg;
 
-	localparam logic [ 0:0 ]
+	localparam int
 		RE = 0,
 		IM = 1;
 

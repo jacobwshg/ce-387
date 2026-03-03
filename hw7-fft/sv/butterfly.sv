@@ -36,6 +36,9 @@ module butterfly
 
 		out2[RE] = in1[RE] - v[RE];
 		out2[IM] = in1[IM] - v[IM];
+
+		$display( "butterfly: in1: %h+%hj, in2: %h+%hj, w: %h+%hj, out1: %h+%hj, out2: %h+%hj", in1[RE], in1[IM], in2[RE], in2[IM], w[RE], w[IM], out1[RE], out1[IM], out2[RE], out2[IM] );
+
 	end
 
 endmodule: butterfly

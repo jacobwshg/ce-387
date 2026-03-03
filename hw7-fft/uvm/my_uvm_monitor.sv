@@ -141,8 +141,8 @@ class my_uvm_monitor_compare extends uvm_monitor;
 			begin
 				if ( ~vif.out_empty && vif.out_valid )
 				begin
-					$readmemh( CMPFILE_RE, re );
-					$readmemh( CMPFILE_IM, im );
+					$fscanf( cmpfile_re, "%08h", re );
+					$fscanf( cmpfile_im, "%08h", im );
 					tx_cmp.re = re;
 					tx_cmp.im = im;
 					mon_ap_compare.write( tx_cmp );
