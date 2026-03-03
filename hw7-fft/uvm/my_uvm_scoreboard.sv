@@ -49,7 +49,7 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 		// use uvm_error to report errors and continue
 		// use uvm_fatal to halt the simulation on error
 		`uvm_info("SB_CMP", $sformatf(
-			"\n\t\tReceived: %h + %hi\n\t\tReference: %h + %hi",
+			"\n\t\tReceived: %08h + %08hj\n\t\tReference: %08h + %08hj",
 			tx_out.re, tx_out.im, tx_cmp.re, tx_cmp.im
 		), UVM_LOW);
 	endfunction: comparison

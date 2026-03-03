@@ -19,7 +19,8 @@ module butterfly
  	 */
 	function automatic logic signed [ DATA_WIDTH-1:0 ]
 	dequant( logic signed [ DATA_WIDTH-1:0 ] qq );
-		return ( qq + ( 1 << (FRAC_WIDTH-1) ) ) >>> FRAC_WIDTH;
+		logic signed [ DATA_WIDTH-1:0 ] q = qq + $signed( 1 << (FRAC_WIDTH-1) ) / $signed(1 << FRAC_WIDTH);
+		return q;
 	endfunction
 
 	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] v;

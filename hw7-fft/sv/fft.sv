@@ -60,8 +60,11 @@ module fft #(
 	typedef enum logic [ 1:0 ] { S_REORDER, S_RUN } state_t;
 	state_t state, state_c;
 
-	logic signed [ STAGE_CNT-1:0 ] [ 0:1 ] [ DATA_WIDTH-1:0 ] stages_dout;
-	logic [ STAGE_CNT-1:0 ] stages_out_valid;
+	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] stage1_din;
+	logic signed [ STAGE_CNT-1:0 ] [ 0:1 ] [ DATA_WIDTH-1:0 ]
+		stages_dout, stages_dout_c;
+	logic [ STAGE_CNT-1:0 ]
+		stages_out_valid, stages_out_valid_c;
 
 	/*
 	 * in_idx = sequential, order of arrival from upstream FIFO
@@ -71,7 +74,7 @@ module fft #(
 		rob_in_idx, rob_in_idx_c,
 		rob_wr_addr,
 		rob_rd_addr, rob_rd_addr_c;
-	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] rob_din, rob_dout;
+	logic signed [ (DATA_WIDTH*2)-1:0 ] rob_din, rob_dout;
 	logic rob_wr_en;
 	logic rob_out_valid;
 
@@ -90,10 +93,10 @@ module fft #(
 		.clk( clk ),
 		.rst( rst ),
 		.w  ( twdls[0][0] ),
-		.din( rob_dout ),
+		.din( stage1_din ),
 		.in_valid( rob_out_valid ),
-		.dout( stages_dout[0] ),
-		.out_valid( stages_out_valid[0] )
+		.dout( stages_dout_c[0] ),
+		.out_valid( stages_out_valid_c[0] )
 	);
 
 	genvar stage;
@@ -111,8 +114,8 @@ module fft #(
 				.din     ( stages_dout[ stage-2 ] ),
 				.in_valid( stages_out_valid[ stage-2 ] ),
 
-				.dout     ( stages_dout[ stage-1 ] ),
-				.out_valid( stages_out_valid[ stage-1 ] )
+				.dout     ( stages_dout_c[ stage-1 ] ),
+				.out_valid( stages_out_valid_c[ stage-1 ] )
 			);
 		end
 	endgenerate
@@ -136,12 +139,28 @@ module fft #(
 			state <= S_REORDER;
 			rob_in_idx <= 1'h0;
 			rob_rd_addr <= 1'h0;
+			for ( int s=0; s<STAGE_CNT; ++s )
+			begin
+				stages_dout[ s ][0] <= 'sh0;
+				stages_dout[ s ][1] <= 'sh0;
+				stages_out_valid[ s ] <= 1'b0;
+			end
 		end
 		else
 		begin
 			state <= state_c;
 			rob_in_idx <= rob_in_idx_c;
 			rob_rd_addr <= rob_rd_addr_c;
+/*
+			for ( int s=0; s<STAGE_CNT; ++s )
+			begin
+				stages_dout[ s ][0] <= stages_dout_c[ s ][0];
+				stages_dout[ s ][1] <= stages_dout_c[ s ][1];
+				stages_out_valid[ s ] <= stages_out_valid_c[ s ];
+			end
+*/
+			stages_dout <= stages_dout_c;
+			stages_out_valid <= stages_out_valid_c;
 		end
 	end	
 
@@ -157,19 +176,23 @@ module fft #(
 			rob_wr_addr[ $clog2(N)-1-b ] = rob_in_idx[ b ];
 		end
 		rob_rd_addr_c = rob_rd_addr;
-		rob_din = '{ 'h0 };	
+		rob_din = 'h0;	
 		rob_wr_en = 1'b0;
 		rob_out_valid = 1'b0;
 
-		dout = '{ 'h0 };
+		dout[0] = 'sh0;
+		dout[1] = 'sh0;
 		out_valid = 1'b0;
 		out_wr_en = 1'b0;
 		in_rd_en = 1'b0;
 
+		stage1_din[0] = 'sh0;
+		stage1_din[1] = 'sh0;
+
 		case ( state )
 			S_REORDER:
 			begin
-				if ( !in_empty )
+				if ( ~in_empty )
 				begin
 					/*
 					 * As long as upstream FIFO has a value, we read one, but
@@ -179,32 +202,35 @@ module fft #(
 					in_rd_en = 1'b1;
 					if ( in_valid )
 					begin
-						rob_din = din;
+						rob_din = { din[0], din[1] };
 						rob_wr_en = 1'b1;
-						rob_in_idx_c += 1'h1;
+						/* data will write to the reordered rob_wr_addr */
+
+						rob_in_idx_c = rob_in_idx_c + 1;
 					end
-					if ( rob_in_idx == ~'h0 )
+					if ( rob_in_idx_c == 0 )
 					begin
 						state_c = S_RUN;
-						/*
-						 * Avoid reading rob[0] twice in S_RUN
-						 */
-						rob_rd_addr_c = 1'h1;
+						rob_rd_addr_c = 1'h0;
 					end
 				end
 			end
 			S_RUN:
 			begin
-				if ( !out_full )
+				rob_out_valid = 1'b1;
+				if ( ~out_full )
 				begin
-					rob_out_valid = 1'h1;
+					/* allow bram output to flow into stage 1 */
+					stage1_din[0] = rob_dout[ (2*DATA_WIDTH)-1:DATA_WIDTH ];
+					stage1_din[1] = rob_dout[ DATA_WIDTH-1:0 ];
 
+					/* allow final stage output to flow out */
 					dout = stages_dout[ STAGE_CNT-1 ];
 					out_valid = stages_out_valid[ STAGE_CNT-1 ];
-
 					out_wr_en = 1'b1;
-					rob_rd_addr_c += 1;
-					if ( rob_rd_addr == ~'h0 )
+
+					rob_rd_addr_c = rob_rd_addr_c + 1;
+					if ( rob_rd_addr_c == 0 )
 					begin
 						state_c = S_REORDER;
 					end
@@ -216,10 +242,11 @@ module fft #(
 				rob_in_idx_c = 1'h0;
 				rob_wr_addr = 1'h0;
 				rob_rd_addr_c = 1'h0;
-				rob_din = '{ 'hx };
+				rob_din = 'hx;
 				rob_wr_en = 1'b0;
 				rob_out_valid = 1'b0;
-				dout = '{ 'hx };
+				dout[0] = 'shx;
+				dout[1] = 'shx;
 				out_valid = 1'b0;
 				out_wr_en = 1'b0;
 				in_rd_en = 1'b0;

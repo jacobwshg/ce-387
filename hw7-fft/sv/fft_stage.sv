@@ -23,10 +23,6 @@ module fft_stage #(
 	localparam int HALF_STEP = STEP >> 1;
 	localparam int LOG2_N = $clog2( N );
 
-	/* Clocked in_valid and din */
-	logic valid;
-	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] din_r;
-
 	/* Sample idx = { step idx, lower step flag, buf sample addr } */ 
 	logic [ LOG2_N:0 ] idx, idx_c;
 	/* Step idx - has an extra high bit to accommodate final stage, 
@@ -58,7 +54,7 @@ module fft_stage #(
 		.clock  ( clk ),
 		.rd_addr( rd_addr ),
 		.wr_addr( wr_addr ),
-		.wr_en  ( valid ),
+		.wr_en  ( in_valid ),
 		.din    ( buf_din ),
 		.dout   ( buf_dout )
 	); 
@@ -68,21 +64,18 @@ module fft_stage #(
 		if ( rst )
 		begin
 			idx <= 1'h0;
-			valid <= 1'h0;
-			din_r <= '{ 'h0 };
 		end
 		else
 		begin
 			idx <= idx_c;
-			valid <= in_valid;
-			din_r <= din;
 		end
 	end
 
 	always_comb
 	begin
 		out_valid = 1'h0;
-		dout = '{ 'h0 };
+		dout[0] = 'h0;
+		dout[1] = 'h0;
 
 		{ step_idx, is_lower_step, wr_addr } =
 		{ idx[ LOG2_N:STAGE ], idx[ STAGE-1 ], idx[ STAGE-2:0 ] };
@@ -103,9 +96,9 @@ module fft_stage #(
 		 */
 		w = stage_twdls[ wr_addr ];
 		in1 = buf_dout;
-		in2 = din_r;
+		in2 = din;
 
-		if ( valid )
+		if ( in_valid )
 		begin
 			out_valid = ( ( step_idx==0 ) & ~is_lower_step ) ? 1'h0 : 1'h1;
 
@@ -116,7 +109,7 @@ module fft_stage #(
 				 * Buffer upstream input as butterfly's first input,
 				 * and output previous butterfly's second output if there is one
 				 */
-				buf_din = din_r;
+				buf_din = din;
 				dout    = buf_dout;
 			end
 			else

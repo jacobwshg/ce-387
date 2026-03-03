@@ -19,9 +19,6 @@ module fft_stage1 #(
 	localparam int HALF_STEP = STEP >> 1;
 	localparam int LOG2_N = $clog2( N );
 
-	/* Clocked in_valid nd din*/
-	logic valid;
-	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] din_r;
 	/* Sample idx = { step idx, lower step flag } */ 
 	logic [ LOG2_N:0 ] idx, idx_c;
 	logic [ LOG2_N-STAGE:0 ] step_idx;
@@ -52,22 +49,19 @@ module fft_stage1 #(
 		begin
 			buff <= 1'h0;
 			idx  <= 1'h0;
-			valid <= 1'h0;
-			din_r <= '{ 'h0 };
 		end
 		else
 		begin
 			buff <= buff_c;
 			idx  <= idx_c;
-			valid <= in_valid;
-			din_r <= din;
 		end
 	end
 
 	always_comb
 	begin
 		out_valid = 1'h0;
-		dout = '{ 'h0 };
+		dout[0] = 'h0;
+		dout[1] = 'h0;
 
 		{ step_idx, is_lower_step } = { idx[ LOG2_N:1 ], idx[ 0 ] };
 
@@ -81,7 +75,7 @@ module fft_stage1 #(
 		in1 = buff;
 		in2 = din;
 
-		if ( valid )
+		if ( in_valid )
 		begin
 			out_valid = ( ( step_idx==0 ) & ~is_lower_step ) ? 1'h0 : 1'h1;
 

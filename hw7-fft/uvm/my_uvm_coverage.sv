@@ -7,10 +7,15 @@ class my_uvm_coverage extends uvm_subscriber #(my_uvm_transaction);
 	my_uvm_transaction tx;
 
 	covergroup cg;
-		coverpoint tx.image_pixel
+		coverpoint tx.re
 		{
-			bins pos = { [ 32'h0000_0000 : 32'h7fff_ffff ] };
-			bins neg = { [ 32'h1000_0000 : 32'hffff_ffff ] };
+			bins re_pos = { [ 32'h0000_0000 : 32'h7fff_ffff ] };
+			bins re_neg = { [ 32'h1000_0000 : 32'hffff_ffff ] };
+		}
+		coverpoint tx.im
+		{
+			bins im_pos = { [ 32'h0000_0000 : 32'h7fff_ffff ] };
+			bins im_neg = { [ 32'h1000_0000 : 32'hffff_ffff ] };
 		}
 	endgroup
 

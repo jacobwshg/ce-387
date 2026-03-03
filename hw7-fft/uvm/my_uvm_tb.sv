@@ -11,8 +11,8 @@ module my_uvm_tb;
 	my_uvm_if vif();
 
 	fft_top #(
-		.WIDTH(IMG_WIDTH),
-		.HEIGHT(IMG_HEIGHT)
+		.N( N ),
+		.DATA_WIDTH( DATA_WIDTH )
 	) fft_top_inst (
 		.clk( vif.clock ),
 		.rst( vif.reset ),
@@ -22,10 +22,10 @@ module my_uvm_tb;
 		.in_wr_en ( vif.in_wr_en ),
 		.out_rd_en( vif.out_rd_en ),
 
-		.out_dout ( vif.out_dout )
+		.out_dout ( vif.out_dout ),
 		.out_valid( vif.out_valid ),
 		.out_empty( vif.out_empty ),
-		.in_full  ( vif.in_full ),
+		.in_full  ( vif.in_full )
 	);
 
 	initial begin

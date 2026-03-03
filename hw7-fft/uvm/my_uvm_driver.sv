@@ -40,7 +40,6 @@ class my_uvm_driver extends uvm_driver#(my_uvm_transaction);
 				begin
 					seq_item_port.get_next_item(tx);
 
-					vif.in_din = { DATA_WIDTH{ 'h0 } };
 					vif.in_din[RE] = tx.re;
 					vif.in_din[IM] = tx.im;
 					vif.in_valid = tx.valid;
@@ -50,7 +49,7 @@ class my_uvm_driver extends uvm_driver#(my_uvm_transaction);
 				else
 				begin
 					vif.in_wr_en = 1'b0;
-					vif.in_din = { DATA_WIDTH{ 'h0 } };
+					vif.in_din = 'sh0;
 				end
 			end
 		end

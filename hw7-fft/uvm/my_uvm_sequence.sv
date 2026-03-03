@@ -2,8 +2,8 @@
 import uvm_pkg::*;
 
 class my_uvm_transaction extends uvm_sequence_item;
-	logic [ DATA_WIDTH-1:0 ] re = { DATA_WIDTH{ 'h0 } };
-	logic [ DATA_WIDTH-1:0 ] im = { DATA_WIDTH{ 'h0 } };
+	logic signed [ DATA_WIDTH-1:0 ] re = 'sh0;
+	logic signed [ DATA_WIDTH-1:0 ] im = 'sh0;
 	logic valid = 1'b0;
 
 	function new(string name = "");
@@ -27,11 +27,12 @@ class my_uvm_sequence extends uvm_sequence#(my_uvm_transaction);
 
 	task body();
 		my_uvm_transaction tx;
-		int infile_re, n_bytes=0, i=0;
-		logic [7:0] bmp_header [0:BMP_HEADER_SIZE-1];
-		logic [ DATA_WIDTH-1:0 ] re, im;
+		int infile_re, infile_im;
+		int n_bytes=0, i=0;
+		logic signed [ DATA_WIDTH-1:0 ] re, im;
 
-		`uvm_info("SEQ_RUN", $sformatf("Loading file %s...", IMG_IN_NAME), UVM_LOW);
+		`uvm_info("SEQ_RUN", $sformatf("Loading real infile %s...", INFILE_RE ), UVM_LOW);
+		`uvm_info("SEQ_RUN", $sformatf("Loading imag infile %s...", INFILE_IM ), UVM_LOW);
 
 		infile_re = $fopen( INFILE_RE, "rb" );
 		if ( !infile_re )

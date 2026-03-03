@@ -119,7 +119,7 @@ class my_uvm_monitor_compare extends uvm_monitor;
 
 	virtual task run_phase(uvm_phase phase);
 		int n_bytes=0, i=0;
-		logic [ DATA_WIDTH-1:0 ] re, im;
+		logic signed [ DATA_WIDTH-1:0 ] re, im;
 		my_uvm_transaction tx_cmp;
 
 		// extend the run_phase 20 clock cycles
