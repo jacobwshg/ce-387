@@ -10,7 +10,7 @@ module fft_stage #(
 	input  logic clk,
 	input  logic rst,
 
-	input  logic signed [ 0:(N/2)-1 ] [ 0:1 ] [ DATA_WIDTH-1:0 ] stage_twdls,
+	input  logic signed [ 0:(1<<(STAGE-1))-1 ] [ 0:1 ] [ DATA_WIDTH-1:0 ] stage_twdls,
 	input  logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] din,
 	input  logic in_valid,
 
@@ -128,7 +128,7 @@ module fft_stage #(
 				 * Buffer upstream input as next butterfly's first input,
 				 * and output previous butterfly's second output if there is one
 				 */
-			//$display("\n\n stage UPPER step, \n\tstore buff_c = din = { %8h %8h } (logical idx %0d)\n\toutput dout = buff = { %8h %8h }\n", din[0], din[1], idx, buff[0], buff[1] );
+			//$display("\n\n stage UPPER step, \n\tstore buf_din = din = { %8h %8h } (logical idx %0d)\n\toutput dout = buf_dout = { %8h %8h }\n", din[0], din[1], idx, buf_dout[0], buf_dout[1] );
 				dout    = buf_dout;
 				buf_din = din;
 			end
@@ -139,7 +139,7 @@ module fft_stage #(
 				 * Butterfly is valid and complete; 
 				 * output butterfly's first output and buffer its second output
 				 */
-			//$display("\n\n stage LOWER step, \n\tstore buff_c = out2 = { %8h %8h } (logical idx %0d)\n\toutput dout = out1 = { %8h %8h }\n", out2[0], out2[1], idx, out1[0], out1[1] );
+			//$display("\n\n stage LOWER step, \n\tstore buf_din = out2 = { %8h %8h } (logical idx %0d)\n\toutput dout = out1 = { %8h %8h }\n", out2[0], out2[1], idx, out1[0], out1[1] );
 				dout    = out1;
 				buf_din = out2;
 			end

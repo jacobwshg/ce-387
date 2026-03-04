@@ -48,10 +48,13 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 	virtual function void comparison();
 		// use uvm_error to report errors and continue
 		// use uvm_fatal to halt the simulation on error
-		`uvm_info("SB_CMP", $sformatf(
-			"\n\t\tReceived: %08h + %08hj\n\t\tReference: %08h + %08hj",
+
+		string msg = $sformatf(
+			"\n\t\tReceived: %08h + %08hj\n\t\tReference: %08h + %08hj\n",
 			tx_out.re, tx_out.im, tx_cmp.re, tx_cmp.im
-		), UVM_LOW);
+		);
+
+		`uvm_info("SB_CMP", msg, UVM_LOW);
 	endfunction: comparison
 
 endclass: my_uvm_scoreboard

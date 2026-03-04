@@ -87,15 +87,15 @@ module fft_stage1 #(
 		in1 = buff;
 		in2 = din;
 
-		$display( "@ %0t, stage1 butterfly in1 = buff = { %08h, %08h ), in2 = din = ( %08h, %08h ) ", $time, buff[0], buff[1], din[0], din[1] );
+		//$display( "@ %0t, stage1 butterfly in1 = buff = { %08h, %08h ), in2 = din = ( %08h, %08h ) ", $time, buff[0], buff[1], din[0], din[1] );
 
 		if ( in_valid )
 		begin
-			$display( "stage1 butterfly (in valid): \n\tw: %h + %hj, \n\tin1: %h + %hj, in2: %h + %hj, \n\tout1: %h + %hj, out2: %h + %hj", w[RE], w[IM], in1[RE], in1[IM], in2[RE], in2[IM], out1[RE], out1[IM], out2[RE], out2[IM] );
+			//$display( "stage1 butterfly (in valid): \n\tw: %h + %hj, \n\tin1: %h + %hj, in2: %h + %hj, \n\tout1: %h + %hj, out2: %h + %hj", w[RE], w[IM], in1[RE], in1[IM], in2[RE], in2[IM], out1[RE], out1[IM], out2[RE], out2[IM] );
 
 			out_valid = ( ( step_idx==0 ) & ~is_lower_step ) ? 1'h0 : 1'h1;
 
-			$display( "                             idx %0d = %8bb, step_idx %d, is_lower_step %b, out_valid: %1b", idx, idx, step_idx, is_lower_step, out_valid );
+			//$display( "                             idx %0d = %8bb, step_idx %d, is_lower_step %b, out_valid: %1b", idx, idx, step_idx, is_lower_step, out_valid );
 
 			idx_c = idx + 1;
 			if ( ~is_lower_step )
@@ -106,7 +106,7 @@ module fft_stage1 #(
 				 * Buffer upstream input as next butterfly's first input,
 				 * and output previous butterfly's second output if there is one
 				 */
-			$display("\n\n stage1 UPPER step, \n\tstore buff_c = din = { %8h %8h } (logical idx %0d)\n\toutput dout = buff = { %8h %8h }\n", din[0], din[1], idx, buff[0], buff[1] );
+			//$display("\n\n stage1 UPPER step, \n\tstore buff_c = din = { %8h %8h } (logical idx %0d)\n\toutput dout = buff = { %8h %8h }\n", din[0], din[1], idx, buff[0], buff[1] );
 				dout   = buff;
 				buff_c = din;
 			end
@@ -117,7 +117,7 @@ module fft_stage1 #(
 				 * Butterfly is valid and complete; 
 				 * output butterfly's first output and buffer its second output
 				 */
-			$display("\n\n stage1 LOWER step, \n\tstore buff_c = out2 = { %8h %8h } (logical idx %0d)\n\toutput dout = out1 = { %8h %8h }\n", out2[0], out2[1], idx, out1[0], out1[1] );
+			//$display("\n\n stage1 LOWER step, \n\tstore buff_c = out2 = { %8h %8h } (logical idx %0d)\n\toutput dout = out1 = { %8h %8h }\n", out2[0], out2[1], idx, out1[0], out1[1] );
 				dout   = out1;
 				buff_c = out2;
 			end

@@ -23,7 +23,8 @@ module fft #(
 	 * Actually only need at most N/2 instead of N twdl factors for each stage,
 	 * since each butterfly takes a pair of inputs
 	 */
-	localparam logic signed [ 0:STAGE_CNT-1 ] [ 0:(N/2)-1 ] [ 0:1 ] [ DATA_WIDTH-1:0 ] twdls = 
+	localparam int N_DEFAULT = 32;
+	localparam logic signed [ 0:$clog2( N_DEFAULT )-1 ] [ 0:( N_DEFAULT/2 )-1 ] [ 0:1 ] [ DATA_WIDTH-1:0 ] twdls = 
 	'{
 		'{
 			{32'sh00004000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000},
@@ -71,9 +72,11 @@ module fft #(
 	 */
 	logic [ $clog2(N)-1:0 ]
 		rob_in_idx, rob_in_idx_c,
-		rob_wr_addr,
+		rob_wr_addr;
+	/* extra bit for detecting wrap past entire reorder buffer */
+	logic [ $clog2(N):0 ]
 		rob_rd_addr, rob_rd_addr_c;
-	logic signed [ (DATA_WIDTH*2)-1:0 ] rob_din, rob_dout;
+	logic [ (DATA_WIDTH*2)-1:0 ] rob_din, rob_dout;
 	logic rob_wr_en;
 
 	/* reorder buffer output -> stage 1 input */
@@ -111,7 +114,7 @@ module fft #(
 				.DATA_WIDTH( DATA_WIDTH )
 			) stg_inst (
 				.clk( clk ), .rst( rst ),
-				.stage_twdls( twdls[ stage-1 ] ),
+				.stage_twdls( twdls[ stage-1 ][ 0:(1<<(stage-1))-1 ] ),
 
 				.din     ( stages_dout[ stage-2 ] ),
 				.in_valid( stages_out_valid[ stage-2 ] ),
@@ -127,7 +130,7 @@ module fft #(
 		.BRAM_DATA_WIDTH( 2 * DATA_WIDTH )
 	) reorder_buff (
 		.clock  ( clk ),
-		.rd_addr( rob_rd_addr ),
+		.rd_addr( rob_rd_addr[ $clog2(N)-1:0 ] ),
 		.wr_addr( rob_wr_addr ),
 		.wr_en  ( rob_wr_en ),
 		.din    ( rob_din ),
@@ -139,8 +142,8 @@ module fft #(
 		if ( rst )
 		begin
 			state <= S_REORDER;
-			rob_in_idx <= 1'h0;
-			rob_rd_addr <= 1'h0;
+			rob_in_idx <= 'h0;
+			rob_rd_addr <= 'h0;
 			for ( int s=0; s<STAGE_CNT; ++s )
 			begin
 				stages_dout[ s ][0] <= 'sh0;
@@ -204,11 +207,11 @@ module fft #(
 					 * valid (not a bubble)
 					 */
 					in_rd_en = 1'b1;
-					$display( "FFT in data: %h %h, in_valid: %1b", din[0], din[1], in_valid );
+					//$display( "FFT in data: %h %h, in_valid: %1b", din[0], din[1], in_valid );
 					if ( in_valid )
 					begin
 
-						$display( "FFT data in valid. data: %08h %08h, rob_in_idx: %0bb, rob_wr_addr: %0bb", din[0], din[1], rob_in_idx, rob_wr_addr );
+						//$display( "FFT data in valid. data: %08h %08h, rob_in_idx: %0bb, rob_wr_addr: %0bb", din[0], din[1], rob_in_idx, rob_wr_addr );
 
 						rob_din = { din[0], din[1] };
 						rob_wr_en = 1'b1;
@@ -217,13 +220,12 @@ module fft #(
 						rob_in_idx_c = rob_in_idx_c + 1;
 					end
 
-						//if ( rob_in_idx == { ($clog2(N)){1'b1} } )
-						if ( rob_in_idx_c == 0 )
-						begin
-							$display( "MOVING TO S_RUN" );
-							state_c = S_RUN;
-							rob_rd_addr_c = 1'h0;
-						end
+					if ( rob_in_idx_c == 0 )
+					begin
+						//$display( "MOVING TO S_RUN" );
+						state_c = S_RUN;
+						rob_rd_addr_c = 'h0;
+					end
 
 				end
 			end
@@ -236,7 +238,7 @@ module fft #(
 					/* allow bram rd output to flow into stage 1 */
 					stage1_din[0] = rob_dout[ (2*DATA_WIDTH)-1:DATA_WIDTH ];
 					stage1_din[1] = rob_dout[ DATA_WIDTH-1:0 ];
-				$display( "@ %0t FFT S_RUN: stage1_din { %8h %8h }, rob_rd_addr_c %0d", $time, stage1_din[0], stage1_din[1], rob_rd_addr_c );
+				//$display( "@ %0t FFT S_RUN: stage1_din { %8h %8h }, rob_rd_addr_c %0d", $time, stage1_din[0], stage1_din[1], rob_rd_addr_c );
 
 					/* allow final stage output to flow out */
 					dout = stages_dout[ STAGE_CNT-1 ];
@@ -245,19 +247,22 @@ module fft #(
 
 					rob_rd_addr_c = rob_rd_addr_c + 1;
 
-					if ( rob_rd_addr_c == 0 )
+					/*
+					if ( rob_rd_addr[ $clog2(N) ] == 1'b1 )
 					begin
 						$display( "MOVING TO S_REORDER" );
 						state_c = S_REORDER;
+						rob_rd_addr_c = 'h0;
 					end
+					*/
 				end
 			end
 			default:
 			begin
 				state_c = S_REORDER;
-				rob_in_idx_c = 1'h0;
-				rob_wr_addr = 1'h0;
-				rob_rd_addr_c = 1'h0;
+				rob_in_idx_c = 'h0;
+				rob_wr_addr = 'h0;
+				rob_rd_addr_c = 'h0;
 				rob_din = 'hx;
 				rob_wr_en = 1'b0;
 				stage1_in_valid = 1'b0;
