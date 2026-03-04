@@ -60,7 +60,6 @@ module fft #(
 	typedef enum logic [ 1:0 ] { S_REORDER, S_RUN } state_t;
 	state_t state, state_c;
 
-	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] stage1_din;
 	logic signed [ STAGE_CNT-1:0 ] [ 0:1 ] [ DATA_WIDTH-1:0 ]
 		stages_dout, stages_dout_c;
 	logic [ STAGE_CNT-1:0 ]
@@ -76,7 +75,10 @@ module fft #(
 		rob_rd_addr, rob_rd_addr_c;
 	logic signed [ (DATA_WIDTH*2)-1:0 ] rob_din, rob_dout;
 	logic rob_wr_en;
-	logic rob_out_valid;
+
+	/* reorder buffer output -> stage 1 input */
+	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] stage1_din;
+	logic stage1_in_valid;
 
 	/*
 	* Stage 1 has its own template because its buffer is a 
@@ -94,7 +96,7 @@ module fft #(
 		.rst( rst ),
 		.w  ( twdls[0][0] ),
 		.din( stage1_din ),
-		.in_valid( rob_out_valid ),
+		.in_valid( stage1_in_valid ),
 		.dout( stages_dout_c[0] ),
 		.out_valid( stages_out_valid_c[0] )
 	);
@@ -177,10 +179,8 @@ module fft #(
 			rob_wr_addr[ $clog2(N)-1-b ] = rob_in_idx[ b ];
 		end
 
-		rob_rd_addr_c = rob_rd_addr;
 		rob_din = 'h0;	
 		rob_wr_en = 1'b0;
-		rob_out_valid = 1'b0;
 
 		dout[0] = 'sh0;
 		dout[1] = 'sh0;
@@ -190,6 +190,8 @@ module fft #(
 
 		stage1_din[0] = 'sh0;
 		stage1_din[1] = 'sh0;
+		stage1_in_valid = 1'b0;
+		rob_rd_addr_c = rob_rd_addr;
 
 		case ( state )
 			S_REORDER:
@@ -227,14 +229,14 @@ module fft #(
 			end
 			S_RUN:
 			begin
+				stage1_in_valid = rob_rd_addr==0? 1'b0: 1'b1;
 
-				rob_out_valid = 1'b1;
 				if ( ~out_full )
 				begin
-					/* allow bram output to flow into stage 1 */
+					/* allow bram rd output to flow into stage 1 */
 					stage1_din[0] = rob_dout[ (2*DATA_WIDTH)-1:DATA_WIDTH ];
 					stage1_din[1] = rob_dout[ DATA_WIDTH-1:0 ];
-				$display( "@ %0t FFT S_RUN: stage1_din { %8h %8h }", $time, stage1_din[0], stage1_din[1] );
+				$display( "@ %0t FFT S_RUN: stage1_din { %8h %8h }, rob_rd_addr_c %0d", $time, stage1_din[0], stage1_din[1], rob_rd_addr_c );
 
 					/* allow final stage output to flow out */
 					dout = stages_dout[ STAGE_CNT-1 ];
@@ -258,7 +260,7 @@ module fft #(
 				rob_rd_addr_c = 1'h0;
 				rob_din = 'hx;
 				rob_wr_en = 1'b0;
-				rob_out_valid = 1'b0;
+				stage1_in_valid = 1'b0;
 				dout[0] = 'shx;
 				dout[1] = 'shx;
 				out_valid = 1'b0;
