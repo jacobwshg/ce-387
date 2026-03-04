@@ -107,37 +107,41 @@ module fft_stage #(
 		in1 = buf_dout;
 		in2 = din;
 
-		$display( "stage %03d driving butterfly in1 = buf_dout = { %08h, %08h }, in2 = din = { %08h %08h }", STAGE, buf_dout[0], buf_dout[1], din[0], din[1] );
+		//$display( "stage %03d driving butterfly in1 = buf_dout = { %08h, %08h }, in2 = din = { %08h %08h }", STAGE, buf_dout[0], buf_dout[1], din[0], din[1] );
 
 		if ( in_valid )
 		begin
 
-			$display( "stage %0d butterfly (in valid): w: %h+%hj, in1: %h+%hj, in2: %h+%hj, out1: %h+%hj, out2: %h+%hj", 
-				STAGE, w[RE], w[IM], in1[RE], in1[IM], in2[RE], in2[IM], out1[RE], out1[IM], out2[RE], out2[IM] );
+			//$display( "stage %0d butterfly (in valid): w: %h+%hj, in1: %h+%hj, in2: %h+%hj, out1: %h+%hj, out2: %h+%hj", STAGE, w[RE], w[IM], in1[RE], in1[IM], in2[RE], in2[IM], out1[RE], out1[IM], out2[RE], out2[IM] );
 
 			out_valid = ( ( step_idx==0 ) & ~is_lower_step ) ? 1'h0 : 1'h1;
 
-			$display( "                             idx %8bb, step_idx %0d, is_lower_step %1b, wr_addr %0d, out_valid: %1b", idx, step_idx, is_lower_step, wr_addr, out_valid );
+			//$display( "                             idx %0d = %8bb, step_idx %0d, is_lower_step %1b, wr_addr %0d, out_valid: %1b", idx, idx, step_idx, is_lower_step, wr_addr, out_valid );
 
 
 			idx_c = idx_c + 1;
-			if ( is_lower_step )
+			if ( ~is_lower_step )
 			begin
 				/*
-				 * Buffer upstream input as butterfly's first input,
+ 				 * Upper step: 
+ 				 * Butterfly is invalid;
+				 * Buffer upstream input as next butterfly's first input,
 				 * and output previous butterfly's second output if there is one
 				 */
-				buf_din = din;
+			//$display("\n\n stage UPPER step, \n\tstore buff_c = din = { %8h %8h } (logical idx %0d)\n\toutput dout = buff = { %8h %8h }\n", din[0], din[1], idx, buff[0], buff[1] );
 				dout    = buf_dout;
+				buf_din = din;
 			end
 			else
 			begin
 				/*
-				 * Butterfly is complete; output butterfly's first output and
-				 * buffer its second output
+				 * Lower step:
+				 * Butterfly is valid and complete; 
+				 * output butterfly's first output and buffer its second output
 				 */
-				buf_din = out2;
+			//$display("\n\n stage LOWER step, \n\tstore buff_c = out2 = { %8h %8h } (logical idx %0d)\n\toutput dout = out1 = { %8h %8h }\n", out2[0], out2[1], idx, out1[0], out1[1] );
 				dout    = out1;
+				buf_din = out2;
 			end
 		end
 	end

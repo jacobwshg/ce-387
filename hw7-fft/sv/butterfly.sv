@@ -45,12 +45,14 @@ module butterfly
 		out2[RE] = in1[RE] - v[RE];
 		out2[IM] = in1[IM] - v[IM];
 
+		/*
 		$display( "\nButterfly:" );	
 		$display( "\tw: %08h+%08hj, in1: %08h+%08hj, in2: %08h+%08hj", w[RE], w[IM], in1[RE], in1[IM], in2[RE], in2[IM] );
 		$display( "\tv[RE] = %08h = %08h - %08h ", v[RE], rw_r2, iw_i2 );
 		$display( "\tv[IM] = %08h = %08h - %08h ", v[IM], rw_i2, iw_r2 );
 		$display( "\tout1: %08h+%08hj, out2: %08h+%08hj", out1[RE], out1[IM], out2[RE], out2[IM] );
 		$display( "" );
+		*/
 
 	end
 

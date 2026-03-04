@@ -227,12 +227,14 @@ module fft #(
 			end
 			S_RUN:
 			begin
+
 				rob_out_valid = 1'b1;
 				if ( ~out_full )
 				begin
 					/* allow bram output to flow into stage 1 */
 					stage1_din[0] = rob_dout[ (2*DATA_WIDTH)-1:DATA_WIDTH ];
 					stage1_din[1] = rob_dout[ DATA_WIDTH-1:0 ];
+				$display( "@ %0t FFT S_RUN: stage1_din { %8h %8h }", $time, stage1_din[0], stage1_din[1] );
 
 					/* allow final stage output to flow out */
 					dout = stages_dout[ STAGE_CNT-1 ];
