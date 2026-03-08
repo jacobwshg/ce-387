@@ -17,11 +17,14 @@ module neuron #(
 
 	function automatic logic signed [ DATA_WIDTH-1:0 ]
 	DEQUANT( input logic signed [ DATA_WIDTH-1:0 ] x );
+	/*
 		if ( x[DATA_WIDTH-1] && ( -x < Q_STEP ) )
 		begin
 			return 'sd0;
 		end
-		return ( x + ( Q_STEP>>1 ) ) >>> FRAC_WIDTH;
+	*/	
+		logic signed [ DATA_WIDTH-1:0 ] q = ( x + ( Q_STEP>>1 ) ) >>> FRAC_WIDTH;
+		return ( q==-1 ) ? 0 : q;
 	endfunction
 
 	always_comb
