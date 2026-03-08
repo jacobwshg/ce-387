@@ -1,0 +1,155 @@
+
+module layer #(
+	parameter int DATA_WIDTH = 32,
+	parameter int INPUT_SIZE = 10,
+	parameter int FRAC_WIDTH = 14,
+	parameter int OUTPUT_SIZE = 10,
+	parameter int IDX_WIDTH = 16,
+	parameter logic signed [ 0:OUTPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
+		LAYER_BIASES = { OUTPUT_SIZE{ DATA_WIDTH{ 'sh0 } } },
+	parameter logic signed [ 0:OUTPUT_SIZE-1 ] [ 0:INPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
+		LAYER_WEIGHTS = { OUTPUT_SIZE{ INPUT_SIZE{ DATA_WIDTH{ 'sh0 } } } }
+)
+(
+	input logic clk,
+	input logic rst,
+
+	input logic signed [ DATA_WIDTH-1:0 ] din,
+	input logic in_empty,
+	input logic out_full,
+
+	output logic signed [ DATA_WIDTH-1:0 ] dout,
+	output logic in_rd_en,
+	output logic out_wr_en
+);
+
+	function automatic logic signed [ DATA_WIDTH-1:0 ]
+	ReLU( input logic signed [ DATA_WIDTH-1:0 ] x );
+		return ( x>'sh0 )? x: 'sh0;
+	endfunction;
+
+	typedef enum logic [ 1:0 ] { S_ACC, S_OUT } state_t;
+	state_t state, state_c;
+
+	logic [ IDX_WIDTH-1:0 ]
+		in_idx, in_idx_c,
+		out_idx, out_idx_c;
+
+	logic signed [ 0:OUTPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
+		acc, acc_c, acc_neurons;
+
+	genvar n;
+	generate
+		for ( n=0; n<OUTPUT_SIZE; ++n )
+		begin
+			neuron #(
+				.INPUT_SIZE( INPUT_SIZE ),
+				.DATA_WIDTH( DATA_WIDTH ),
+				.FRAC_WIDTH( FRAC_WIDTH ),
+				.IDX_WIDTH( IDX_WIDTH ),
+				.WEIGHTS( LAYER_WEIGHTS[ n ] )
+			) neuron_inst (
+				.clk( clk ),
+				.rst( rst ),
+
+				.in_empty( in_empty ),
+				.out_full( out_full ),
+
+				.acc_in( acc[ n ] )
+				.din   ( din ),
+				.in_idx( in_idx ),
+
+				.acc_out( acc_neurons[ n ] )
+			);
+		end
+	endgenerate
+
+	always_ff @ ( posedge clk, posedge rst )
+	begin
+		if ( rst )
+		begin
+			state   <= S_ACC;
+			in_idx  <= 'h0;
+			out_idx <= 'h0;
+			acc     <= LAYER_BIASES;
+		end
+		else
+		begin
+			state   <= state_c;
+			in_idx  <= in_idx_c;
+			out_idx <= out_idx_c;
+			acc     <= acc_c;
+		end
+	end
+
+	always_comb
+	begin
+		dout = 'sh0;
+		in_rd_en = 1'b0;
+		out_wr_en = 1'b0;
+
+		state_c   = state;
+		in_idx_c  = idx;
+		out_idx_c = idx;
+		acc_c     = acc;
+
+		case ( state )
+		begin
+			S_ACC:
+			begin
+				if ( ~in_empty )
+				begin
+					in_rd_en = 1'b1;
+					in_idx_c = in_idx + 1'h1;
+
+					acc_c = acc_neurons;
+
+					if ( in_idx_c == INPUT_SIZE )
+					begin
+						state_c = S_OUT;
+						in_idx_c = 'h0;
+					end
+				end
+			end
+
+			S_OUT:
+			begin
+				if ( ~out_full )
+				begin
+					out_wr_en = 1'b1;
+					out_idx_c = out_idx + 1'h1;
+					/*
+					* Put final accumulated weighted sums through activation
+					* function and send downstream sequentially
+					*/ 
+					dout = ReLU( acc[out_idx] );
+
+					if ( out_idx_c == OUTPUT_SIZE )
+					begin
+						state_c = S_ACC;
+						out_idx_c = 'h0;
+						acc_c = LAYER_BIASES;
+					end
+				end
+			end
+
+			default:
+			begin
+				dout      = 'shx;
+				in_rd_en  = 1'b0;
+				out_wr_en = 1'b0;
+				state_c   = S_ACC;
+				in_idx_c  = 'h0;
+				out_idx_c = 'h0;
+				for ( int i=0; i<OUTPUT_SIZE; ++i )
+				begin
+					acc_c     = 'shx;
+				end
+			end
+
+		endcase
+		
+	end
+
+endmodule: layer
+
