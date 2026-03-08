@@ -7,7 +7,7 @@ if len( argv ) < 2:
 
 try:
 
-
+	DW = 32
 	L = int( argv[1] )
 
 	assert L in [ 0,1 ], "layer idx out of range"
@@ -26,7 +26,7 @@ try:
 	with open( INFILE, "r" ) as infile:
 		with open( OUTFILE, "w+" ) as outfile:
 
-			hdr = f"localparam logic signed [ 0:{OUTPUT_SIZE-1} ] [ 0:{INPUT_SIZE-1} ] [ DATA_WIDTH-1:0 ]"
+			hdr = f"localparam logic signed [ 0:{OUTPUT_SIZE-1} ] [ 0:{INPUT_SIZE-1} ] [ {DW-1}:0 ]"
 			hdr += "\n\t"
 			hdr += f"LAYER{L}_WEIGHTS ="
 			hdr += "\n{\n"
