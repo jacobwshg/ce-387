@@ -22,10 +22,12 @@
 void neuron(int *inputs, int *weights, int bias, int input_size, int *output) 
 {
 	int acc = bias;
+
 	for (int i = 0; i < input_size; i++)
 	{
 		acc += DEQUANTIZE_I(inputs[i] * weights[i]);
 	}
+
 	*output = acc >> BITS; // Dequantize output by shifting right by number of bits
 }
 
@@ -65,7 +67,12 @@ void layer(
 {
 	for (int j = 0; j < output_size; j++) 
 	{
-		neuron(inputs, &weights[j * input_size], biases[j], input_size, &outputs[j]);
+		neuron(
+			inputs, 
+			&weights[j * input_size], 
+			biases[j], 
+			input_size, &outputs[j]
+		);
 	}
 }
 

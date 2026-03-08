@@ -7,15 +7,12 @@ module layer #(
 
 	parameter int INPUT_SIZE = 784,
 	parameter int OUTPUT_SIZE = 8,
-
 	parameter int IDX_WIDTH = $clog2( INPUT_SIZE )+1,
+
 	parameter logic signed [ 0:OUTPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
-		LAYER_BIASES = 'sh0,
+		LAYER_BIASES,
 	parameter logic signed [ 0:INPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
-		LAYER_WEIGHTS [ 0:OUTPUT_SIZE-1 ] =
-
-			LAYER0_WEIGHTS
-
+		LAYER_WEIGHTS [ 0:OUTPUT_SIZE-1 ]
 )
 (
 	input logic clk,
@@ -50,9 +47,9 @@ module layer #(
 		for ( n=0; n<OUTPUT_SIZE; ++n )
 		begin
 			neuron #(
-				.INPUT_SIZE( INPUT_SIZE ),
 				.DATA_WIDTH( DATA_WIDTH ),
 				.FRAC_WIDTH( FRAC_WIDTH ),
+				.INPUT_SIZE( INPUT_SIZE ),
 				.IDX_WIDTH( IDX_WIDTH ),
 				.WEIGHTS( LAYER_WEIGHTS[n] )
 			) neuron_inst (
@@ -72,6 +69,10 @@ module layer #(
 			state   <= S_ACC;
 			in_idx  <= 'h0;
 			out_idx <= 'h0;
+			/*
+			* layer handles weight sum init with biases
+			* on behalf of neurons 
+			*/
 			acc     <= LAYER_BIASES;
 		end
 		else
@@ -102,6 +103,10 @@ module layer #(
 					in_rd_en = 1'b1;
 					in_idx_c = in_idx + 1'h1;
 
+					/*
+					* Listen to neurons and update weighted sums with their
+					* new results
+					*/
 					acc_c = acc_neurons;
 
 					if ( in_idx_c == INPUT_SIZE )
@@ -120,7 +125,9 @@ module layer #(
 					out_idx_c = out_idx + 1'h1;
 					/*
 					* Put final accumulated weighted sums through activation
-					* function and send downstream sequentially
+					* function and send downstream sequentially.
+					* In this state, the live output `acc_neurons` stays out of
+					* the acc_c <-> acc path.
 					*/ 
 					dout = ReLU( acc[out_idx]>>>FRAC_WIDTH );
 

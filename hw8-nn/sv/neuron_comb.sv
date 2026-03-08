@@ -2,11 +2,15 @@
 import weights_pkg::*;
 
 module neuron #(
-	parameter int INPUT_SIZE = 10,
 	parameter int DATA_WIDTH = 32,
 	parameter int FRAC_WIDTH = 14,
+
+	parameter int INPUT_SIZE = 10,
 	parameter int IDX_WIDTH = $clog2( INPUT_SIZE )+1,
-	parameter logic signed [ 0:INPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ] WEIGHTS = 'sh0
+
+	parameter logic signed [ 0:INPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
+		WEIGHTS = LAYER1_WEIGHTS[0]
+
 )(
 	input logic signed [ DATA_WIDTH-1:0 ] acc_in,
 	input logic signed [ DATA_WIDTH-1:0 ] din,
