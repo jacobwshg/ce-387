@@ -1,10 +1,12 @@
 
+import weights_pkg::*;
+
 module neuron #(
 	parameter int INPUT_SIZE = 10,
 	parameter int DATA_WIDTH = 32,
 	parameter int FRAC_WIDTH = 14,
 	parameter int IDX_WIDTH = $clog2( INPUT_SIZE )+1,
-	parameter logic signed [ 0:INPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ] WEIGHTS
+	parameter logic signed [ 0:INPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ] WEIGHTS = 'sh0
 )(
 	input logic signed [ DATA_WIDTH-1:0 ] acc_in,
 	input logic signed [ DATA_WIDTH-1:0 ] din,
@@ -17,20 +19,20 @@ module neuron #(
 
 	function automatic logic signed [ DATA_WIDTH-1:0 ]
 	DEQUANT( input logic signed [ DATA_WIDTH-1:0 ] x );
-	/*
+		/*
 		if ( x[DATA_WIDTH-1] && ( -x < Q_STEP ) )
 		begin
 			return 'sd0;
 		end
-	*/	
+		*/	
 		logic signed [ DATA_WIDTH-1:0 ] q = ( x + ( Q_STEP>>1 ) ) >>> FRAC_WIDTH;
 		return ( q==-1 ) ? 0 : q;
 	endfunction
 
-	always_comb
-	begin
-		acc_out = acc_in + DEQUANT( din * WEIGHTS[ in_idx ] );
-	end
+	logic signed [ DATA_WIDTH-1:0 ] weight;
+
+	assign weight = WEIGHTS[ in_idx ];
+	assign acc_out = acc_in + DEQUANT( din * weight );
 
 endmodule: neuron
 

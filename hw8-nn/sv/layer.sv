@@ -1,4 +1,6 @@
 
+import weights_pkg::*;
+
 module layer #(
 	parameter int DATA_WIDTH = 32,
 	parameter int INPUT_SIZE = 10,
@@ -7,8 +9,10 @@ module layer #(
 	parameter int IDX_WIDTH = $clog2( INPUT_SIZE )+1,
 	parameter logic signed [ 0:OUTPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
 		LAYER_BIASES = 'sh0,
-	parameter logic signed [ 0:OUTPUT_SIZE-1 ] [ 0:INPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
-		LAYER_WEIGHTS = 'sh0 
+	parameter logic signed [ 0:INPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
+		LAYER_WEIGHTS [ 0:OUTPUT_SIZE-1 ] = //'sh0
+
+			LAYER0_WEIGHTS
 )
 (
 	input logic clk,
@@ -47,14 +51,8 @@ module layer #(
 				.DATA_WIDTH( DATA_WIDTH ),
 				.FRAC_WIDTH( FRAC_WIDTH ),
 				.IDX_WIDTH( IDX_WIDTH ),
-				.WEIGHTS( LAYER_WEIGHTS[ n ] )
+				.WEIGHTS( LAYER_WEIGHTS[n] )
 			) neuron_inst (
-				.clk( clk ),
-				.rst( rst ),
-
-				.in_empty( in_empty ),
-				.out_full( out_full ),
-
 				.acc_in( acc[ n ] ),
 				.din   ( din ),
 				.in_idx( in_idx ),

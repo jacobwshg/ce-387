@@ -26,9 +26,9 @@ try:
 	with open( INFILE, "r" ) as infile:
 		with open( OUTFILE, "w+" ) as outfile:
 
-			hdr = f"localparam logic signed [ 0:{OUTPUT_SIZE-1} ] [ 0:{INPUT_SIZE-1} ] [ {DW-1}:0 ]"
+			hdr = f"localparam logic signed [ 0:{INPUT_SIZE-1} ] [ {DW-1}:0 ]"
 			hdr += "\n\t"
-			hdr += f"LAYER{L}_WEIGHTS ="
+			hdr += f"LAYER{L}_WEIGHTS [ 0:{OUTPUT_SIZE-1} ] ="
 			hdr += "\n{\n"
 			outfile.write( hdr )
 
