@@ -99,6 +99,8 @@ int deep_newtwork(
 
 		in_ptr = out_ptr;
 	}
+	/* after final iteration, in_ptr == layers_out[ num_layers-1 ] */
+
 	int sel = softmax(in_ptr, layer_out_sizes[num_layers - 1], (int *)output);
 
 	for ( int l=0; l<num_layers; ++l )

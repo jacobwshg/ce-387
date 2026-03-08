@@ -4,11 +4,11 @@ module layer #(
 	parameter int INPUT_SIZE = 10,
 	parameter int FRAC_WIDTH = 14,
 	parameter int OUTPUT_SIZE = 10,
-	parameter int IDX_WIDTH = 16,
+	parameter int IDX_WIDTH = $clog2( INPUT_SIZE )+1,
 	parameter logic signed [ 0:OUTPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
-		LAYER_BIASES = { OUTPUT_SIZE{ DATA_WIDTH{ 'sh0 } } },
+		LAYER_BIASES = 'sh0,
 	parameter logic signed [ 0:OUTPUT_SIZE-1 ] [ 0:INPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
-		LAYER_WEIGHTS = { OUTPUT_SIZE{ INPUT_SIZE{ DATA_WIDTH{ 'sh0 } } } }
+		LAYER_WEIGHTS = 'sh0 
 )
 (
 	input logic clk,
@@ -55,7 +55,7 @@ module layer #(
 				.in_empty( in_empty ),
 				.out_full( out_full ),
 
-				.acc_in( acc[ n ] )
+				.acc_in( acc[ n ] ),
 				.din   ( din ),
 				.in_idx( in_idx ),
 
@@ -89,12 +89,11 @@ module layer #(
 		out_wr_en = 1'b0;
 
 		state_c   = state;
-		in_idx_c  = idx;
-		out_idx_c = idx;
+		in_idx_c  = in_idx;
+		out_idx_c = out_idx;
 		acc_c     = acc;
 
 		case ( state )
-		begin
 			S_ACC:
 			begin
 				if ( ~in_empty )
@@ -122,7 +121,7 @@ module layer #(
 					* Put final accumulated weighted sums through activation
 					* function and send downstream sequentially
 					*/ 
-					dout = ReLU( acc[out_idx] );
+					dout = ReLU( acc[out_idx]>>>FRAC_WIDTH );
 
 					if ( out_idx_c == OUTPUT_SIZE )
 					begin
@@ -143,7 +142,7 @@ module layer #(
 				out_idx_c = 'h0;
 				for ( int i=0; i<OUTPUT_SIZE; ++i )
 				begin
-					acc_c     = 'shx;
+					acc_c = 'shx;
 				end
 			end
 

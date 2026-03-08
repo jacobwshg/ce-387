@@ -3,7 +3,7 @@ module neuron #(
 	parameter int INPUT_SIZE = 10,
 	parameter int DATA_WIDTH = 32,
 	parameter int FRAC_WIDTH = 14,
-	parameter int IDX_WIDTH = 16,
+	parameter int IDX_WIDTH = $clog2( INPUT_SIZE )+1,
 	parameter logic signed [ 0:INPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ] WEIGHTS
 )(
 	input logic signed [ DATA_WIDTH-1:0 ] acc_in,
