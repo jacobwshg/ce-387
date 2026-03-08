@@ -3,16 +3,19 @@ import weights_pkg::*;
 
 module layer #(
 	parameter int DATA_WIDTH = 32,
-	parameter int INPUT_SIZE = 10,
 	parameter int FRAC_WIDTH = 14,
-	parameter int OUTPUT_SIZE = 10,
+
+	parameter int INPUT_SIZE = 784,
+	parameter int OUTPUT_SIZE = 8,
+
 	parameter int IDX_WIDTH = $clog2( INPUT_SIZE )+1,
 	parameter logic signed [ 0:OUTPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
 		LAYER_BIASES = 'sh0,
 	parameter logic signed [ 0:INPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
-		LAYER_WEIGHTS [ 0:OUTPUT_SIZE-1 ] = //'sh0
+		LAYER_WEIGHTS [ 0:OUTPUT_SIZE-1 ] =
 
 			LAYER0_WEIGHTS
+
 )
 (
 	input logic clk,
