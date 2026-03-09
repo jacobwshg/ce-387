@@ -39,16 +39,19 @@ module argmax #(
 
 	always_comb
 	begin
+		in_rd_en = 1'b0;
+
 		idx_c = idx;
 		max_c = max;
 		i_max_c = i_max;
 		done_c = done;
+
 		if ( ~in_empty )
 		begin
 
 			$display( "@ %0t argmax idx %0d", $time, idx );
 
-			in_rd_en = 1;
+			in_rd_en = 1'b1;
 			idx_c = idx + 1;
 
 			if ( din > max )
