@@ -50,7 +50,7 @@ class my_uvm_monitor_output extends uvm_monitor;
 			begin
 				if ( vif.done )
 				begin
-					tx_out.label = vif.label_out;
+					tx_out.label = vif.dout;
 					mon_ap_output.write(tx_out);
 					break;
 				end

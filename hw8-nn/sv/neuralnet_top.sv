@@ -16,14 +16,16 @@ module neuralnet_top #(
 	input logic rst,
 
 	input logic signed [ DATA_WIDTH-1:0 ] feature_in,
+	input logic in_wr_en,
 
+	output logic in_full,
 	output logic done,
 	output logic label_out
 );
 
 	logic 
-		in_l0_wr_en, in_l0_full, 
-		in_l0_rd_en, in_l0_empty;
+		in_wr_en, in_full, 
+		in_rd_en, in_empty;
 	logic
 		l0_l1_wr_en, l0_l1_full, 
 		l0_l1_rd_en, l0_l1_empty;
@@ -43,14 +45,14 @@ module neuralnet_top #(
 		.reset ( rst ),
 
 		.wr_clk( clk ),
-		.wr_en ( in_l0_wr_en ),
+		.wr_en ( in_wr_en ),
 		.din   ( feature_in ),
-		.full  ( in_l0_full ),
+		.full  ( in_full ),
 
 		.rd_clk( clk ),
-		.rd_en ( in_l0_rd_en ),
+		.rd_en ( in_rd_en ),
 		.dout  ( layer0_din ),
-		.empty ( in_l0_empty )
+		.empty ( in_empty )
 	);
 
 	layer #(
@@ -66,11 +68,11 @@ module neuralnet_top #(
 		.rst      ( rst ),
 
 		.din      ( layer0_din ),
-		.in_empty ( in_l0_empty ),
+		.in_empty ( in_empty ),
 		.out_full ( l0_l1_full ),
 
 		.dout     ( layer0_dout ),
-		.in_rd_en ( in_l0_rd_en ),
+		.in_rd_en ( in_rd_en ),
 		.out_wr_en( l0_l1_wr_en )
 	);
 

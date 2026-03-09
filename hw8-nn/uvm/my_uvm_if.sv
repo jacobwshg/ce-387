@@ -2,13 +2,16 @@
 import uvm_pkg::*;
 
 interface my_uvm_if;
+
 	logic clock;
 	logic reset;
-	logic in_full;
+
+	logic signed [ DATA_WIDTH-1:0 ] din;
 	logic in_wr_en;
-	logic signed [ DATA_WIDTH-1:0 ] in_din;
-	logic out_empty;
-	logic out_rd_en;
-	logic [ DATA_WIDTH-1:0 ] out_dout;
+
+	logic in_full;
+	logic done;
+	logic [ DATA_WIDTH-1:0 ] dout;
+
 endinterface
 
