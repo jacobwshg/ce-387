@@ -10,7 +10,7 @@
 #define QUANT_VAL       (1 << BITS)
 #define QUANTIZE_F(f)   (int)(((int)(f) * (int)QUANT_VAL))
 #define QUANTIZE_I(i)   (int)((int)(i) * (int)QUANT_VAL)
-#define DEQUANTIZE_I(i) (int)((int)(i) / (int)QUANT_VAL)
+//#define DEQUANTIZE_I(i) (int)((int)(i) / (int)QUANT_VAL)
 #define DEQUANTIZE_F(i) (int)((int)(i) / (int)QUANT_VAL)
 
 // Neural Network
@@ -20,17 +20,35 @@
 #define NUM_WEIGHTS 7840 
 #define MAX_NEURONS 10
 
+static inline int
+DEQUANTIZE_I( const int i )
+{
+	int q = ( i + ( QUANT_VAL>>1 ) ) >> BITS;
+	return ( q==-1 ) ? 0 : q;
+};
 
-void neuron(int *inputs, int *weights, int bias, int input_size, int *output) 
+void neuron(
+	const int lid, const int nid,
+	int inputs[],
+	int weights[], int bias,
+	int input_size,
+	int *output
+) 
 {
 	int acc = bias;
 
 	for (int i = 0; i < input_size; i++)
 	{
-		acc += DEQUANTIZE_I(inputs[i] * weights[i]);
+		acc += DEQUANTIZE_I( inputs[i] * weights[i] );
 	}
 
+
 	*output = acc >> BITS; // Dequantize output by shifting right by number of bits
+
+	printf(
+		"neuron (%d, %d) output pre-dequant: %08x, dequant: %08x\n", 
+		lid, nid, acc, *output
+	);
 }
 
 void relu(int *input, int size, int *output) 
@@ -62,19 +80,28 @@ int softmax(int *input, int size, int *output)
 }
 
 void layer(
-	int *inputs, int *weights, int *biases,
+	const int lid,
+	int inputs[], int weights[], int biases[],
 	int input_size, int output_size, 
-	int *outputs
+	int outputs[]
 ) 
 {
 	for (int j = 0; j < output_size; j++) 
 	{
 		neuron(
+			lid, j,
 			inputs, 
 			&weights[j * input_size], 
 			biases[j], 
-			input_size, &outputs[j]
+			input_size,
+			&outputs[j]
 		);
+	}
+
+	printf( "layer %d outputs:\n", lid );
+	for ( int j=0; j<output_size; ++j )
+	{
+		printf( "\t[%d]: %08x\n", j, outputs[j] );
 	}
 }
 
@@ -99,6 +126,7 @@ int deep_newtwork(
 		layers_out[l] = out_ptr;
 
 		layer(
+			l,
 			in_ptr, weights[l], biases[l],
 			layer_in_sizes[l], layer_out_sizes[l],
 			out_ptr
