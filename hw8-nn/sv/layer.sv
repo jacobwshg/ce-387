@@ -6,7 +6,7 @@ module layer #(
 	parameter int FRAC_WIDTH = 14,
 
 	parameter int INPUT_SIZE = 784,
-	parameter int OUTPUT_SIZE = 8,
+	parameter int OUTPUT_SIZE = 10,
 	parameter int IDX_WIDTH = $clog2( INPUT_SIZE )+1,
 
 	parameter logic signed [ 0:OUTPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]

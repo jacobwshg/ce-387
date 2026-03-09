@@ -2,7 +2,6 @@
 module argmax #(
 	parameter int DATA_WIDTH = 32,
 	parameter int INPUT_SIZE = 10,
-	parameter int IDX_WIDTH  = $clog2( INPUT_SIZE ) + 1
 )(
 	input logic clk,
 	input logic rst,
@@ -12,10 +11,10 @@ module argmax #(
 
 	output logic in_rd_en,
 	output logic done,
-	output logic [ IDX_WIDTH-1:0 ] i_max
+	output logic [ DATA_WIDTH-1:0 ] i_max
 );
 
-	logic [ IDX_WIDTH-1:0 ] idx, idx_c, i_max_c;
+	logic [ DATA_WIDTH-1:0 ] idx, idx_c, i_max_c;
 	logic [ DATA_WIDTH-1:0 ] max, max_c;
 
 	logic done_c;

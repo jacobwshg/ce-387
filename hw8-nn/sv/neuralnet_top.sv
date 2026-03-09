@@ -39,7 +39,7 @@ module neuralnet_top #(
 	fifo #(
 		.FIFO_DATA_WIDTH( DATA_WIDTH ),
 		.FIFO_BUFFER_SIZE( FIFO_DEPTH )
-	) in_l0_fifo_inst (
+	) fifo_in_l0_inst (
 		.reset ( rst ),
 
 		.wr_clk( clk ),
@@ -77,7 +77,7 @@ module neuralnet_top #(
 	fifo #(
 		.FIFO_DATA_WIDTH( DATA_WIDTH ),
 		.FIFO_BUFFER_SIZE( FIFO_DEPTH )
-	) layer01_fifo_inst (
+	) fifo_l0_l1_inst (
 		.reset ( rst ),
 
 		.wr_clk( clk ),
@@ -116,7 +116,7 @@ module neuralnet_top #(
 	fifo #(
 		.FIFO_DATA_WIDTH( DATA_WIDTH ),
 		.FIFO_BUFFER_SIZE( FIFO_DEPTH )
-	) l1_amax_fifo_inst (
+	) fifo_l1_amax_inst (
 		.reset ( rst ),
 
 		.wr_clk( clk ),
@@ -133,7 +133,6 @@ module neuralnet_top #(
 	argmax #(
 		.DATA_WIDTH( DATA_WIDTH ),
 		.INPUT_SIZE( LAYER_SIZES[ LAYER_CNT-1 ] ),
-		.IDX_WIDTH( $clog2( INPUT_SIZE )+1 )
 	) argmax_inst (
 		.clk( clk ),
 		.rst( rst ),
