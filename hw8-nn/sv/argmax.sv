@@ -45,6 +45,9 @@ module argmax #(
 		done_c = done;
 		if ( ~in_empty )
 		begin
+
+			$display( "@ %0t argmax idx %0d", $time, idx );
+
 			in_rd_en = 1;
 			idx_c = idx + 1;
 
@@ -54,7 +57,7 @@ module argmax #(
 				i_max_c = idx;
 			end
 
-			done_c = 1'( idx_c == INPUT_SIZE );
+			done_c = ( idx_c == INPUT_SIZE ) ? 1'b1 : 1'b0;
 		end
 	end
 

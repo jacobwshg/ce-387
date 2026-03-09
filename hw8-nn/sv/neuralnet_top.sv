@@ -6,7 +6,7 @@ module neuralnet_top #(
 	parameter int DATA_WIDTH = 32,
 	parameter int FRAC_WIDTH = 14,
 
-	parameter int INPUT_SIZE = 784,
+	parameter int FEATURE_CNT = 784,
 	parameter int LAYER_CNT = 2,
 	parameter int LAYER_SIZES [ 0:LAYER_CNT-1 ] = { 10, 10 },
 
@@ -55,11 +55,15 @@ module neuralnet_top #(
 	);
 
 	layer #(
+		.ID( 0 ),
+
 		.DATA_WIDTH( DATA_WIDTH ),
 		.FRAC_WIDTH( FRAC_WIDTH ),
-		.INPUT_SIZE( INPUT_SIZE ),
+
+		.INPUT_SIZE( FEATURE_CNT ),
 		.OUTPUT_SIZE( LAYER_SIZES[0] ),
-		.IDX_WIDTH( $clog2( INPUT_SIZE )+1 ),
+		.IDX_WIDTH( $clog2( FEATURE_CNT )+1 ),
+
 		.LAYER_BIASES( LAYER0_BIASES ),
 		.LAYER_WEIGHTS( LAYER0_WEIGHTS )
 	) layer0_inst (
@@ -94,11 +98,15 @@ module neuralnet_top #(
 
 /*********/
 	layer #(
+		.ID( 1 ),
+
 		.DATA_WIDTH( DATA_WIDTH ),
 		.FRAC_WIDTH( FRAC_WIDTH ),
-		.INPUT_SIZE( INPUT_SIZE ),
-		.OUTPUT_SIZE( LAYER_SIZES[0] ),
-		.IDX_WIDTH( $clog2( INPUT_SIZE )+1 ),
+
+		.INPUT_SIZE( LAYER_SIZES[ 0 ] ),
+		.OUTPUT_SIZE( LAYER_SIZES[ 1 ] ),
+		.IDX_WIDTH( $clog2( LAYER_SIZES[ 0 ] )+1 ),
+
 		.LAYER_BIASES( LAYER1_BIASES ),
 		.LAYER_WEIGHTS( LAYER1_WEIGHTS )
 	) layer1_inst (
@@ -135,8 +143,8 @@ module neuralnet_top #(
 		.DATA_WIDTH( DATA_WIDTH ),
 		.INPUT_SIZE( LAYER_SIZES[ LAYER_CNT-1 ] )
 	) argmax_inst (
-		.clk( clk ),
-		.rst( rst ),
+		.clk     ( clk ),
+		.rst     ( rst ),
 		.in_empty( l1_amax_empty ),
 		.din     ( argmax_din ),
 		.in_rd_en( l1_amax_rd_en ),

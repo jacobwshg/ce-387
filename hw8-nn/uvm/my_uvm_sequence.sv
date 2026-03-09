@@ -39,15 +39,18 @@ class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 			`uvm_fatal( "SEQ_RUN", $sformatf( "Failed to open infile %s...", INFILE ) );
 		end
 
-		for ( i=0; ( !$feof(infile) ) && ( i < INPUT_SIZE ); ++i )
+		for ( i=0; ( !$feof(infile) ) && ( i < FEATURE_CNT ); ++i )
 		begin
 			tx_in = my_uvm_transaction::type_id::create(
 				.name("tx_in"), .contxt( get_full_name() )
 			);
 			start_item( tx_in );
 
+
 			n_bytes = $fscanf( infile, "%08h", feature );
 			tx_in.feature = feature;
+
+			$display( "seqr sending feature %0d = %08h", i, feature );
 
 			//`uvm_info("SEQ_RUN", tx_in.sprint(), UVM_LOW);
 			finish_item( tx_in );

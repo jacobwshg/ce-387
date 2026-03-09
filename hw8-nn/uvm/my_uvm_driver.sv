@@ -47,9 +47,12 @@ class my_uvm_driver extends uvm_driver#( my_uvm_transaction );
 					seq_item_port.get_next_item( tx );
 					vif.din = tx.feature;
 					vif.in_wr_en = 1'b1;
+
+					$display( "drvr sending feature %08h", tx.feature );
+
 					seq_item_port.item_done();
 				end
-				else	
+				else
 				begin
 					vif.in_wr_en = 1'b0;
 					vif.din = 'sh0;

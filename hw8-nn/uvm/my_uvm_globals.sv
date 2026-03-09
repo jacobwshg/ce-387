@@ -9,7 +9,7 @@ localparam string CMPFILE = "../sim/y_test.txt";
 localparam int DATA_WIDTH = 32;
 localparam int FRAC_WIDTH = 14;
 
-localparam int INPUT_SIZE = 784;
+localparam int FEATURE_CNT = 784;
 localparam int LAYER_CNT = 2;
 localparam int LAYER_SIZES [ 0:LAYER_CNT-1 ] = { 10, 10 };
 

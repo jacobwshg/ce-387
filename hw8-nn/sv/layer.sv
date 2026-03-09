@@ -2,10 +2,12 @@
 import weights_pkg::*;
 
 module layer #(
+	parameter int ID,
+
 	parameter int DATA_WIDTH = 32,
 	parameter int FRAC_WIDTH = 14,
 
-	parameter int INPUT_SIZE = 784,
+	parameter int INPUT_SIZE = 10,
 	parameter int OUTPUT_SIZE = 10,
 	parameter int IDX_WIDTH = $clog2( INPUT_SIZE )+1,
 
@@ -100,6 +102,9 @@ module layer #(
 			begin
 				if ( ~in_empty )
 				begin
+
+					$display( "@ %0t layer %0d input %0d = %08h", $time, ID, in_idx, din );
+
 					in_rd_en = 1'b1;
 					in_idx_c = in_idx + 1'h1;
 
@@ -111,6 +116,9 @@ module layer #(
 
 					if ( in_idx_c == INPUT_SIZE )
 					begin
+
+					$display( "@ %0t layer %0d moving to S_OUT", $time, ID );
+
 						state_c = S_OUT;
 						in_idx_c = 'h0;
 					end
@@ -121,6 +129,7 @@ module layer #(
 			begin
 				if ( ~out_full )
 				begin
+
 					out_wr_en = 1'b1;
 					out_idx_c = out_idx + 1'h1;
 					/*
@@ -131,8 +140,17 @@ module layer #(
 					*/ 
 					dout = ReLU( acc[out_idx]>>>FRAC_WIDTH );
 
+					$display( "@ %0t layer %0d output %0d = %08h", $time, ID, out_idx, dout );
+
 					if ( out_idx_c == OUTPUT_SIZE )
 					begin
+
+					$display( "@ %0t layer %0d moving to S_ACC", $time, ID );
+					foreach ( acc[i] )
+					begin
+						$display( "\t\tacc[%0d]: %08h", i, acc[i] );
+					end
+
 						state_c = S_ACC;
 						out_idx_c = 'h0;
 						acc_c = LAYER_BIASES;
