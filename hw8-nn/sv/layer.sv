@@ -102,8 +102,10 @@ module layer #(
 			begin
 				if ( ~in_empty )
 				begin
-
-					$display( "@ %0t layer %0d input %0d = %08h", $time, ID, in_idx, din );
+					if ( ID > 0 )
+					begin
+						$display( "@ %0t layer %0d input %0d = %08h", $time, ID, in_idx, din );
+					end
 
 					in_rd_en = 1'b1;
 					in_idx_c = in_idx + 1'h1;
@@ -138,9 +140,12 @@ module layer #(
 					* In this state, the live output `acc_neurons` stays out of
 					* the acc_c <-> acc path.
 					*/ 
-					dout = ReLU( acc[out_idx]>>>FRAC_WIDTH );
+					dout = ReLU( $signed(acc[out_idx])>>>FRAC_WIDTH );
 
-					$display( "@ %0t layer %0d output %0d = %08h", $time, ID, out_idx, dout );
+					$display(
+						"@ %0t layer %0d raw output %0d = %08h, dequant = %08h, relu = %08h",
+						$time, ID, out_idx, acc[out_idx], $signed(acc[out_idx])>>>FRAC_WIDTH, dout
+					);
 
 					if ( out_idx_c == OUTPUT_SIZE )
 					begin

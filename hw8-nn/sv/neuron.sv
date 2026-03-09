@@ -28,7 +28,7 @@ module neuron #(
 		begin
 			return 'sd0;
 		end
-		return ( x + ( Q_STEP>>1 ) ) >>> FRAC_WIDTH;
+		return $signed( x + ( Q_STEP>>1 ) ) >>> FRAC_WIDTH;
 	endfunction
 
 	typedef enum logic [ 1:0 ] { S_ACC, S_OUT } state_t;

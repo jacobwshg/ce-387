@@ -49,7 +49,7 @@ module argmax #(
 		if ( ~in_empty )
 		begin
 
-			$display( "@ %0t argmax idx %0d", $time, idx );
+			//$display( "@ %0t argmax idx %0d", $time, idx );
 
 			in_rd_en = 1'b1;
 			idx_c = idx + 1;

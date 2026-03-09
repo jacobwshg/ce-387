@@ -51,11 +51,25 @@ void neuron(
 	);
 }
 
-void relu(int *input, int size, int *output) 
+void relu(
+	const int lid,
+	int *input, int size, int *output
+) 
 {
+	printf( "layer %d relu\n", lid );
+	for ( int i=0; i<size; ++i )
+	{
+		printf( "\tinput %d: %08x\n", i, input[i] );
+	}
+
 	for (int i = 0; i < size; i++) 
 	{
 		output[i] = input[i] > 0 ? input[i] : 0;
+	}
+
+	for ( int i=0; i<size; ++i )
+	{
+		printf( "\toutput %d: %08x\n", i, output[i] );
 	}
 }
 
@@ -86,6 +100,16 @@ void layer(
 	int outputs[]
 ) 
 {
+
+	if ( lid > 0 )
+	{
+		printf( "layer %d inputs:\n", lid );
+		for ( int i=0; i<input_size; ++i )
+		{
+			printf( "\t[%d]: %08x\n", i, inputs[ i ] );
+		}
+	}
+
 	for (int j = 0; j < output_size; j++) 
 	{
 		neuron(
@@ -132,7 +156,10 @@ int deep_newtwork(
 			out_ptr
 		);
 
-		relu(out_ptr, layer_out_sizes[l], out_ptr);
+		relu(
+			l,
+			out_ptr, layer_out_sizes[l], out_ptr
+		);
 
 		in_ptr = out_ptr;
 	}

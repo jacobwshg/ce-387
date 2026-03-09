@@ -29,7 +29,7 @@ module neuron #(
 			return 'sd0;
 		end
 		*/	
-		logic signed [ DATA_WIDTH-1:0 ] q = ( x + ( Q_STEP>>1 ) ) >>> FRAC_WIDTH;
+		logic signed [ DATA_WIDTH-1:0 ] q = $signed( x + ( Q_STEP>>1 ) ) >>> FRAC_WIDTH;
 		return ( q==-1 ) ? 0 : q;
 	endfunction
 

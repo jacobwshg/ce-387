@@ -50,7 +50,7 @@ class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 			n_bytes = $fscanf( infile, "%08h", feature );
 			tx_in.feature = feature;
 
-			$display( "seqr sending feature %0d = %08h", i, feature );
+			//$display( "seqr sending feature %0d = %08h", i, feature );
 
 			//`uvm_info("SEQ_RUN", tx_in.sprint(), UVM_LOW);
 			finish_item( tx_in );

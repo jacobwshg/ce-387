@@ -49,7 +49,7 @@ class my_uvm_driver extends uvm_driver#( my_uvm_transaction );
 					vif.in_wr_en = 1'b1;
 					++i;
 
-					$display( "drvr sending feature %08h", tx.feature );
+					//$display( "drvr sending feature %08h", tx.feature );
 
 					seq_item_port.item_done();
 				end
