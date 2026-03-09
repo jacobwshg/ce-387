@@ -38,7 +38,7 @@ class my_uvm_driver extends uvm_driver#( my_uvm_transaction );
 		vif.din = 'sh0;
 		vif.in_wr_en = 1'b0;
 
-		forever
+		for ( int i=0; i<FEATURE_CNT; )
 		begin
 			@ ( negedge vif.clock ) 
 			begin				
@@ -47,6 +47,7 @@ class my_uvm_driver extends uvm_driver#( my_uvm_transaction );
 					seq_item_port.get_next_item( tx );
 					vif.din = tx.feature;
 					vif.in_wr_en = 1'b1;
+					++i;
 
 					$display( "drvr sending feature %08h", tx.feature );
 
@@ -59,6 +60,10 @@ class my_uvm_driver extends uvm_driver#( my_uvm_transaction );
 				end
 			end
 		end
+
+		@ ( negedge vif.clock )
+		vif.in_wr_en = 1'b0;
+
 	endtask: drive
 
 endclass
