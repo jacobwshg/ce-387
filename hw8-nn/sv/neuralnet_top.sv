@@ -8,7 +8,7 @@ module neuralnet_top #(
 
 	parameter int FEATURE_CNT = 784,
 	parameter int LAYER_CNT = 2,
-	parameter int LAYER_SIZES [ 0:LAYER_CNT-1 ] = { 10, 10 },
+	parameter int LAYER_SIZES [ 0:LAYER_CNT-1 ] = { 8, 8 },
 
 	parameter int FIFO_DEPTH = 16
 )(

@@ -118,9 +118,6 @@ module layer #(
 
 					if ( in_idx_c == INPUT_SIZE )
 					begin
-
-					$display( "@ %0t layer %0d moving to S_OUT", $time, ID );
-
 						state_c = S_OUT;
 						in_idx_c = 'h0;
 					end
@@ -150,7 +147,7 @@ module layer #(
 					if ( out_idx_c == OUTPUT_SIZE )
 					begin
 
-					$display( "@ %0t layer %0d moving to S_ACC", $time, ID );
+					$display( "@ %0t layer %0d moving to S_ACC, final outputs:", $time, ID );
 					foreach ( acc[i] )
 					begin
 						$display( "\t\tacc[%0d]: %08h", i, acc[i] );
