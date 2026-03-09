@@ -3,19 +3,15 @@ setenv LMC_TIMEUNIT -9
 vlib work
 vmap work work
 
-# grayscale architecture
+# biases and weights
 vlog -work work "../sv/biases_pkg.sv"
 vlog -work work "../sv/weights_pkg.sv"
-
+# architecture
 vlog -work work "../sv/neuron_comb.sv"
 vlog -work work "../sv/layer.sv"
 vlog -work work "../sv/argmax.sv"
 vlog -work work "../sv/fifo.sv"
 vlog -work work "../sv/neuralnet_top.sv"
-
-vlog -work work "../sv/grayscale.sv"
-vlog -work work "../sv/grayscale_top.sv"
-#vlog -work work "../sv/grayscale_tb.sv"
 
 # uvm library
 vlog -work work +incdir+$env(UVM_HOME)/src $env(UVM_HOME)/src/uvm.sv

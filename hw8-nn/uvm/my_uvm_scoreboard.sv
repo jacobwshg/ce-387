@@ -51,8 +51,7 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 
 	virtual function void
 	comparison();
-
-		msg = $sformatf(
+		string msg = $sformatf(
 			"\tHardware predicted label: %0d\n\tReference label: %0d\n",
 			tx_out.label, tx_cmp.label
 		);

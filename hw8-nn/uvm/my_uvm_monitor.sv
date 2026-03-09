@@ -41,8 +41,6 @@ class my_uvm_monitor_output extends uvm_monitor;
 			.name( "tx_out" ), .contxt( get_full_name() )
 		);
 
-		vif.out_rd_en = 1'b0;
-
 		/* wait for classification result from DUT and submit */
 		forever
 		begin

@@ -1,8 +1,8 @@
 
 package biases_pkg;
 
-localparam logic signed [ 31:0 ] 
-	LAYER0_BIASES [ 0:9 ] =
+localparam logic signed [ 0:9 ] [ 31:0 ] 
+	LAYER0_BIASES =
 
 {
 	32'shFFFFDE52,
@@ -17,8 +17,8 @@ localparam logic signed [ 31:0 ]
 	32'sh000017CC
 };
 
-localparam logic signed [ 31:0 ]
-	LAYER1_BIASES [ 0:9 ] = 
+localparam logic signed [ 0:9 ] [ 31:0 ]
+	LAYER1_BIASES = 
 {
 	32'sh0000006A,
 	32'sh000022CB,

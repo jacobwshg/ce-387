@@ -3,6 +3,8 @@
 #include <math.h>
 #include <assert.h>
 
+#include <string.h>
+
 // quantization
 #define BITS            14
 #define QUANT_VAL       (1 << BITS)
@@ -55,7 +57,7 @@ int softmax(int *input, int size, int *output)
 			index = i;
 		}
 	}
-	*output =  max_val;
+	//*output =  max_val;
 	return index;
 }
 
@@ -87,7 +89,7 @@ int deep_newtwork(
 {
 	int *in_ptr = inputs;
 
-	int *layers_out [layer_out_sizes];
+	int *layers_out [ num_layers ];
 	memset( layers_out, 0, sizeof layers_out );
 
 	for ( int l = 0; l < num_layers; ++l ) 
@@ -99,7 +101,7 @@ int deep_newtwork(
 		layer(
 			in_ptr, weights[l], biases[l],
 			layer_in_sizes[l], layer_out_sizes[l],
-			out_ptr;
+			out_ptr
 		);
 
 		relu(out_ptr, layer_out_sizes[l], out_ptr);

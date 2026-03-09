@@ -20,11 +20,10 @@ module neuralnet_top #(
 
 	output logic in_full,
 	output logic done,
-	output logic label_out
+	output logic [ DATA_WIDTH-1:0 ] label_out
 );
 
 	logic 
-		in_wr_en, in_full, 
 		in_rd_en, in_empty;
 	logic
 		l0_l1_wr_en, l0_l1_full, 
@@ -134,7 +133,7 @@ module neuralnet_top #(
 
 	argmax #(
 		.DATA_WIDTH( DATA_WIDTH ),
-		.INPUT_SIZE( LAYER_SIZES[ LAYER_CNT-1 ] ),
+		.INPUT_SIZE( LAYER_SIZES[ LAYER_CNT-1 ] )
 	) argmax_inst (
 		.clk( clk ),
 		.rst( rst ),

@@ -1,7 +1,7 @@
 
 module argmax #(
 	parameter int DATA_WIDTH = 32,
-	parameter int INPUT_SIZE = 10,
+	parameter int INPUT_SIZE = 10
 )(
 	input logic clk,
 	input logic rst,

@@ -6,9 +6,6 @@
 add wave -noupdate -group my_uvm_tb/nn_top_inst
 add wave -noupdate -group my_uvm_tb/nn_top_inst -radix hexadecimal /my_uvm_tb/nn_top_inst/*
 
-add wave -noupdate -group my_uvm_tb/nn_top_inst/nn_top_inst
-add wave -noupdate -group my_uvm_tb/nn_top_inst/nn_top_inst -radix hexadecimal /my_uvm_tb/nn_top_inst/nn_top_inst/*
-
 add wave -noupdate -group my_uvm_tb/nn_top_inst/fifo_in_l0_inst
 add wave -noupdate -group my_uvm_tb/nn_top_inst/fifo_in_l0_inst -radix hexadecimal /my_uvm_tb/nn_top_inst/fifo_in_l0_inst/*
 

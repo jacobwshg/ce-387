@@ -33,7 +33,7 @@ class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 
 		`uvm_info( "SEQ_RUN", $sformatf( "Loading infile %s...", INFILE ), UVM_LOW );
 
-		infile = $fopen( INFLE, "rb" );
+		infile = $fopen( INFILE, "rb" );
 		if ( !infile )
 		begin
 			`uvm_fatal( "SEQ_RUN", $sformatf( "Failed to open infile %s...", INFILE ) );
@@ -53,7 +53,7 @@ class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 			finish_item( tx_in );
 		end
 
-		`uvm_info("SEQ_RUN", $sformatf( "Closing infile %s...", IMG_IN_NAME), UVM_LOW );
+		`uvm_info( "SEQ_RUN", $sformatf( "Closing infile %s...", INFILE ), UVM_LOW );
 		$fclose( infile );
 	endtask: body
 endclass: my_uvm_sequence
