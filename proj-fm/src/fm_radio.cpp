@@ -148,6 +148,12 @@ void iir_n( int *x_in, const int n_samples, const int *x_coeffs, const int *y_co
 	int j = 0;
 
 	int n_elements = n_samples / decimation;
+
+	/*
+	 * iir() is initially invoked at i==0. internally, this call computes y 
+	 * based on x_in[ 0:decimation-1 ].
+	 */
+
 	for ( ; i < n_elements; i++, j+=decimation )
 	{
 		iir( &x_in[j], x_coeffs, y_coeffs, x, y, taps, decimation, &y_out[i] );
@@ -174,11 +180,25 @@ iir(
 	int j = 0;
 	
 	// shift x 
+
+	/*
+ 	 * x( taps-1       downto decimation ) =    x( taps-1-decimation downto 0 )
+	 * x( decimation-1 downto 0 )          = x_in( 0 to decimation-1 )
+	 * 
+	 * These loops represent the result of a batch of `decimation` shifts.
+	 * Although x_in[ 0 to decimation-1 ] is reversed in SW,
+	 * this is the natural HW shiftin order:
+	 * The earlist value shifted in ends fartherst inside.
+	 *
+	 * A total of `decimation` x values are shifted in
+	 * before the y math produces a valid dot product based on
+	 * current buffered values. 
+	 */
+
 	for ( j = taps-1; j > decimation-1; --j ) 
 	{
 		x[j] = x[j-decimation];
 	}
-
 	for ( i = 0; i < decimation; ++i )
 	{
 		x[decimation-i-1] = x_in[i];
@@ -198,7 +218,7 @@ iir(
 	}
 
 	y[0] = y1 + y2;
-		
+
 	*y_out = y[taps-1];
 }
 
