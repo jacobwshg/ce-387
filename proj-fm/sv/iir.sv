@@ -1,10 +1,13 @@
 
+import globals_pkg::*;
+import quant_pkg::*;
+
 module iir #(
 	parameter int DWIDTH = 32,
 	parameter int TAPS = 32,
 	parameter int DECIM = 8,
 	parameter logic signed [ DWIDTH-1:0 ] X_COEFS [ 0:TAPS-1 ],
-	parameter logic signed [ DWIDTH-1:0 ] Y_COEFS [ 0:TAPS-1 ],
+	parameter logic signed [ DWIDTH-1:0 ] Y_COEFS [ 0:TAPS-1 ]
 )(
 	input logic clk,
 	input logic rst,
@@ -18,13 +21,15 @@ module iir #(
 	output logic y_out_wr_en
 );
 
+	/* shiftreg buffers */
 	logic signed [ DWIDTH-1:0 ] x_sh [ 0:TAPS-1 ];
 	logic signed [ DWIDTH-1:0 ] y_sh [ 0:TAPS-1 ];
 
 	logic signed [ DWIDTH-1:0 ] y1, y2, y_c;
 
+	/* idx in decimation batch */
 	logic [ $clog2(DECIM):0 ] dec_idx, dec_idx_c;
-	/* whether we shifted in a full batch of `decimation` inputs */
+	/* Whether we have shifted in a full batch of DECIM inputs */
 	logic full_dec;
 	logic x_sh_en, y_sh_en;
 
@@ -38,8 +43,8 @@ module iir #(
 		y2 = 'sh0;
 		for ( int i=0; i<TAPS; ++i )
 		begin
-			y1 += DEQUANT( X_COEFS[ i ] * x[ i ] );
-			y2 += DEQUANT( Y_COEFS[ i ] * y[ i ] );
+			y1 += DEQUANT( X_COEFS[ i ] * x_sh[ i ] );
+			y2 += DEQUANT( Y_COEFS[ i ] * y_sh[ i ] );
 		end
 		y_c = y1 + y2;
 
@@ -82,7 +87,7 @@ module iir #(
 
 			/*
 			 * During cycles where registered decimation idx reaches DECIM,
-			 * the previous group of cycles shifted in precisely `decimation` values
+			 * the previous group of cycles shifted in precisely DECIM values
 			 * and allows the current cycle's combinatorial math to compute
 			 * a valid y output.
 			 */
