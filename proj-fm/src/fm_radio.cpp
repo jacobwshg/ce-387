@@ -160,10 +160,6 @@ void iir_n( int *x_in, const int n_samples, const int *x_coeffs, const int *y_co
 	}
 }
 
-/*
- * x_in: stream of values
- * x, y: shift reg
- */
 void
 iir(
 	int *x_in,
