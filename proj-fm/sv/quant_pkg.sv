@@ -14,11 +14,18 @@ package quant_pkg;
 	function automatic logic signed [ DWIDTH-1:0 ]
 	DEQUANT( input logic signed [ DWIDTH-1:0 ] x );
 
-		if ( x[ DWIDTH-1 ] && ( -x < Q_STEP ) )
+		logic signed [ DWIDTH-1:0 ] dq = $signed( x ) >>> FRAC_WIDTH;
+		// add 1 if x both is negative and has 1
+		// in the fractional bits
+		if (
+			x[ DWIDTH-1 ]
+			&& ( | x[ FRAC_WIDTH-1:0 ] )
+		)
 		begin
-			return 'sd0;
+			++dq;
 		end
-		return $signed( x + ( Q_STEP>>1 ) ) >>> FRAC_WIDTH;
+
+		return dq;
 
 	endfunction
 

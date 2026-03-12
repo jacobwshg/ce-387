@@ -100,11 +100,11 @@ module fir #(
 					//   MUL_STEP = TAPS/MUL_CNT = 8
 					// Multiplier 1:
 					//   cycle 0: x[1*8=8]*coefs[8+6-1=13]
-					//   cycle 1: + x[8]    *coefs[12]
-					//   cycle 2: + x[8]    *coefs[11]
-					//   cycle 3: + x[8]    *coefs[10]
-					//   cycle 4: + x[8]    *coefs[9]
-					//   cycle 5: + x[8]    *coefs[8]
+					//   cycle 1: + x[8]  *coefs[12]
+					//   cycle 2: + x[8]  *coefs[11]
+					//   cycle 3: + x[8]  *coefs[10]
+					//   cycle 4: + x[8]  *coefs[9]
+					//   cycle 5: + x[8]  *coefs[8]
 					// By now, this actually comes out as 
 					//     x[13]*coefs[13] + ... + x[0]*coefs[0]
 					//   because earlier-arriving values are shifted in.
@@ -152,8 +152,8 @@ module fir #(
 			S_STALL:
 			begin
 				// Continuing example above:
-				// cycle 6: x[8+6=14]*coefs[14]
-				// cycle 7: x[15]    *coefs[15]
+				// cycle 6: + x[8+6=14]*coefs[14]
+				// cycle 7: + x[15]    *coefs[15]
 				// 
 				for ( int m=0; m<MUL_CNT; ++m )
 				begin
