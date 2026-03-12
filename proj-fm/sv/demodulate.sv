@@ -1,90 +1,185 @@
-import globals_pkg::*;
-import quant_pkg::*;
+`timescale 1ns/1ps
 
-module demodulate #(
-	parameter int DWIDTH = 32,
-	parameter int GAIN = 10
-)(
-	input logic clk,
-	input logic rst,
+module demodulate (
+    input  logic               clk,
+    input  logic               rst_n,
 
-	input logic signed [ DWIDTH-1:0 ] x_real_in,
-	input logic signed [ DWIDTH-1:0 ] x_imag_in,
-	input logic x_in_empty,
-	input logic y_out_full,
+    input  logic               in_empty,
+    output logic               in_rd_en,
+    input  logic signed [31:0] real_in,
+    input  logic signed [31:0] imag_in,
+    input  logic signed [31:0] gain,
 
-	output logic signed [ DWIDTH-1:0 ] y_out,
-	output logic x_in_rd_en,
-	output logic y_out_wr_en
+    input  logic               out_full,
+    output logic               out_wr_en,
+    output logic signed [31:0] demod_out
 );
 
-	logic signed [ DWIDTH-1:0 ] real_prev, real_prev_c;
-	logic signed [ DWIDTH-1:0 ] imag_prev, imag_prev_c;
+    import globals_pkg::*;
+    import quant_pkg::*;
 
-	logic signed [ DWIDTH-1:0 ] r, i;
-	logic signed [ DWIDTH-1:0 ] abs_y;
-	logic signed [ DWIDTH-1:0 ] num, den, div_r, angle;
-	
-	logic active;
+    parameter logic signed [31:0] QUAD1 = 32'h0000_0324;
+    parameter logic signed [31:0] QUAD3 = 32'h0000_096C;
 
-	localparam logic signed [ DWIDTH-1:0 ] QUAD1 = 32'd804;
-	localparam logic signed [ DWIDTH-1:0 ] QUAD3 = 32'd2412;
+    typedef enum logic [3:0] {
+        S0, S1, S2, S3, S4, S5, S6, S7, S8
+    } state_t;
 
-	always_comb
-	begin
-		x_in_rd_en = 1'b0;
-		y_out_wr_en = 1'b0;
-		y_out = 'sh0;
+    state_t state;
 
-		real_prev_c = real_prev;
-		imag_prev_c = imag_prev;
+    logic signed [31:0] real_prev, imag_prev;
+    logic signed [31:0] real_latch, imag_latch;
+    logic signed [31:0] r_mult1, r_mult2, i_mult1, i_mult2;
+    logic signed [31:0] r, i;
+    logic signed [31:0] dividend, divisor;
+    logic               x_is_pos, y_is_neg;
+    logic signed [31:0] latched_gain;
 
-		active = ~x_in_empty & ~y_out_full;
+    logic [31:0] a, b, q;
+    logic               sign;
+    logic signed [31:0] quotient;
 
-		r = DEQUANT( ( real_prev * x_real_in ) + ( imag_prev * x_imag_in ) );
-		i = DEQUANT( ( real_prev * x_imag_in ) - ( imag_prev * x_real_in ) );
+    function automatic logic [31:0] get_msb_pos(input logic [31:0] val);
+        for (int k = 31; k >= 0; k--) begin
+            if (val[k]) return k;
+        end
+        return 0;
+    endfunction
 
-		abs_y = ( i < 0 ) ? -i + 1'h1 : i + 1'h1;
+    assign in_rd_en = (state == S0) && !in_empty && !out_full;
 
-		if ( r >= 0 )
-		begin
-			num = QUANT( r - abs_y );
-			den = r + abs_y;
-			div_r = num / den;
-			angle = QUAD1 - DEQUANT( QUAD1 * div_r );
-		end
-		else
-		begin
-			num = QUANT( r + abs_y );
-			den = abs_y - r;
-			div_r = num / den;
-			angle = QUAD3 - DEQUANT( QUAD1 * div_r );
-		end
+    always_ff @(posedge clk or negedge rst_n) begin
+        logic signed [31:0] abs_y_tmp;
+        logic [31:0] p_tmp;
+        logic signed [31:0] quad1_mult_tmp;
+        logic signed [31:0] angle_val_tmp;
 
-		angle = ( i < 0 ) ? -angle : angle;
+        if (!rst_n) begin
+            state        <= S0;
+            out_wr_en    <= 1'b0;
+            demod_out    <= '0;
 
-		if ( active )
-		begin
-			x_in_rd_en = 1'b1;
-			y_out_wr_en = 1'b1;
-			y_out = DEQUANT( GAIN * angle );
-			real_prev_c = x_real_in;
-			imag_prev_c = x_imag_in;
-		end
-	end
+            real_prev    <= '0;
+            imag_prev    <= '0;
+            real_latch   <= '0;
+            imag_latch   <= '0;
 
-	always_ff @ ( posedge clk, posedge rst )
-	begin
-		if ( rst )
-		begin
-			real_prev <= 'sh0;
-			imag_prev <= 'sh0;
-		end
-		else
-		begin
-			real_prev <= real_prev_c;
-			imag_prev <= imag_prev_c;
-		end
-	end
+            r_mult1      <= '0;
+            r_mult2      <= '0;
+            i_mult1      <= '0;
+            i_mult2      <= '0;
 
-endmodule: demodulate
+            r            <= '0;
+            i            <= '0;
+            dividend     <= '0;
+            divisor      <= '0;
+            x_is_pos     <= 1'b0;
+            y_is_neg     <= 1'b0;
+            latched_gain <= '0;
+
+            a            <= '0;
+            b            <= '0;
+            q            <= '0;
+            sign         <= 1'b0;
+            quotient     <= '0;
+        end else begin
+            out_wr_en <= 1'b0;
+
+            case (state)
+                S0: begin
+                    if (in_rd_en) begin
+                        latched_gain <= gain;
+                        real_latch   <= real_in;
+                        imag_latch   <= imag_in;
+                        state        <= S1;
+                    end
+                end
+
+                S1: begin
+                    r_mult1 <= real_prev * real_latch;
+                    r_mult2 <= (-imag_prev) * imag_latch;
+                    i_mult1 <= real_prev * imag_latch;
+                    i_mult2 <= (-imag_prev) * real_latch;
+
+                    real_prev <= real_latch;
+                    imag_prev <= imag_latch;
+
+                    state <= S2;
+                end
+
+                S2: begin
+                    r     <= DEQUANT(r_mult1) - DEQUANT(r_mult2);
+                    i     <= DEQUANT(i_mult1) + DEQUANT(i_mult2);
+                    state <= S3;
+                end
+
+                S3: begin
+                    abs_y_tmp = (i < 0) ? -i : i;
+                    abs_y_tmp = abs_y_tmp + 1;
+
+                    y_is_neg <= (i < 0);
+                    x_is_pos <= (r >= 0);
+
+                    if (r >= 0) begin
+                        dividend <= (r - abs_y_tmp) <<< FRAC_WIDTH;
+                        divisor  <= r + abs_y_tmp;
+                    end else begin
+                        dividend <= (r + abs_y_tmp) <<< FRAC_WIDTH;
+                        divisor  <= abs_y_tmp - r;
+                    end
+                    state <= S4;
+                end
+
+                S4: begin
+                    a     <= dividend[31] ? -dividend : dividend;
+                    b     <= divisor[31]  ? -divisor  : divisor;
+                    q     <= '0;
+                    sign  <= dividend[31] ^ divisor[31];
+                    state <= S5;
+                end
+
+                S5: begin
+                    if (b == 1) begin
+                        q     <= a;
+                        state <= S7;
+                    end else if (b == 0) begin
+                        q     <= '0;
+                        state <= S7;
+                    end else begin
+                        state <= S6;
+                    end
+                end
+
+                S6: begin
+                    if ((b != 0) && (b <= a)) begin
+                        p_tmp = get_msb_pos(a) - get_msb_pos(b);
+                        if ((b << p_tmp) > a)
+                            p_tmp = p_tmp - 1;
+
+                        q <= q + (32'd1 << p_tmp);
+                        a <= a - (b << p_tmp);
+                    end else begin
+                        state <= S7;
+                    end
+                end
+
+                S7: begin
+                    quotient <= sign ? -$signed(q) : $signed(q);
+                    state    <= S8;
+                end
+
+                S8: begin
+                    quad1_mult_tmp = DEQUANT(QUAD1 * quotient);
+                    angle_val_tmp  = (x_is_pos ? QUAD1 : QUAD3) - quad1_mult_tmp;
+
+                    demod_out <= DEQUANT(latched_gain * (y_is_neg ? -angle_val_tmp : angle_val_tmp));
+                    out_wr_en <= 1'b1;
+                    state     <= S0;
+                end
+
+                default: state <= S0;
+            endcase
+        end
+    end
+
+endmodule
