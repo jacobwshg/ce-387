@@ -12,11 +12,11 @@ module iir #(
 	input logic clk,
 	input logic rst,
 
-	input logic x_in,
+	input logic signed [ DWIDTH-1:0 ] x_in,
 	input logic x_in_empty,
 	input logic y_out_full,
 
-	output logic y_out,
+	output logic signed [ DWIDTH-1:0 ] y_out,
 	output logic x_in_rd_en,
 	output logic y_out_wr_en
 );
