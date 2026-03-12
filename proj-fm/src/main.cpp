@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
-//#include <io.h>
 #include <unistd.h>
 
 #include "fm_radio.h"
@@ -24,7 +23,7 @@ int main(int argc, char **argv)
 	}
 	
 	// initialize the audio output
-	int audio_fd = audio_init( AUDIO_RATE );
+	int audio_fd = audio_init( AUDIO_RATE, "out.txt" );
 	if ( audio_fd < 0 )
 	{
 		printf("Failed to initialize audio!\n");

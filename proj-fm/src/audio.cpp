@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <iostream>
 #include <string>
-//#include <io.h>
 #include <unistd.h>
 
 #include "audio.h"
