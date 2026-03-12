@@ -1,6 +1,6 @@
 
 module fft_top #(
-	parameter int N = 16,
+	parameter int N = 32,
 	parameter int DATA_WIDTH = 32,
 	parameter int FIFO_DEPTH = 16
 )(
