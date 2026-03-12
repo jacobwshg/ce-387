@@ -39,13 +39,13 @@ module fir #(
 	logic signed [ DWIDTH-1:0 ] x_sh [ 0:TAPS-1 ];
 
 	// In S_SHIFT_X, in order to know whether to accumulate a value,
-	// we need to know whether it is newly ahifted in. It's possible
-	// that we are in S_SHIFT_X but don't shift every cycle due to 
-	// upstream congestion. Thus we need to know whether shift was enabled
-	// in the _previous_ cycle.
-	// This is not an issue in S_STALL because the "stall" is because
-	// we didn't cover all the existing values for the partial sums,
-	// and we never stall due to waiting for upstream to be not empty.
+	//   we need to know whether it is newly shifted in. It's possible
+	//   that we are in S_SHIFT_X but don't shift every cycle due to 
+	//   upstream congestion. Thus we need to know whether shift was enabled
+	//   in the _previous_ cycle.
+	// This is not an issue in S_STALL because the "stall" is due to not
+	//   having covered all the existing values to accumulate into partial sums.
+	//   in this state, we never wait for upstream to be not empty.
 	logic x_sh_en, x_sh_en_c;
 
 	logic signed [ 0:MUL_CNT-1 ] [ DWIDTH-1:0 ]
@@ -55,7 +55,14 @@ module fir #(
 		x_out,
 		coef_out;
 
-	// Addrs into x and coefs for registered reads
+	// 
+	// Addrs into x and coefs for registered reads.
+	// Combinational versions are preemptive requests made to x and coef mem 
+	//   on clk edge. Once we cross the clk edge, the comb versions become
+	//   clocked versions, and reflect the addresses from which
+	//   the values used in the current cycles ( x_out, coef_out ) 
+	//   are returned from.
+	//   
 	logic signed [ $clog2( TAPS ):0 ]
 		coef_rd_addrs, coef_rd_addrs_c,
 		x_rd_addrs, x_rd_addrs_c;
@@ -76,10 +83,10 @@ module fir #(
 
 		if ( state == S_OUT_Y )
 		begin
-			// Sum partial sums
-			// y_out is combinational. So even if we're stuch in S_OUT_Y
-			// due to downstream congestion, we'll simply compute the same 
-			// y_out from the same accs without adding anything repeatedly.
+			// Sum partial sums.
+			// y_out is combinational. So even if we're stuck in S_OUT_Y
+			//   due to downstream congestion, we'll simply be computing the same 
+			//   y_out from the same accs without adding anything twice.
 			for ( int m=0; m<MUL_CNT; ++m )
 			begin
 				// TODO: dequantize only before outputting to improving timing?
@@ -90,7 +97,7 @@ module fir #(
 		else if ( x_sh_en || (state==S_STALL) )
 		begin
 			// Accumulate one product (for x and coef value at current read
-			// addrs) into each partial sum
+			//   addrs) into each partial sum
 			for ( int m=0; m<MUL_CNT; ++m )
 			begin
 				accs_c[ m ] = accs[ m ] + DEQUANT( coef_out[ m ] * x_out[ m ] );
@@ -120,7 +127,7 @@ module fir #(
 				begin
 					x_in_rd_en = 1'b1;
 					//
-					// For x, "camp out" at step base addr to wait for
+					// For x, "camp out" at step base addr to intercept
 					// newly shifted-in value ( hold x_rd_addrs ).
 					//
 					// For coefs, preemptively use higher addr inside step 
@@ -201,6 +208,8 @@ module fir #(
 					x_rd_addrs_c   [ m ] = x_rd_addrs   [ m ] + 1'h1;
 				end
 				if ( x_rd_addrs_c[ 0 ] == MUL_STEP )
+				// We have covered all values in each multiplier's step
+				// and the partial sums are valid
 				begin
 					state_c = S_OUT_Y;
 				end
