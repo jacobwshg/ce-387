@@ -219,7 +219,12 @@ iir(
 }
 
 
-void fir_n( int *x_in, const int n_samples, const int *coeff, int *x, const int taps, const int decimation, int *y_out ) 
+void
+fir_n(
+	int *x_in, const int n_samples, const int *coeff, int *x,
+	const int taps, const int decimation,
+	int *y_out
+) 
 {
 	int i = 0;
 	int j = 0;
@@ -232,14 +237,19 @@ void fir_n( int *x_in, const int n_samples, const int *coeff, int *x, const int 
 }
 
 
-void fir( int *x_in, const int *coeff, int *x, const int taps, const int decimation, int *y_out ) 
+void
+fir(
+	int *x_in, const int *coeff, int *x,
+	const int taps, const int decimation,
+	int *y_out
+) 
 {
 	int i = 0;
 	int j = 0;
 	int y = 0;
 	
 	// shift x
-	// x = x_in[:decimation:-1] ++ x[decimation:taps]
+	// x = taps'{ x_in[ decimation-1:0 ], x[ decimation:taps-1 ] }
 	for ( j = taps-1; j > decimation-1; j-- ) 
 	{
 		x[j] = x[j-decimation];
@@ -249,8 +259,6 @@ void fir( int *x_in, const int *coeff, int *x, const int taps, const int decimat
 	{
 		x[decimation-i-1] = x_in[i];
 	}
-
-
 
 	for ( j = 0; j < taps; j++ ) 
 	{
@@ -364,5 +372,4 @@ int qarctan(int y, int x)
 
 	return ((y < 0) ? -angle : angle); // negate if in quad III or IV
 }
-
 
