@@ -26,6 +26,7 @@ package quant_pkg;
 		end
 
 		return dq;
+		
 
 	endfunction
 

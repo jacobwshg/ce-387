@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 import globals_pkg::*;
 import quant_pkg::*; 
 
@@ -10,6 +12,6 @@ module read_iq(
 
 assign out_valid = in_valid; 
 assign I = QUANT($signed(in[15:0])); 
-assign Q = QUANT($signed(in[31:16])); 
+assign Q = QUANT($signed(in[31:16]));  
 
 endmodule 

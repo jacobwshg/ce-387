@@ -1,3 +1,6 @@
+`timescale 1ns/1ps
+
+
 import globals_pkg::*;
 import quant_pkg::*;
 
