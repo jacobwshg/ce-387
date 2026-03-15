@@ -37,7 +37,7 @@ module demodulate (
 
     logic [31:0] a, b, q;
     logic               sign;
-    logic signed [31:0] quotient;
+    logic signed [31:0] quad1_mult;
 
     function automatic logic [31:0] get_msb_pos(input logic [31:0] val);
         for (int k = 31; k >= 0; k--) begin
@@ -51,7 +51,7 @@ module demodulate (
     always_ff @(posedge clk or negedge rst_n) begin
         logic signed [31:0] abs_y_tmp;
         logic [31:0] p_tmp;
-        logic signed [31:0] quad1_mult_tmp;
+        logic signed [31:0] quotient_tmp;
         logic signed [31:0] angle_val_tmp;
 
         if (!rst_n) begin
@@ -81,7 +81,7 @@ module demodulate (
             b            <= '0;
             q            <= '0;
             sign         <= 1'b0;
-            quotient     <= '0;
+            quad1_mult   <= '0;
         end else begin
             out_wr_en <= 1'b0;
 
@@ -96,9 +96,9 @@ module demodulate (
                 end
 
                 S1: begin
-                    r_mult1 <= real_prev * real_latch;
+                    r_mult1 <=   real_prev  * real_latch;
                     r_mult2 <= (-imag_prev) * imag_latch;
-                    i_mult1 <= real_prev * imag_latch;
+                    i_mult1 <=   real_prev  * imag_latch;
                     i_mult2 <= (-imag_prev) * real_latch;
 
                     real_prev <= real_latch;
@@ -122,10 +122,10 @@ module demodulate (
 
                     if (r >= 0) begin
                         dividend <= (r - abs_y_tmp) <<< FRAC_WIDTH;
-                        divisor  <= r + abs_y_tmp;
+                        divisor  <=  r + abs_y_tmp;
                     end else begin
                         dividend <= (r + abs_y_tmp) <<< FRAC_WIDTH;
-                        divisor  <= abs_y_tmp - r;
+                        divisor  <=  abs_y_tmp - r;
                     end
                     state <= S4;
                 end
@@ -164,13 +164,14 @@ module demodulate (
                 end
 
                 S7: begin
-                    quotient <= sign ? -$signed(q) : $signed(q);
+                    quotient_tmp = sign ? -$signed(q) : $signed(q);
+                    quad1_mult <= DEQUANT( QUAD1 * quotient_tmp );
+
                     state    <= S8;
                 end
 
                 S8: begin
-                    quad1_mult_tmp = DEQUANT(QUAD1 * quotient);
-                    angle_val_tmp  = (x_is_pos ? QUAD1 : QUAD3) - quad1_mult_tmp;
+                    angle_val_tmp = (x_is_pos ? QUAD1 : QUAD3) - quad1_mult;
 
                     demod_out <= DEQUANT(latched_gain * (y_is_neg ? -angle_val_tmp : angle_val_tmp));
                     out_wr_en <= 1'b1;
