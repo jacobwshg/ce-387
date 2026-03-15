@@ -1,16 +1,11 @@
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
 #include "fm_radio.h"
 
-
-
 void fm_radio_stereo(unsigned char *IQ, int *left_audio, int *right_audio)
 {
-	// static input/output arrays
 	static int I[SAMPLES];
 	static int Q[SAMPLES];
 	static int I_fir[SAMPLES];
@@ -28,7 +23,6 @@ void fm_radio_stereo(unsigned char *IQ, int *left_audio, int *right_audio)
 	static int left_deemph[AUDIO_SAMPLES];
 	static int right_deemph[AUDIO_SAMPLES];
 	
-	// static internal arrays
 	static int fir_cmplx_x_real[MAX_TAPS];
 	static int fir_cmplx_x_imag[MAX_TAPS];
 	static int demod_real[] = {0};
@@ -43,66 +37,82 @@ void fm_radio_stereo(unsigned char *IQ, int *left_audio, int *right_audio)
 	static int deemph_r_x[MAX_TAPS];
 	static int deemph_r_y[MAX_TAPS];
 
+	printf("\n=== C-MODEL INTERNAL STEP-BY-STEP ===\n");
 
-	// f(t) = k * m(t) + fc
-	// m(t): the input signal
-	// k: constant that controls the frequency sensitivity 
-	// fc: the frequency of the carrier 
-	// To recover m(t), two steps are needed:
-	// (1) Remove the carrier fc. This is already done in the USRP. 
-	// (2) Compute the instantaneous frequency of the baseband signal.
-
-
-	
-	// read the I/Q data from the buffer
 	read_IQ( IQ, I, Q, SAMPLES );
+	
+	for(int k=0; k<4; k++) {
+		printf("[C] 1. read_iq[%d]: I=%d, Q=%d\n", k, I[k], Q[k]);
+	}
 
-	// Channel low-pass filter cuts off all frequnties above 80 Khz
 	fir_cmplx_n( I, Q, SAMPLES, CHANNEL_COEFFS_REAL, CHANNEL_COEFFS_IMAG, fir_cmplx_x_real, fir_cmplx_x_imag, CHANNEL_COEFF_TAPS, 1, I_fir, Q_fir ); 
 
-	// demodulate
 	demodulate_n( I_fir, Q_fir, demod_real, demod_imag, SAMPLES, FM_DEMOD_GAIN, demod );
 
-	// L+R low-pass FIR filter - reduce sampling rate from 256 KHz to 32 KHz
 	fir_n( demod, SAMPLES, AUDIO_LPR_COEFFS, fir_lpr_x, AUDIO_LPR_COEFF_TAPS, AUDIO_DECIM, audio_lpr_filter ); 
 
-	// L-R band-pass filter extracts the L-R channel from 23kHz to 53kHz
 	fir_n( demod, SAMPLES, BP_LMR_COEFFS, fir_bp_x, BP_LMR_COEFF_TAPS, 1, bp_lmr_filter ); 
 
-	// Pilot band-pass filter extracts the 19kHz pilot tone
 	fir_n( demod, SAMPLES, BP_PILOT_COEFFS, fir_pilot_x, BP_PILOT_COEFF_TAPS, 1, bp_pilot_filter ); 
 
-	// square the pilot tone to get 38kHz
 	multiply_n( bp_pilot_filter, bp_pilot_filter, SAMPLES, square );
 
-	// high-pass filter removes the tone at 0Hz created after the pilot tone is squared
 	fir_n( square, SAMPLES, HP_COEFFS, fir_hp_x, HP_COEFF_TAPS, 1, hp_pilot_filter ); 
 
-	// demodulate the L-R channel from 38kHz to baseband
 	multiply_n( hp_pilot_filter, bp_lmr_filter, SAMPLES, multiply );
 
-	// L-R low-pass FIR filter - reduce sampling rate from 256 KHz to 32 KHz
 	fir_n( multiply, SAMPLES, AUDIO_LMR_COEFFS, fir_lmr_x, AUDIO_LMR_COEFF_TAPS, AUDIO_DECIM, audio_lmr_filter ); 
 
-	// Left audio channel - (L+R) + (L-R) = 2L 
 	add_n( audio_lpr_filter, audio_lmr_filter, AUDIO_SAMPLES, left );
 
-	// Right audio channel - (L+R) - (L-R) = 2R
 	sub_n( audio_lpr_filter, audio_lmr_filter, AUDIO_SAMPLES, right );
 
-	// Left channel deemphasis
 	deemphasis_n( left, deemph_l_x, deemph_l_y, AUDIO_SAMPLES, left_deemph );
 
-	// Right channel deemphasis
 	deemphasis_n( right, deemph_r_x, deemph_r_y, AUDIO_SAMPLES, right_deemph );
 
-	// Left volume control
 	gain_n( left_deemph, AUDIO_SAMPLES, VOLUME_LEVEL, left_audio );
 
-	// Right volume control
 	gain_n( right_deemph, AUDIO_SAMPLES, VOLUME_LEVEL, right_audio );
-}
 
+	   // 180 inputs / 8 decimation = 22 final audio samples
+    for (int k = 0; k < 22; k++) {
+        printf("exp_left[%d] = 32'sd%d;    exp_right[%d] = 32'sd%d;\n",
+               k, left_audio[k], k, right_audio[k]);
+    }
+
+
+
+	FILE *f_in = fopen("raw_input_iq.txt", "w");
+	FILE *f_left = fopen("output_left.txt", "w");
+	FILE *f_right = fopen("output_right.txt", "w");
+	int i;
+
+	if (f_in != NULL) {
+		for (i = 0; i < SAMPLES; i++) {
+			unsigned int raw_32 = ((unsigned int)IQ[i*4+3] << 24) | 
+					              ((unsigned int)IQ[i*4+2] << 16) | 
+					              ((unsigned int)IQ[i*4+1] << 8)  | 
+					              ((unsigned int)IQ[i*4+0]);
+			fprintf(f_in, "%08X\n", raw_32);
+		}
+		fclose(f_in);
+	}
+
+	if (f_left != NULL) {
+		for (i = 0; i < AUDIO_SAMPLES; i++) {
+			fprintf(f_left, "%08X\n", (unsigned int)left_audio[i]);
+		}
+		fclose(f_left);
+	}
+
+	if (f_right != NULL) {
+		for (i = 0; i < AUDIO_SAMPLES; i++) {
+			fprintf(f_right, "%08X\n", (unsigned int)right_audio[i]);
+		}
+		fclose(f_right);
+	}
+}
 
 void read_IQ( unsigned char *IQ, int *I, int *Q, int samples )
 {
@@ -117,23 +127,19 @@ void read_IQ( unsigned char *IQ, int *I, int *Q, int samples )
 void demodulate_n( int *real, int *imag, int *real_prev, int *imag_prev, const int n_samples, const int gain, int *demod_out )
 {
 	int i = 0;
-
 	for ( i = 0; i < n_samples; i++ )
 	{
 		demodulate( real[i], imag[i], real_prev, imag_prev, gain, &demod_out[i] );
 	}
 }
 
-
 void demodulate( int real, int imag, int *real_prev, int *imag_prev, const int gain, int *demod_out )
 {
-	// k * atan(c1 * conj(c0))
 	int r = DEQUANTIZE(*real_prev * real) - DEQUANTIZE(-*imag_prev * imag);
 	int i = DEQUANTIZE(*real_prev * imag) + DEQUANTIZE(-*imag_prev * real);
 	
 	*demod_out = DEQUANTIZE(gain * qarctan(i, r));
 
-	// update the previous values
 	*real_prev = real;
 	*imag_prev = imag;
 }
@@ -143,18 +149,11 @@ void deemphasis_n( int *input, int *x, int *y, const int n_samples, int *output 
 	iir_n( input, n_samples, IIR_X_COEFFS, IIR_Y_COEFFS, x, y, IIR_COEFF_TAPS, 1, output );
 }
 
-
 void iir_n( int *x_in, const int n_samples, const int *x_coeffs, const int *y_coeffs, int *x, int *y, const int taps, int decimation, int *y_out )
 {
 	int i = 0;
 	int j = 0;
-
 	int n_elements = n_samples / decimation;
-
-	/*
-	 * iir() is initially invoked at i==0. internally, this call computes y 
-	 * based on x_in[ 0:decimation-1 ].
-	 */
 
 	for ( ; i < n_elements; i++, j+=decimation )
 	{
@@ -162,37 +161,13 @@ void iir_n( int *x_in, const int n_samples, const int *x_coeffs, const int *y_co
 	}
 }
 
-void
-iir(
-	int *x_in,
-	const int *x_coeffs, const int *y_coeffs,
-	int *x, int *y,
-	const int taps,
-	const int decimation,
-	int *y_out
-)
+void iir( int *x_in, const int *x_coeffs, const int *y_coeffs, int *x, int *y, const int taps, const int decimation, int *y_out )
 {
 	int y1 = 0;
 	int y2 = 0;
 	int i = 0;
 	int j = 0;
 	
-	// shift x 
-
-	/*
- 	 * x( taps-1       downto decimation ) =    x( taps-1-decimation downto 0 )
-	 * x( decimation-1 downto 0 )          = x_in( 0 to decimation-1 )
-	 * 
-	 * These loops represent the result of a batch of `decimation` shifts.
-	 * Although x_in[ 0 to decimation-1 ] is reversed in SW,
-	 * this is the natural HW shiftin order:
-	 * The earlist value shifted in ends fartherst inside.
-	 *
-	 * A total of `decimation` x values are shifted in
-	 * before the y math produces a valid dot product based on
-	 * current buffered values. 
-	 */
-
 	for ( j = taps-1; j > decimation-1; --j ) 
 	{
 		x[j] = x[j-decimation];
@@ -202,13 +177,11 @@ iir(
 		x[decimation-i-1] = x_in[i];
 	}
 
-	// shift y 
 	for ( j = taps-1; j > 0; --j )
 	{
 		y[j] = y[j-1];
 	}
 
-	// get the new y
 	for ( i = 0; i < taps; ++i )
 	{
 		y1 += DEQUANTIZE( x_coeffs[i] * x[i] );
@@ -216,42 +189,27 @@ iir(
 	}
 
 	y[0] = y1 + y2;
-
 	*y_out = y[taps-1];
 }
 
-
-void
-fir_n(
-	int *x_in, const int n_samples, const int *coeff, int *x,
-	const int taps, const int decimation,
-	int *y_out
-) 
+void fir_n( int *x_in, const int n_samples, const int *coeff, int *x, const int taps, const int decimation, int *y_out ) 
 {
 	int i = 0;
 	int j = 0;
-
 	int n_elements = n_samples / decimation;
+
 	for ( i = 0; i < n_elements; i++, j+=decimation )
 	{
 		fir( &x_in[j], coeff, x, taps, decimation, &y_out[i] );
 	}
 }
 
-
-void
-fir(
-	int *x_in, const int *coeff, int *x,
-	const int taps, const int decimation,
-	int *y_out
-) 
+void fir( int *x_in, const int *coeff, int *x, const int taps, const int decimation, int *y_out ) 
 {
 	int i = 0;
 	int j = 0;
 	int y = 0;
 	
-	// shift x
-	// x = taps'{ x_in[ decimation-1:0 ], x[ decimation:taps-1 ] }
 	for ( j = taps-1; j > decimation-1; j-- ) 
 	{
 		x[j] = x[j-decimation];
@@ -275,8 +233,8 @@ void fir_cmplx_n( int *x_real_in, int *x_imag_in, const int n_samples, const int
 {
 	int i = 0;
 	int j = 0;
-
 	int n_elements = n_samples / decimation;
+
 	for ( ; i < n_elements; i++, j+=decimation )
 	{
 		fir_cmplx( &x_real_in[j], &x_imag_in[j], h_real, h_imag, x_real, x_imag, taps, decimation, &y_real_out[i], &y_imag_out[i] );
@@ -291,7 +249,6 @@ void fir_cmplx( int *x_real_in, int *x_imag_in, const int *h_real, const int *h_
 	int y_real = 0;
 	int y_imag = 0;
 	
-	// shift x
 	for ( j = taps-1; j > decimation-1; j-- ) 
 	{
 		x_real[j] = x_real[j-decimation];
@@ -304,7 +261,6 @@ void fir_cmplx( int *x_real_in, int *x_imag_in, const int *h_real, const int *h_
 		x_imag[decimation-i-1] = x_imag_in[i];
 	}
 
-	// compute new real & imag values
 	for ( i = 0; i < taps; i++ )
 	{
 		y_real += DEQUANTIZE((h_real[i] * x_real[i]) - (h_imag[i] * x_imag[i]));
@@ -323,7 +279,6 @@ void multiply_n( int *x_in, int *y_in, const int n_samples, int *output )
 		output[i] = DEQUANTIZE( x_in[i] * y_in[i] );
 	}
 }
-
 
 void add_n( int *x_in, int *y_in, const int n_samples, int *output )
 {
@@ -372,6 +327,5 @@ int qarctan(int y, int x)
 		angle = quad3 - DEQUANTIZE(quad1 * r);
 	}
 
-	return ((y < 0) ? -angle : angle); // negate if in quad III or IV
+	return ((y < 0) ? -angle : angle);
 }
-

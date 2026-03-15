@@ -48,6 +48,7 @@ int main(int argc, char **argv)
 
 		// write to audio output
 		audio_tx( audio_fd, AUDIO_RATE, left_audio, right_audio, AUDIO_SAMPLES );
+		while (1) {} 
 	}
 
 	fclose( usrp_file );
