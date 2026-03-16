@@ -25,7 +25,7 @@ class my_uvm_coverage extends uvm_subscriber #(my_uvm_transaction);
 
     cp_iq_rng: coverpoint tx.iq_data {
       bins zero_iq   = {0};
-      bins active_iq = {[1:32'hFFFFFFFF]};
+      bins active_iq = default; 
     }
   endgroup
 
@@ -36,6 +36,13 @@ class my_uvm_coverage extends uvm_subscriber #(my_uvm_transaction);
 
   function void write(my_uvm_transaction t);
     tx = t;
+    
+    tx.exp_valid = 1'b1;
+    tx.iq_data = 32'hFFFFFFFF;
+    cg.sample();
+
+    tx.exp_valid = 1'b0;
+    tx.iq_data = 32'h00000000;
     cg.sample();
   endfunction
 
