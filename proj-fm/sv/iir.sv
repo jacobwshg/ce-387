@@ -4,107 +4,110 @@ import globals_pkg::*;
 import quant_pkg::*;
 
 module iir #(
-	parameter int DWIDTH = 32,
-	parameter int TAPS = 32,
-	parameter int DECIM = 8,
-	parameter logic signed [ DWIDTH-1:0 ] X_COEFS [ 0:TAPS-1 ] = '{default:0},
-	parameter logic signed [ DWIDTH-1:0 ] Y_COEFS [ 0:TAPS-1 ] = '{default:0}
+    parameter int DWIDTH = 32,
+    parameter int TAPS = 32,
+    parameter int DECIM = 8,
+    parameter logic signed [ DWIDTH-1:0 ] X_COEFS [ 0:TAPS-1 ] = '{default:0},
+    parameter logic signed [ DWIDTH-1:0 ] Y_COEFS [ 0:TAPS-1 ] = '{default:0}
 )(
-	input logic clk,
-	input logic rst,
+    input logic clk,
+    input logic rst,
 
-	input logic signed [ DWIDTH-1:0 ] x_in,
-	input logic x_in_empty,
-	input logic y_out_full,
+    input logic signed [ DWIDTH-1:0 ] x_in,
+    input logic x_in_empty,
+    input logic y_out_full,
 
-	output logic signed [ DWIDTH-1:0 ] y_out,
-	output logic x_in_rd_en,
-	output logic y_out_wr_en
+    output logic signed [ DWIDTH-1:0 ] y_out,
+    output logic x_in_rd_en,
+    output logic y_out_wr_en
 );
 
-	/* shiftreg buffers */
-	logic signed [ DWIDTH-1:0 ] x_sh [ 0:TAPS-1 ];
-	logic signed [ DWIDTH-1:0 ] y_sh [ 0:TAPS-1 ];
+    typedef enum logic [1:0] { S_WAIT, S_MULT, S_ADD } state_t;
+    state_t state, state_c;
 
-	logic signed [ DWIDTH-1:0 ] y1, y2, y_c;
+    logic signed [ DWIDTH-1:0 ] x_sh [ 0:TAPS-1 ];
+    logic signed [ DWIDTH-1:0 ] y_sh [ 0:TAPS-1 ];
 
-	/* idx in decimation batch */
-	logic [ $clog2(DECIM):0 ] dec_idx, dec_idx_c;
-	/* Whether we have shifted in a full batch of DECIM inputs */
-	logic full_dec;
-	logic x_sh_en, y_sh_en;
+    logic signed [ DWIDTH-1:0 ] x_prods [ 0:TAPS-1 ];
+    logic signed [ DWIDTH-1:0 ] y_prods [ 0:TAPS-1 ];
 
-	always_comb
-	begin
-		// IIR filters natively have a 1-sample output delay to match the C code
-		y_out = (TAPS == 1) ? y_c : y_sh[ TAPS-2 ];
-		
-		x_in_rd_en  = 1'b0;
-		y_out_wr_en = 1'b0;
+    logic [ $clog2(DECIM):0 ] dec_idx, dec_idx_c;
+    logic full_dec;
 
-		y1 = 'sh0;
-		y2 = 'sh0;
-		for ( int i=0; i<TAPS; ++i )
-		begin
-			y1 += DEQUANT( X_COEFS[ i ] * x_sh[ i ] );
-			if ( i == 0 ) begin
-				// y_coeffs[0] is mathematically 0 in this standard IIR form.
-				y2 += 'sh0; 
-			end else begin
-				// Multiply using the previous cycle's y_sh to simulate the C code's shift-first behavior
-				y2 += DEQUANT( Y_COEFS[ i ] * y_sh[ i-1 ] );
-			end
-		end
-		y_c = y1 + y2;
+    logic signed [ DWIDTH-1:0 ] current_sum;
 
-		dec_idx_c = dec_idx;
-		full_dec  = 1'( dec_idx == DECIM );
-		
-		y_sh_en = full_dec & ~y_out_full;
-		// If full_dec is met, we only shift the next x_in if we successfully output y this cycle
-		x_sh_en = ( ~full_dec || y_sh_en ) & ~x_in_empty;
+    always_comb begin
+        current_sum = 'sh0;
+        for (int i=0; i<TAPS; ++i) begin
+            current_sum += x_prods[i] + y_prods[i];
+        end
 
-		if ( x_sh_en )
-		begin
-			x_in_rd_en = 1'b1;
-			if ( full_dec ) dec_idx_c = 1'h1;
-			else            dec_idx_c = dec_idx + 1'h1;
-		end
-		else if ( y_sh_en )
-		begin
-			dec_idx_c = 'h0;
-		end
+        y_out = (TAPS == 1) ? current_sum : y_sh[ TAPS-2 ];
 
-		if ( y_sh_en )
-		begin
-			y_out_wr_en = 1'b1;
-		end
-	end
+        state_c = state;
+        x_in_rd_en = 1'b0;
+        y_out_wr_en = 1'b0;
+        dec_idx_c = dec_idx;
 
-	always_ff @ ( posedge clk, posedge rst )
-	begin
-		if ( rst )
-		begin
-			dec_idx <= 'h0;
-			x_sh <= '{ default: 'sh0 };
-			y_sh <= '{ default: 'sh0 };
-		end
-		else 
-		begin
-			dec_idx <= dec_idx_c;
+        full_dec = (dec_idx == DECIM);
 
-			if ( x_sh_en )
-			begin
-				for (int i = TAPS-1; i > 0; i--) x_sh[i] <= x_sh[i-1];
-				x_sh[ 0 ] <= x_in;
-			end
+        case (state)
+            S_WAIT: begin
+                if (~x_in_empty && (!full_dec || ~y_out_full)) begin
+                    x_in_rd_en = 1'b1;
+                    if (full_dec) dec_idx_c = 1'h1;
+                    else          dec_idx_c = dec_idx + 1'h1;
+                    state_c = S_MULT;
+                end
+            end
 
-			if ( y_sh_en )
-			begin
-				for (int i = TAPS-1; i > 0; i--) y_sh[i] <= y_sh[i-1];
-				y_sh[ 0 ] <= y_c;
-			end
-		end
-	end
+            S_MULT: begin
+                state_c = S_ADD;
+            end
 
-endmodule: iir
+            S_ADD: begin
+                if (full_dec) begin
+                    y_out_wr_en = 1'b1;
+                end
+                state_c = S_WAIT;
+            end
+            
+            default: state_c = S_WAIT;
+        endcase
+    end
+
+    always_ff @ (posedge clk or posedge rst) begin
+        if (rst) begin
+            state <= S_WAIT;
+            dec_idx <= 'h0;
+            x_sh <= '{ default: 'sh0 };
+            y_sh <= '{ default: 'sh0 };
+            x_prods <= '{ default: 'sh0 };
+            y_prods <= '{ default: 'sh0 };
+        end else begin
+            state <= state_c;
+            dec_idx <= dec_idx_c;
+
+            if (state == S_WAIT && state_c == S_MULT) begin
+                for (int i = TAPS-1; i > 0; i--) x_sh[i] <= x_sh[i-1];
+                x_sh[0] <= x_in;
+            end
+
+            if (state == S_MULT) begin
+                for (int i=0; i<TAPS; ++i) begin
+                    x_prods[i] <= DEQUANT( X_COEFS[i] * x_sh[i] );
+                    if (i == 0) y_prods[i] <= 'sh0;
+                    else        y_prods[i] <= DEQUANT( Y_COEFS[i] * y_sh[i-1] );
+                end
+            end
+
+            if (state == S_ADD) begin
+                if (full_dec) begin
+                    for (int i = TAPS-1; i > 0; i--) y_sh[i] <= y_sh[i-1];
+                    y_sh[0] <= current_sum;
+                end
+            end
+        end
+    end
+
+endmodule
