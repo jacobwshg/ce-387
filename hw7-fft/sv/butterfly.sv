@@ -8,22 +8,13 @@ module butterfly
 	input  logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] w, in1, in2,
 	output logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] out1, out2
 );
+	import quant_pkg::DEQUANT;
 
 	localparam logic signed [ DATA_WIDTH-1:0 ] Q_STEP = 1 << FRAC_WIDTH;
 
 	localparam logic [ 0:0 ]
 		RE = 0,
 		IM = 1;
-
-	/*
- 	 * Multiplying 2 quantized ints causes overquantization, so we DEQUANTize
- 	 * once
- 	 */
-	function automatic logic signed [ DATA_WIDTH-1:0 ]
-	DEQUANT( logic signed [ DATA_WIDTH-1:0 ] qq );
-		logic signed [ DATA_WIDTH-1:0 ] q = ( qq + $signed( Q_STEP/2 ) ) / $signed( Q_STEP );
-		return q;
-	endfunction
 
 	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] v;
 
@@ -32,10 +23,10 @@ module butterfly
 	always_comb
 	begin
 		// w * in2
-		rw_r2 = DEQUANT( w[RE] * in2[RE] );
-		iw_i2 = DEQUANT( w[IM] * in2[IM] );
-		rw_i2 = DEQUANT( w[RE] * in2[IM] );
-		iw_r2 = DEQUANT( w[IM] * in2[RE] );
+		rw_r2 = quant_pkg::DEQUANT( w[RE] * in2[RE] );
+		iw_i2 = quant_pkg::DEQUANT( w[IM] * in2[IM] );
+		rw_i2 = quant_pkg::DEQUANT( w[RE] * in2[IM] );
+		iw_r2 = quant_pkg::DEQUANT( w[IM] * in2[RE] );
 		v[RE] = rw_r2 - iw_i2;
 		v[IM] = rw_i2 + iw_r2;
 
