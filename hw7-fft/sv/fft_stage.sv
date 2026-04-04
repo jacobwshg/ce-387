@@ -4,98 +4,119 @@
 module fft_stage #(
 	parameter int STAGE = 2,
 	parameter int N = 32,
-	parameter int DATA_WIDTH = 32
+	parameter int DWIDTH = 32,
+
+	parameter logic signed [ 0:(1<<(STAGE-1))-1 ] [ 0:1 ] [ DWIDTH-1:0 ]
+		STAGE_TWDLS
 )
 (
 	input  logic clk,
 	input  logic rst,
 
-	input  logic signed [ 0:(1<<(STAGE-1))-1 ] [ 0:1 ] [ DATA_WIDTH-1:0 ] stage_twdls,
-	input  logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] din,
-	input  logic in_valid,
+	input  logic signed [ 0:1 ] [ DWIDTH-1:0 ] din,
+	input  logic in_empty,
+	input  logic out_full,
 
-	output logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] dout,
-	output logic out_valid
+	output logic in_rd_en,
+	output logic signed [ 0:1 ] [ DWIDTH-1:0 ] dout,
+	output logic out_wr_en
 );
 
-	localparam int RE = 0, IM = 1;
+	localparam int
+		RE = 0,
+		IM = 1;
 
 	/*
-	 * Stage 2: step 4
-	 * Stage 3: step 8
+	 * Stage 2: step = 4
+	 * Stage 3: step = 8
 	 */ 
 	localparam int STEP = 1 << STAGE;
 	localparam int HALF_STEP = STEP >> 1;
 	localparam int LOG2_N = $clog2( N );
 
+	typedef enum logic [ 2:0 ]
+	{
+		S_GET, S_BF_MUL_WI, S_BF_MUL_WR,
+		S_BF_V, S_BF_OUT
+	} fsm_state_t;
+	fsm_state_t fsm_state, fsm_state_c;
+
 	/* Sample idx = { step idx, lower step flag, buf sample addr } */ 
 	logic [ LOG2_N:0 ] idx, idx_c;
 	/* Step idx - has an extra high bit to accommodate final stage, 
-	 * which has a single step but step idx couldn't possibly be 0-bit wide
+	 * which has all samples within a single step but step idx couldn't possibly 
+	 * be 0-bit wide. Also, it needs to enter a higher "ghost step" to flush the
+	 * pipeline.
 	 */
 	logic [ LOG2_N-STAGE:0 ] step_idx;
-	/* Sample belongs in upper or lower half of step? (used to determine
- 	 * whether butterfly output is valid) */
+	/* Sample belongs in upper or lower half of step, in terms of idx? 
+ 	 * ( when the incoming sample is in the lower half of step 0,
+ 	 * the butterfly output is invalid ) */
 	logic is_lower_step;
+
+	logic out_valid;
+
 	/* Buffer read/write addrs; we only buffer half a step */
-	logic [ STAGE-2:0 ] wr_addr, rd_addr;
+	logic [ STAGE-2:0 ] buf_rd_addr, buf_wr_addr;
 
 	/* Butterfly and buffer signals */
-	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ]
-		in1, in2, out1, out2, w,
+	logic signed [ 0:1 ] [ DWIDTH-1:0 ]
+		in1,
+		out1, out2,
+		w,
 		buf_din, buf_dout;
+	logic signed [ 0:1 ] [ DWIDTH-1:0 ]
+		in2, in2_c,
+		v, v_c;
 
-	butterfly #(
-		.DATA_WIDTH( DATA_WIDTH )
-	) bf_inst (
-		.w( w ), .in1( in1 ), .in2( in2 ),
-		.out1( out1 ), .out2( out2 )
-	);
+	logic buf_wr_en;
+
+	/* intermediate results */
+	logic signed [ DWIDTH-1:0 ]
+		wr_x_i2r, wr_x_i2r_c,
+		wi_x_i2i, wi_x_i2i_c,
+		wr_x_i2i, wr_x_i2i_c,
+		wi_x_i2r, wi_x_i2r_c;
 
 	bram #(
 		.BRAM_ADDR_WIDTH( STAGE-1 ),
-		.BRAM_DATA_WIDTH( 2 * DATA_WIDTH )
+		.BRAM_DWIDTH( 2 * DWIDTH )
 	) buff (
 		.clock  ( clk ),
-		.rd_addr( rd_addr ),
-		.wr_addr( wr_addr ),
-		.wr_en  ( in_valid ),
+
+		.rd_addr( buf_rd_addr ),
+		.wr_addr( buf_wr_addr ),
+
+		.wr_en  ( buf_wr_en ),
+
 		.din    ( buf_din ),
 		.dout   ( buf_dout )
 	); 
 
-	always_ff @ ( posedge clk, posedge rst )
-	begin
-		if ( rst )
-		begin
-			idx <= 'h0;
-		end
-		else
-		begin
-			idx <= idx_c;
-		end
-	end
+	assign { step_idx, is_lower_step, buf_rd_addr }
+		= { idx[ LOG2_N:STAGE ], idx[ STAGE-1 ], idx[ STAGE-2:0 ] };
+	assign out_valid = !( step_idx===0 && is_lower_step );
+	/*
+ 	 * In lower step, read back buffered out2 and send it downstream,
+ 	 * buffer in1
+ 	 * In higher step, read back buffered in1, run butterfly, overwrite
+ 	 * in1 with out2 at same half-step addr in buffer
+	 */
+	assign buf_wr_addr = buf_rd_addr;
 
 	always_comb
 	begin
-		out_valid = 1'h0;
-		dout[0] = 'h0;
-		dout[1] = 'h0;
+		fsm_state_c = fsm_state;
 
-		buf_din[0] = 'h0;
-		buf_din[1] = 'h0;
+		dout[ RE ] = 'shX;
+		dout[ IM ] = 'shX;
+		out_wr_en = 1'b0;
+
+		buf_din[ RE ] = 'shX;
+		buf_din[ IM ] = 'shX;
+		buf_wr_en = 1'b0;
 
 		idx_c = idx;
-		{ step_idx, is_lower_step, wr_addr } =
-		{ idx[ LOG2_N:STAGE ], idx[ STAGE-1 ], idx[ STAGE-2:0 ] };
-		/*
-		 * The buffer read addr should be such that after the next clk edge,
-		 * the data returned from buffer (in1) can pair with the new incoming 
-		 * data (in2), which will be at wr_addr + 1 if the current data is
-		 * valid
-		 */
-		rd_addr = wr_addr + 1 - HALF_STEP;
-
 		/*
 		 * Always drive butterfly so as to cut the critical path delay caused by
 		 * its inputs being gated by flags
@@ -103,46 +124,128 @@ module fft_stage #(
 		 * garbage
 		 *
 		 */
-		w = stage_twdls[ wr_addr ];
 		in1 = buf_dout;
-		in2 = din;
 
-		//$display( "stage %03d driving butterfly in1 = buf_dout = { %08h, %08h }, in2 = din = { %08h %08h }", STAGE, buf_dout[0], buf_dout[1], din[0], din[1] );
+		in2_c[ RE ] = in2[ RE ];
+		in2_c[ IM ] = in2[ IM ];
+		v_c[ RE ] = v[ RE ];
+		v_c[ IM ] = v[ IM ];
 
-		if ( in_valid )
+		wr_x_i2r_c = wr_x_i2r;
+		wi_x_i2i_c = wi_x_i2i;
+		wr_x_i2i_c = wr_x_i2i;
+		wi_x_i2r_c = wi_x_i2r;
+
+		/* only significant in S_BF_OUT with !is_lower_step */
+		out1[ RE ] = in1[ RE ] + v[ RE ];
+		out1[ IM ] = in1[ IM ] + v[ IM ];
+		out2[ RE ] = in1[ RE ] - v[ RE ];
+		out2[ IM ] = in1[ IM ] - v[ IM ];
+
+		case ( fsm_state )
+			S_GET:
+			begin
+				if ( !in_empty )
+				begin
+					in_rd_en = 1'b1;
+					in2_c = din;
+					fsm_state_c = is_lower_step
+						? S_BF_MUL_WI
+						: S_BF_OUT;
+				end
+			end
+
+			S_BF_MUL_WI:
+			begin
+				wi_x_i2r_c = w[ IM ] * in2[ RE ];
+				wi_x_i2i_c = w[ IM ] * in2[ IM ];
+				fsm_state_c = S_BF_MUL_2;
+			end
+
+			S_BF_MUL_WR:
+			begin
+				wi_x_i2r_c = quant_pkg::DEQUANT( wi_x_i2r );
+				wi_x_i2i_c = quant_pkg::DEQUANT( wi_x_i2i );
+
+				wr_x_i2r_c = w[ RE ] * in2[ RE ];
+				wr_x_i2i_c = w[ RE ] * in2[ IM ];
+
+				fsm_state_c = S_BF_V;
+			end
+
+			S_BF_V:
+			begin
+				v_c[ RE ] = quant_pkg::DEQUANT( wr_x_i2r ) - wi_x_i2i;
+				v_c[ IM ] = quant_pkg::DEQUANT( wr_x_i2i ) + wi_x_i2r;
+				fsm_state_c = S_BF_OUT;
+			end
+
+			S_BF_OUT:
+			begin
+				if ( !out_full )
+				begin
+
+					if ( is_lower_step )
+					begin
+						dout = buf_dout;
+						buf_din = in2;
+					end
+					else
+					begin
+						dout = out1;
+						buf_din = out2;
+					end
+					buf_wr_en = 1'b1;
+					out_wr_en = out_valid? 1'b1: 1'b0;
+
+					idx_c = idx + 1'h1;
+					fsm_state_c = S_GET;
+				end
+
+			end
+
+		endcase
+
+	end
+
+	always_ff @ ( posedge clk )
+	begin: rd_twdl
+		w <= STAGE_TWDLS[ buf_rd_addr ];
+	end: rd_twdl
+
+	always_ff @ ( posedge clk, posedge rst )
+	begin
+		if ( rst )
 		begin
+			fsm_state <= S_GET;
 
-			//$display( "stage %0d butterfly (in valid): w: %h+%hj, in1: %h+%hj, in2: %h+%hj, out1: %h+%hj, out2: %h+%hj", STAGE, w[RE], w[IM], in1[RE], in1[IM], in2[RE], in2[IM], out1[RE], out1[IM], out2[RE], out2[IM] );
+			idx <= 'h0;
 
-			out_valid = ( ( step_idx==0 ) & ~is_lower_step ) ? 1'h0 : 1'h1;
+			in2[ RE ] <= 'sh0;
+			in2[ IM ] <= 'sh0;
+			v[ RE ] <= 'sh0;
+			v[ IM ] <= 'sh0;
 
-			//$display( "                             idx %0d = %8bb, step_idx %0d, is_lower_step %1b, wr_addr %0d, out_valid: %1b", idx, idx, step_idx, is_lower_step, wr_addr, out_valid );
+			wr_x_i2r <= 'sh0;
+			wi_x_i2i <= 'sh0;
+			wr_x_i2i <= 'sh0;
+			wi_x_i2r <= 'sh0;
+		end
+		else
+		begin
+			fsm_state <= fsm_state_c;
 
+			idx <= idx_c;
 
-			idx_c = idx_c + 1;
-			if ( ~is_lower_step )
-			begin
-				/*
- 				 * Upper step: 
- 				 * Butterfly is invalid;
-				 * Buffer upstream input as next butterfly's first input,
-				 * and output previous butterfly's second output if there is one
-				 */
-			//$display("\n\n stage UPPER step, \n\tstore buf_din = din = { %8h %8h } (logical idx %0d)\n\toutput dout = buf_dout = { %8h %8h }\n", din[0], din[1], idx, buf_dout[0], buf_dout[1] );
-				dout    = buf_dout;
-				buf_din = din;
-			end
-			else
-			begin
-				/*
-				 * Lower step:
-				 * Butterfly is valid and complete; 
-				 * output butterfly's first output and buffer its second output
-				 */
-			//$display("\n\n stage LOWER step, \n\tstore buf_din = out2 = { %8h %8h } (logical idx %0d)\n\toutput dout = out1 = { %8h %8h }\n", out2[0], out2[1], idx, out1[0], out1[1] );
-				dout    = out1;
-				buf_din = out2;
-			end
+			in2[ RE ] <= in2_c[ RE ];
+			in2[ IM ] <= in2_c[ IM ];
+			v[ RE ] <= v_c[ RE ];
+			v[ IM ] <= v_c[ IM ];
+
+			wr_x_i2r <= wr_x_i2r_c;
+			wi_x_i2i <= wi_x_i2i_c;
+			wr_x_i2i <= wr_x_i2i_c;
+			wi_x_i2r <= wi_x_i2r_c;
 		end
 	end
 
