@@ -1,20 +1,17 @@
 
 //import complex_pkg::*;
 
-module fft_stage #(
-	parameter int STAGE = 2,
+module fft_stage1 #(
 	parameter int N = 32,
 	parameter int DWIDTH = 32,
-
-	parameter logic signed [ 0:(1<<(STAGE-1))-1 ] [ 0:1 ] [ DWIDTH-1:0 ]
-		STAGE_TWDLS
+	parameter logic signed [ 0:1 ] [ DWIDTH-1:0 ] STAGE1_TWDL
 )
 (
 	input  logic clk,
 	input  logic rst,
 
 	// fixed twiddle factor
-	input  logic signed [ 0:1 ] [ DWIDTH-1:0 ] din, w,
+	input  logic signed [ 0:1 ] [ DWIDTH-1:0 ] din,
 	input  logic in_empty,
 	input  logic out_full,
 
@@ -64,6 +61,7 @@ module fft_stage #(
 	/* Butterfly and buffer signals */
 	logic signed [ 0:1 ] [ DWIDTH-1:0 ]
 		in1,
+		w,
 		out1, out2,
 		dly_buf, dly_buf_c;
 	logic signed [ 0:1 ] [ DWIDTH-1:0 ]
@@ -87,6 +85,8 @@ module fft_stage #(
  	 * In higher step, read back buffered in1, run butterfly, overwrite
  	 * in1 with out2 at same half-step addr in buffer
 	 */
+
+	assign w = STAGE1_TWDL;
 
 	always_comb
 	begin
@@ -226,5 +226,5 @@ module fft_stage #(
 		end
 	end
 
-endmodule: fft_stage
+endmodule: fft_stage1
 

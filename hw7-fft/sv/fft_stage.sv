@@ -4,8 +4,8 @@ module fft_stage #(
 	parameter int N = 32,
 	parameter int DWIDTH = 32,
 
-	parameter logic signed [ 0:(1<<(STAGE-1))-1 ] [ 0:1 ] [ DWIDTH-1:0 ]
-		STAGE_TWDLS
+	parameter logic signed [ 0:1 ] [ DWIDTH-1:0 ]
+		STAGE_TWDLS [ 0:(1<<(STAGE-1))-1 ]
 )
 (
 	input  logic clk,
