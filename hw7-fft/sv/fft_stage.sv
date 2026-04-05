@@ -79,7 +79,7 @@ module fft_stage #(
 
 	bram #(
 		.BRAM_ADDR_WIDTH( STAGE-1 ),
-		.BRAM_DWIDTH( 2 * DWIDTH )
+		.BRAM_DATA_WIDTH( 2 * DWIDTH )
 	) dly_buf (
 		.clock  ( clk ),
 

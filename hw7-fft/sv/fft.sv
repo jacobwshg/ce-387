@@ -64,7 +64,7 @@ module fft #(
 
 	bram #(
 		.BRAM_ADDR_WIDTH( STAGE_CNT ),
-		.BRAM_DWIDTH( 2 * DWIDTH )
+		.BRAM_DATA_WIDTH( 2 * DWIDTH )
 	) reorder_buff (
 		.clock  ( clk ),
 		.rd_addr( ROB_rd_addr_c[ STAGE_CNT-1:0 ] ),
