@@ -21,6 +21,8 @@ module fft_stage1 #(
 );
 	import quant_pkg::DEQUANT;
 
+	localparam int STAGE = 1;
+
 	localparam int
 		RE = 0,
 		IM = 1;
@@ -43,11 +45,8 @@ module fft_stage1 #(
 
 	/* Sample idx = { step idx, lower step flag } */ 
 	logic [ LOG2_N:0 ] idx, idx_c;
-	/* Step idx - has an extra high bit to accommodate final stage, 
-	 * which has all samples within a single step but step idx couldn't possibly 
-	 * be 0-bit wide. Also, it needs to enter a higher "ghost step" to flush the
-	 * pipeline.
-	 */
+
+	/* Index of current step */
 	logic [ LOG2_N-STAGE:0 ] step_idx;
 	/* Sample belongs in upper or lower half of step, in terms of idx? 
  	 * ( when the incoming sample is in the lower half of step 0,
