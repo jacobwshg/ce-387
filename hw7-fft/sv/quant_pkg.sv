@@ -1,8 +1,9 @@
 
 package quant_pkg;
 
-	import globals_pkg::*;
+	//import globals_pkg::*;
 
+	localparam int DWIDTH = 32;
 	localparam int FRAC_WIDTH = 14;
 	localparam int Q_STEP = 1<<FRAC_WIDTH;
 

@@ -1,6 +1,4 @@
 
-//import complex_pkg::*;
-
 module fft_stage #(
 	parameter int STAGE = 2,
 	parameter int N = 32,
@@ -21,12 +19,14 @@ module fft_stage #(
 	output logic signed [ 0:1 ] [ DWIDTH-1:0 ] dout,
 	output logic out_wr_en
 );
+	import quant_pkg::DEQUANT;
 
 	localparam int
 		RE = 0,
 		IM = 1;
 
 	/*
+	 * 1-based stage index
 	 * Stage 2: step = 4
 	 * Stage 3: step = 8
 	 */ 
@@ -53,10 +53,9 @@ module fft_stage #(
  	 * ( when the incoming sample is in the lower half of step 0,
  	 * the butterfly output is invalid ) */
 	logic is_lower_step;
-
 	logic out_valid;
 
-	/* Buffer read/write addrs; we only buffer half a step */
+	/* Read/write addrs for delay buffer; buffering half a step is enough */
 	logic [ STAGE-2:0 ] buf_rd_addr, buf_wr_addr;
 
 	/* Butterfly and buffer signals */
@@ -81,7 +80,7 @@ module fft_stage #(
 	bram #(
 		.BRAM_ADDR_WIDTH( STAGE-1 ),
 		.BRAM_DWIDTH( 2 * DWIDTH )
-	) buff (
+	) dly_buf (
 		.clock  ( clk ),
 
 		.rd_addr( buf_rd_addr ),
@@ -93,8 +92,12 @@ module fft_stage #(
 		.dout   ( buf_dout )
 	); 
 
-	assign { step_idx, is_lower_step, buf_rd_addr }
-		= { idx[ LOG2_N:STAGE ], idx[ STAGE-1 ], idx[ STAGE-2:0 ] };
+	//assign { step_idx, is_lower_step, buf_rd_addr }
+	//	= { idx[ LOG2_N:STAGE ], idx[ STAGE-1 ], idx[ STAGE-2:0 ] };
+	assign step_idx      = idx[ LOG2_N:STAGE ];
+	assign is_lower_step = idx[ STAGE-1 ];
+	assign buf_rd_addr   = idx[ STAGE-2:0 ];
+
 	assign out_valid = !( step_idx===0 && is_lower_step );
 	/*
  	 * In lower step, read back buffered out2 and send it downstream,
@@ -117,13 +120,7 @@ module fft_stage #(
 		buf_wr_en = 1'b0;
 
 		idx_c = idx;
-		/*
-		 * Always drive butterfly so as to cut the critical path delay caused by
-		 * its inputs being gated by flags
-		 * Its outputs are only sampled in lower steps, when they aren't
-		 * garbage
-		 *
-		 */
+
 		in1 = buf_dout;
 
 		in2_c[ RE ] = in2[ RE ];
@@ -159,7 +156,7 @@ module fft_stage #(
 			begin
 				wi_x_i2r_c = w[ IM ] * in2[ RE ];
 				wi_x_i2i_c = w[ IM ] * in2[ IM ];
-				fsm_state_c = S_BF_MUL_2;
+				fsm_state_c = S_BF_MUL_WR;
 			end
 
 			S_BF_MUL_WR:

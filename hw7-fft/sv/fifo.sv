@@ -68,12 +68,13 @@ module fifo #(
 			empty <= (wr_addr == rd_addr_c) ? 1'b1 : 1'b0;
 	end
 
-	assign rd_addr_c = (rd_en == 1'b1 && empty_c == 1'b0) ? ($unsigned(rd_addr) + 'h1) : rd_addr;
-	assign wr_addr_c = (wr_en == 1'b1 && full_c == 1'b0) ? ($unsigned(wr_addr) + 'h1) : wr_addr;
 	assign empty_c = (wr_addr == rd_addr) ? 1'b1 : 1'b0;
 	assign full_c = (wr_addr[FIFO_ADDR_WIDTH-2:0] == rd_addr[FIFO_ADDR_WIDTH-2:0]) &&
 		(wr_addr[FIFO_ADDR_WIDTH-1] != rd_addr[FIFO_ADDR_WIDTH-1]) ? 1'b1 : 1'b0;
 	assign full = full_c;
+
+	assign rd_addr_c = (rd_en == 1'b1 && empty_c == 1'b0) ? ($unsigned(rd_addr) + 'h1) : rd_addr;
+	assign wr_addr_c = (wr_en == 1'b1 && full_c == 1'b0) ? ($unsigned(wr_addr) + 'h1) : wr_addr;
 
 endmodule: fifo
 
