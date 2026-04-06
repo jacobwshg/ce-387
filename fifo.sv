@@ -46,7 +46,6 @@ module fifo #(
 		end
 		else if ( !full && wr_en )
 		begin
-			//$display( "@%0t\tFIFO writing to addr %0h", $time, wr_addr );
 			fifo_buf[ wr_addr[ FIFO_ADDR_WIDTH-1:0 ] ] <= din;
 			wr_addr <= wr_addr + 1'h1;
 		end
@@ -61,8 +60,6 @@ module fifo #(
 		end
 		else if ( !empty )
 		begin
-			//$display( "@%0t\tFIFO write addr = %0h, reading from addr %0h", $time, wr_addr, rd_addr );
-
 			dout <= to01( fifo_buf[ rd_addr[ FIFO_ADDR_WIDTH-1:0 ] ] );
 			if ( rd_en ) rd_addr <= rd_addr + 1'h1;
 		end
