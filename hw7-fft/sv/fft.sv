@@ -13,7 +13,9 @@ module fft #(
 
 	output logic signed [ 0:1 ] [ DWIDTH-1:0 ] dout,
 	output logic out_wr_en,
-	output logic in_rd_en
+	output logic in_rd_en,
+
+	output logic done
 );
 
 	import twdls_pkg::TWDLS;
@@ -133,6 +135,8 @@ module fft #(
 		end
 	endgenerate
 
+	assign done = 1'( fsm_state == S_DONE );
+
 	always_ff @ ( posedge clk, posedge rst )
 	begin
 		if ( rst )
@@ -201,6 +205,7 @@ module fft #(
 
 				end
 			end
+
 			S_RUN:
 			begin
 				if ( !fifo_full[ 0 ] )
@@ -227,6 +232,11 @@ module fft #(
 					end
 				end
 			end
+
+			S_DONE:
+			begin
+			end
+
 			default:
 			begin
 				fsm_state_c = S_REORDER;

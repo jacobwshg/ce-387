@@ -15,7 +15,7 @@ localparam string CMPFILE_IM = "../sim/fft_out_imag.txt";
 localparam int CLOCK_PERIOD = 10;
 
 localparam int N = 16;
-localparam int DATA_WIDTH = 32;
+localparam int DWIDTH = 32;
 
 localparam int RE = 0, IM = 1;
 
