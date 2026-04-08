@@ -190,13 +190,13 @@ module fft_stage #(
 					begin
 						dout = out1;
 						buf_din = out2;
-		
+						/*
 						$display( "stage %0d, step_idx %0d, buf_rd_addr %0d", STAGE, step_idx, buf_rd_addr  );
 						$display( "\tw = %08h", w );
 						$display( "\tin1 = %08h + %08hj, in2 = %08h + %08hj", in1[ RE ], in1[ IM ], in2[ RE ], in2[ IM ] );
 						$display( "\tout1 = %08h + %08hj, out2 = %08h + %08hj", out1[ RE ], out1[ IM ], out2[ RE ], out2[ IM ] );
 						$display( "" );
-
+						*/
 					end
 
 					buf_wr_en = 1'b1;

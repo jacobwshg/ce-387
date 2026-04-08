@@ -192,13 +192,19 @@ module fft #(
 					ROB_din = { din[ 0 ], din[ 1 ] };
 					ROB_wr_en = 1'b1;
 					/* data will write to the reordered ROB_wr_addr */
+					$display( "" );
+					$display(
+						"@%0t writing data %08h + %08hj, ROB_in_idx = %0d = %08b, ROB_wr_addr = %0d = %08b",
+						$time, din[ 0 ], din[ 1 ], ROB_in_idx, ROB_in_idx, ROB_wr_addr, ROB_wr_addr
+					);
+					$display( "" );
+
 
 					ROB_in_idx_c = ROB_in_idx + 1;
 
 					if ( ROB_in_idx_c == 0 )
 					begin
 						// all samples read
-						//$display( "MOVING TO S_RUN" );
 						fsm_state_c = S_RUN;
 						ROB_rd_addr_c = 'h0;
 					end
