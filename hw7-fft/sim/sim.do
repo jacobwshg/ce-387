@@ -4,9 +4,10 @@ vlib work
 vmap work work
 
 # architecture
+vlog -work work "../sv/quant_pkg.sv"
+vlog -work work "../sv/twdls_pkg.sv"
 vlog -work work "../sv/fifo.sv"
 vlog -work work "../sv/bram.sv"
-vlog -work work "../sv/butterfly.sv"
 vlog -work work "../sv/fft_stage1.sv"
 vlog -work work "../sv/fft_stage.sv"
 vlog -work work "../sv/fft.sv"
