@@ -172,7 +172,7 @@ module fft_stage1 #(
 						dly_buf_c = out2;
 
 						$display( "@%0t stage 1, step_idx %0d", $time, step_idx );
-						$display( "\tw = %08h", w );
+						$display( "\tw = %08h + %08hj", w[ RE ], w[ IM ] );
 						$display( "\tin1 = %08h + %08hj, in2 = %08h + %08hj", in1[ RE ], in1[ IM ], in2[ RE ], in2[ IM ] );
 						$display( "\tout1 = %08h + %08hj, out2 = %08h + %08hj", out1[ RE ], out1[ IM ], out2[ RE ], out2[ IM ] );
 						$display( "" );
