@@ -53,10 +53,10 @@ module fft #(
 	 * one for ROB output, then one for each stage's output
 	 */
 	logic [ DWIDTH*2-1:0 ]
-		fifo_din [ 0:STAGE_CNT ], fifo_dout [ 0:STAGE_CNT ];
+		pipe_din [ 0:STAGE_CNT ], pipe_dout [ 0:STAGE_CNT ];
 	logic
-		fifo_wr_en [ 0:STAGE_CNT ], fifo_full [ 0:STAGE_CNT ],
-		fifo_rd_en [ 0:STAGE_CNT ], fifo_empty [ 0:STAGE_CNT ];
+		pipe_wr_en [ 0:STAGE_CNT ], pipe_full [ 0:STAGE_CNT ],
+		pipe_rd_en [ 0:STAGE_CNT ], pipe_empty [ 0:STAGE_CNT ];
 
 	/*
 	 * Number of samples that have been read from final stage 
@@ -93,10 +93,10 @@ module fft #(
 				.FIFO_BUFFER_SIZE( 4 )
 			) pipe_fifo (
 				.reset( rst ),
-				.wr_clk( clk ), .wr_en( fifo_wr_en[ s ] ),
-				.din( fifo_din[ s ] ), .full( fifo_full[ s ] ),
-				.rd_clk( clk ), .rd_en( fifo_rd_en[ s ] ),
-				.dout( fifo_dout[ s ] ), .empty( fifo_empty[ s ] )
+				.wr_clk( clk ), .wr_en( pipe_wr_en[ s ] ),
+				.din( pipe_din[ s ] ), .full( pipe_full[ s ] ),
+				.rd_clk( clk ), .rd_en( pipe_rd_en[ s ] ),
+				.dout( pipe_dout[ s ] ), .empty( pipe_empty[ s ] )
 			);
 
 			if ( s == 1 )
@@ -107,12 +107,12 @@ module fft #(
 					.STAGE1_TWDL( TWDLS[ 0 ][ 0 ] )
 				) stage1_inst (
 					.clk( clk ), .rst( rst ),
-					.din      ( fifo_dout [ 0 ] ),
-					.in_empty ( fifo_empty[ 0 ] ),
-					.out_full ( fifo_full [ 1 ] ),
-					.in_rd_en ( fifo_rd_en[ 0 ] ),
-					.dout     ( fifo_din  [ 1 ] ),
-					.out_wr_en( fifo_wr_en[ 1 ] )
+					.din      ( pipe_dout [ 0 ] ),
+					.in_empty ( pipe_empty[ 0 ] ),
+					.out_full ( pipe_full [ 1 ] ),
+					.in_rd_en ( pipe_rd_en[ 0 ] ),
+					.dout     ( pipe_din  [ 1 ] ),
+					.out_wr_en( pipe_wr_en[ 1 ] )
 				);
 			end
 			else if ( s > 1 )
@@ -124,12 +124,12 @@ module fft #(
 					.STAGE_TWDLS( TWDLS[ s-1 ][ 0:( 1<<( s-1 ) )-1 ] )
 				) stage_inst (
 					.clk( clk ), .rst( rst ),
-					.din      ( fifo_dout [ s-1 ] ),
-					.in_empty ( fifo_empty[ s-1 ] ),
-					.out_full ( fifo_full [ s ] ),
-					.in_rd_en ( fifo_rd_en[ s-1 ] ),
-					.dout     ( fifo_din  [ s ] ),
-					.out_wr_en( fifo_wr_en[ s ] )
+					.din      ( pipe_dout [ s-1 ] ),
+					.in_empty ( pipe_empty[ s-1 ] ),
+					.out_full ( pipe_full [ s ] ),
+					.in_rd_en ( pipe_rd_en[ s-1 ] ),
+					.dout     ( pipe_din  [ s ] ),
+					.out_wr_en( pipe_wr_en[ s ] )
 				);
 			end
 		end
@@ -171,9 +171,9 @@ module fft #(
 		ROB_din = 'hX;
 		ROB_wr_en = 1'b0;
 
-		fifo_wr_en[ 0 ] = 1'b0;
-		fifo_din[ 0 ] = 'hX;
-		fifo_rd_en[ STAGE_CNT ] = 1'b0;
+		pipe_wr_en[ 0 ] = 1'b0;
+		pipe_din[ 0 ] = 'hX;
+		pipe_rd_en[ STAGE_CNT ] = 1'b0;
 
 		dout[ 0 ] = 'sh0;
 		dout[ 1 ] = 'sh0;
@@ -214,22 +214,22 @@ module fft #(
 
 			S_RUN:
 			begin
-				if ( !fifo_full[ 0 ] )
+				if ( !pipe_full[ 0 ] )
 				begin
 					// can send a sample to stage 1
-					fifo_wr_en[ 0 ] = 1'b1;
-					fifo_din  [ 0 ] = ROB_dout;
+					pipe_wr_en[ 0 ] = 1'b1;
+					pipe_din  [ 0 ] = ROB_dout;
 					// keep reading the next ROB sample, even if we wrap, so
 					// as to flush the pipeline
 					ROB_rd_addr_c = ROB_rd_addr + 1'h1;
 				end
 
-				if ( ( !fifo_empty[ STAGE_CNT ] ) && !out_full )
+				if ( ( !pipe_empty[ STAGE_CNT ] ) && !out_full )
 				begin
 					// allow final stage output to flow out
 					out_wr_en = 1'b1;
-					fifo_rd_en[ STAGE_CNT ] = 1'b1;
-					dout = fifo_dout[ STAGE_CNT ];
+					pipe_rd_en[ STAGE_CNT ] = 1'b1;
+					dout = pipe_dout[ STAGE_CNT ];
 
 					out_sample_cnt_c = out_sample_cnt + 1'h1;
 					if ( out_sample_cnt_c == N )
