@@ -1,11 +1,14 @@
 
+import twdls_pkg::TWDLS;
+
 module fft_stage #(
 	parameter int STAGE = 2,
 	parameter int N = 32,
 	parameter int DWIDTH = 32,
 
 	parameter logic signed [ 0:1 ] [ DWIDTH-1:0 ]
-		STAGE_TWDLS [ 0:(1<<(STAGE-1))-1 ]
+		STAGE_TWDLS [ 0:(1<<( STAGE-1 ) )-1 ] =
+		twdls_pkg::TWDLS [ STAGE-1 ] [ 0:( 1<<( STAGE-1 ) )-1 ]
 )
 (
 	input  logic clk,

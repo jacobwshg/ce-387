@@ -1,4 +1,7 @@
 
+import globals_pkg::printtime;
+import globals_pkg::PIPE_FIFO_DEPTH;
+
 module fft #(
 	parameter int N = 32,
 	parameter int DWIDTH = 32
@@ -31,7 +34,9 @@ module fft #(
 	localparam int N_DEFAULT = 32;
 
 	typedef enum logic [ 1:0 ] {
-		S_REORDER, S_RUN, S_DONE
+		S_REORDER, 
+		S_SHOWROB,
+		S_RUN, S_DONE
 	} fsm_state_t;
 	fsm_state_t fsm_state, fsm_state_c;
 
@@ -90,10 +95,10 @@ module fft #(
 		begin
 			fifo #(
 				.FIFO_DATA_WIDTH( 2 * DWIDTH ),
-				.FIFO_BUFFER_SIZE( 4 )
+				.FIFO_BUFFER_SIZE( PIPE_FIFO_DEPTH )
 			) pipe_fifo (
 				.reset( rst ),
-				.wr_clk( clk ), .wr_en( pipe_wr_en[ s ] ),
+				.wr_clk( ~clk ), .wr_en( pipe_wr_en[ s ] ),
 				.din( pipe_din[ s ] ), .full( pipe_full[ s ] ),
 				.rd_clk( clk ), .rd_en( pipe_rd_en[ s ] ),
 				.dout( pipe_dout[ s ] ), .empty( pipe_empty[ s ] )
@@ -121,7 +126,7 @@ module fft #(
 					.STAGE( s ),
 					.N( N ),
 					.DWIDTH( DWIDTH ),
-					.STAGE_TWDLS( TWDLS[ s-1 ][ 0:( 1<<( s-1 ) )-1 ] )
+					.STAGE_TWDLS( TWDLS [ s-1 ] [ 0:( 1<<( s-1 ) )-1 ] )
 				) stage_inst (
 					.clk( clk ), .rst( rst ),
 					.din      ( pipe_dout [ s-1 ] ),
@@ -168,8 +173,8 @@ module fft #(
 		end
 
 		ROB_rd_addr_c = ROB_rd_addr;
-		ROB_din = 'hX;
 		ROB_wr_en = 1'b0;
+		ROB_din = 'hX;
 
 		pipe_wr_en[ 0 ] = 1'b0;
 		pipe_din[ 0 ] = 'hX;
@@ -210,11 +215,22 @@ module fft #(
 					begin
 						// all samples read
 						$display( "all samples read into ROB" );
-						fsm_state_c = S_RUN;
+
+						fsm_state_c = S_SHOWROB;
+
 						ROB_rd_addr_c = 'h0;
 					end
 
 				end
+			end
+
+			// debug sanity check
+			S_SHOWROB:
+			begin
+				$display( "printing reorder buffer" );
+				for ( int i=0; i<N; ++i )
+					$display( "[%2d]\t%016h", i, reorder_buff.mem[ i ] );
+				fsm_state_c = S_RUN;
 			end
 
 			S_RUN:
@@ -224,9 +240,18 @@ module fft #(
 					// can send a sample to stage 1
 					pipe_wr_en[ 0 ] = 1'b1;
 					pipe_din  [ 0 ] = ROB_dout;
+
+					printtime();
+					$display( "piping ROB data %016h to stage1", pipe_din[ 0 ] );
+
 					// keep reading the next ROB sample, even if we wrap, so
 					// as to flush the pipeline
 					ROB_rd_addr_c = ROB_rd_addr + 1'h1;
+					$display( "next ROB read addr %0d", ROB_rd_addr_c );
+				end
+				else
+				begin
+					$display( "stage1 input full" );
 				end
 
 				if ( ( !pipe_empty[ STAGE_CNT ] ) && !out_full )
@@ -241,6 +266,11 @@ module fft #(
 					begin
 						fsm_state_c = S_DONE;
 					end
+				end
+				else
+				begin
+					if ( pipe_empty[ STAGE_CNT ] ) $display( "\tfinal stage output empty" );
+					if ( out_full ) $display( "\tdownstream full" );
 				end
 			end
 

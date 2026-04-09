@@ -1,10 +1,12 @@
 
 import globals_pkg::printtime;
+import twdls_pkg::TWDLS;
 
 module fft_stage1 #(
 	parameter int N = 32,
 	parameter int DWIDTH = 32,
-	parameter logic signed [ 0:1 ] [ DWIDTH-1:0 ] STAGE1_TWDL
+	parameter logic signed [ 0:1 ] [ DWIDTH-1:0 ]
+		STAGE1_TWDL = twdls_pkg::TWDLS[ 0 ][ 0 ]
 )
 (
 	input  logic clk,
