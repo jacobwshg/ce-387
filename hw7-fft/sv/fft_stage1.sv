@@ -1,5 +1,5 @@
 
-//import complex_pkg::*;
+import globals_pkg::printtime;
 
 module fft_stage1 #(
 	parameter int N = 32,
@@ -44,14 +44,17 @@ module fft_stage1 #(
 	fsm_state_t fsm_state, fsm_state_c;
 
 	/* Sample idx = { step idx, lower step flag } */ 
-	logic [ LOG2_N:0 ] idx, idx_c;
+	logic [ LOG2_N:0 ] sampl_idx, sampl_idx_c;
 
 	/* Index of current step */
 	logic [ LOG2_N-STAGE:0 ] step_idx;
-	/* Sample belongs in upper or lower half of step, in terms of idx? 
- 	 * ( when the incoming sample is in the lower half of step 0,
- 	 * the butterfly output is invalid ) */
-	logic is_lower_step;
+	/* Sample belongs in former or latter half of step? 
+ 	 * ( when the incoming sample is in the former half step, we ignore
+ 	 * the butterfly and output the previous butterfly's out2 from buffer;
+ 	 * but when we're in step 0, there is no prev butterfly and our
+ 	 * module output is invalid ) 
+ 	 */
+	logic is_latter_hstep;
 	logic out_valid;
 
 	/* There are no dedicated signals for buffer read/write addrs,
@@ -74,10 +77,10 @@ module fft_stage1 #(
 		wr_x_i2i, wr_x_i2i_c,
 		wi_x_i2r, wi_x_i2r_c;
 
-	assign step_idx      = idx[ LOG2_N:STAGE ];
-	assign is_lower_step = idx[ STAGE-1 ];
+	assign step_idx = sampl_idx[ LOG2_N:STAGE ];
+	assign is_latter_hstep = sampl_idx[ STAGE-1 ];
 
-	assign out_valid = !( step_idx===0 && is_lower_step );
+	assign out_valid = step_idx!==0 || !is_latter_hstep;
 	/*
  	 * In lower step, read back buffered out2 and send it downstream,
  	 * buffer in1
@@ -91,14 +94,15 @@ module fft_stage1 #(
 	begin
 		fsm_state_c = fsm_state;
 
+		in_rd_en = 1'b0;
+		out_wr_en = 1'b0;
 		dout[ RE ] = 'shX;
 		dout[ IM ] = 'shX;
-		out_wr_en = 1'b0;
 
 		dly_buf_c[ RE ] = dly_buf[ RE ];
 		dly_buf_c[ IM ] = dly_buf[ IM ];
 
-		idx_c = idx;
+		sampl_idx_c = sampl_idx;
 
 		in1 = dly_buf;
 
@@ -112,7 +116,7 @@ module fft_stage1 #(
 		wr_x_i2i_c = wr_x_i2i;
 		wi_x_i2r_c = wi_x_i2r;
 
-		/* only significant in S_BF_OUT with !is_lower_step */
+		/* only significant in S_BF_OUT with is_latter_hstep */
 		out1[ RE ] = in1[ RE ] + v[ RE ];
 		out1[ IM ] = in1[ IM ] + v[ IM ];
 		out2[ RE ] = in1[ RE ] - v[ RE ];
@@ -125,7 +129,11 @@ module fft_stage1 #(
 				begin
 					in_rd_en = 1'b1;
 					in2_c = din;
-					fsm_state_c = is_lower_step
+
+					$display( "stage1 read piped ROB data %016h", din );
+
+					// only run butterfly if in latter half step
+					fsm_state_c = is_latter_hstep
 						? S_BF_MUL_WI
 						: S_BF_OUT;
 				end
@@ -161,8 +169,12 @@ module fft_stage1 #(
 				if ( !out_full )
 				begin
 
-					if ( is_lower_step )
+					printtime();
+					$display( "sample idx %08b", sampl_idx );
+
+					if ( !is_latter_hstep )
 					begin
+						$display( "stage 1 former half step, buffering input data %08h + %08hj", in2[ RE ], in2[ IM ] );
 						dout = dly_buf;
 						dly_buf_c = in2;
 					end
@@ -171,7 +183,7 @@ module fft_stage1 #(
 						dout = out1;
 						dly_buf_c = out2;
 
-						$display( "@%0t stage 1, step_idx %0d", $time, step_idx );
+						$display( "stage 1 latter half step, step idx %0d", step_idx );
 						$display( "\tw = %08h + %08hj", w[ RE ], w[ IM ] );
 						$display( "\tin1 = %08h + %08hj, in2 = %08h + %08hj", in1[ RE ], in1[ IM ], in2[ RE ], in2[ IM ] );
 						$display( "\tout1 = %08h + %08hj, out2 = %08h + %08hj", out1[ RE ], out1[ IM ], out2[ RE ], out2[ IM ] );
@@ -181,7 +193,7 @@ module fft_stage1 #(
 
 					out_wr_en = out_valid? 1'b1: 1'b0;
 
-					idx_c = idx + 1'h1;
+					sampl_idx_c = sampl_idx + 1'h1;
 					fsm_state_c = S_GET;
 				end
 
@@ -200,7 +212,7 @@ module fft_stage1 #(
 			dly_buf[ RE ] <= 'sh0;
 			dly_buf[ IM ] <= 'sh0;
 
-			idx <= 'h0;
+			sampl_idx <= 'h0;
 
 			in2[ RE ] <= 'sh0;
 			in2[ IM ] <= 'sh0;
@@ -219,7 +231,7 @@ module fft_stage1 #(
 			dly_buf[ RE ] <= dly_buf_c[ RE ];
 			dly_buf[ IM ] <= dly_buf_c[ IM ];
 
-			idx <= idx_c;
+			sampl_idx <= sampl_idx_c;
 
 			in2[ RE ] <= in2_c[ RE ];
 			in2[ IM ] <= in2_c[ IM ];

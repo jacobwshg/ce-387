@@ -29,6 +29,8 @@ class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 		int n_bytes=0, i=0;
 		logic signed [ DWIDTH-1:0 ] re, im;
 
+		logic [ DWIDTH-1:0 ] real_mem [ 0:N-1 ], imag_mem [ 0:N-1 ];
+
 		`uvm_info( "SEQ_RUN", $sformatf( "Loading real infile %s...", INFILE_RE ), UVM_LOW );
 		`uvm_info( "SEQ_RUN", $sformatf( "Loading imag infile %s...", INFILE_IM ), UVM_LOW );
 
@@ -44,27 +46,28 @@ class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 			`uvm_fatal( "SEQ_RUN", $sformatf( "Failed to open imag infile %s...", INFILE_IM ) );
 		end
 
-		for ( i=0; i<N; ++i )
+		$readmemh( INFILE_RE, real_mem );
+		$readmemh( INFILE_IM, imag_mem );
+
+		for ( i=0; i<2*N; ++i )
 		begin
 			tx = my_uvm_transaction::type_id::create(
 				.name( "tx" ), .contxt( get_full_name() )
 			);
 			start_item( tx );
-			if ( !$feof( infile_re ) && !$feof( infile_im ) )
-			begin
-				$fscanf( infile_re, "%08h", re );
-				$fscanf( infile_im, "%08h", im );
-				tx.re = re;
-				tx.im = im;
-				`uvm_info(
-					"SEQ_RUN",
-					$sformatf(
-						"Sequencer sending data ( %h %h )..",
+
+			$fscanf( infile_re, "%08h", re );
+			$fscanf( infile_im, "%08h", im );
+			tx.re = real_mem[ i%N ];
+			tx.im = imag_mem[ i%N ];
+			`uvm_info(
+				"SEQ_RUN",
+				$sformatf(
+					"Sequencer sending data ( %h %h )..",
 						tx.re, tx.im
-					),
-					UVM_LOW
-				); 
-			end
+				),
+				UVM_LOW
+			); 
 			//`uvm_info("SEQ_RUN", tx.sprint(), UVM_LOW);
 			finish_item(tx);
 		end

@@ -4,6 +4,7 @@ vlib work
 vmap work work
 
 # architecture
+vlog -work work "../sv/globals_pkg.sv"
 vlog -work work "../sv/quant_pkg.sv"
 vlog -work work "../sv/twdls_pkg.sv"
 vlog -work work "../sv/fifo.sv"

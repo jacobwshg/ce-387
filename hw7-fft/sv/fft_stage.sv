@@ -41,18 +41,20 @@ module fft_stage #(
 	} fsm_state_t;
 	fsm_state_t fsm_state, fsm_state_c;
 
-	/* Sample idx = { step idx, lower step flag, buf sample addr } */ 
-	logic [ LOG2_N:0 ] idx, idx_c;
-	/* Step idx - has an extra high bit to accommodate final stage, 
-	 * which has all samples within a single step but step idx couldn't possibly 
+	/* Sample sampl_idx = { step sampl_idx, lower step flag, buf sample addr } */ 
+	logic [ LOG2_N:0 ] sampl_idx, sampl_idx_c;
+	/* Step sampl_idx - has an extra high bit to accommodate final stage, 
+	 * which has all samples within a single step but step sampl_idx couldn't possibly 
 	 * be 0-bit wide. Also, it needs to enter a higher "ghost step" to flush the
 	 * pipeline.
 	 */
 	logic [ LOG2_N-STAGE:0 ] step_idx;
-	/* Sample belongs in upper or lower half of step, in terms of idx? 
- 	 * ( when the incoming sample is in the lower half of step 0,
- 	 * the butterfly output is invalid ) */
-	logic is_lower_step;
+	/* Sample belongs in former or latter half of step? 
+ 	 * ( when the incoming sample is in the former half step, we ignore
+ 	 * the butterfly and output the previous butterfly's out2 from buffer;
+ 	 * but when we're in step 0, there is no prev butterfly and our
+ 	 * module output is invalid ) step/
+	logic is_latter_hstep;
 	logic out_valid;
 
 	/* Read/write addrs for delay buffer; buffering half a step is enough */
@@ -92,13 +94,10 @@ module fft_stage #(
 		.dout   ( buf_dout )
 	); 
 
-	//assign { step_idx, is_lower_step, buf_rd_addr }
-	//	= { idx[ LOG2_N:STAGE ], idx[ STAGE-1 ], idx[ STAGE-2:0 ] };
-	assign step_idx      = idx[ LOG2_N:STAGE ];
-	assign is_lower_step = idx[ STAGE-1 ];
-	assign buf_rd_addr   = idx[ STAGE-2:0 ];
+	assign { step_idx, is_latter_hstep, buf_rd_addr }
+		= { sampl_idx[ LOG2_N:STAGE ], sampl_idx[ STAGE-1 ], sampl_idx[ STAGE-2:0 ] };
 
-	assign out_valid = !( step_idx===0 && is_lower_step );
+	assign out_valid = step_idx!==0 || !is_latter_hstep;
 	/*
  	 * In lower step, read back buffered out2 and send it downstream,
  	 * buffer in1
@@ -111,15 +110,16 @@ module fft_stage #(
 	begin
 		fsm_state_c = fsm_state;
 
+		in_rd_en = 1'b0;
+		out_wr_en = 1'b0;
 		dout[ RE ] = 'shX;
 		dout[ IM ] = 'shX;
-		out_wr_en = 1'b0;
 
 		buf_din[ RE ] = 'shX;
 		buf_din[ IM ] = 'shX;
 		buf_wr_en = 1'b0;
 
-		idx_c = idx;
+		sampl_idx_c = sampl_idx;
 
 		in1 = buf_dout;
 
@@ -133,7 +133,7 @@ module fft_stage #(
 		wr_x_i2i_c = wr_x_i2i;
 		wi_x_i2r_c = wi_x_i2r;
 
-		/* only significant in S_BF_OUT with !is_lower_step */
+		/* only significant in S_BF_OUT with is_latter_hstep */
 		out1[ RE ] = in1[ RE ] + v[ RE ];
 		out1[ IM ] = in1[ IM ] + v[ IM ];
 		out2[ RE ] = in1[ RE ] - v[ RE ];
@@ -146,7 +146,8 @@ module fft_stage #(
 				begin
 					in_rd_en = 1'b1;
 					in2_c = din;
-					fsm_state_c = is_lower_step
+					// only run butterfly if in latter half step
+					fsm_state_c = is_latter_hstep
 						? S_BF_MUL_WI
 						: S_BF_OUT;
 				end
@@ -181,7 +182,7 @@ module fft_stage #(
 			begin
 				if ( !out_full )
 				begin
-					if ( is_lower_step )
+					if ( !is_latter_hstep )
 					begin
 						dout = buf_dout;
 						buf_din = in2;
@@ -191,7 +192,7 @@ module fft_stage #(
 						dout = out1;
 						buf_din = out2;
 						/*
-						$display( "stage %0d, step_idx %0d, buf_rd_addr %0d", STAGE, step_idx, buf_rd_addr  );
+						$display( "stage %0d, sampl_idx %0d, buf_rd_addr %0d", STAGE, sampl_idx, buf_rd_addr  );
 						$display( "\tw = %08h + %08hj", w[ RE ], w[ IM ] );
 						$display( "\tin1 = %08h + %08hj, in2 = %08h + %08hj", in1[ RE ], in1[ IM ], in2[ RE ], in2[ IM ] );
 						$display( "\tout1 = %08h + %08hj, out2 = %08h + %08hj", out1[ RE ], out1[ IM ], out2[ RE ], out2[ IM ] );
@@ -202,7 +203,7 @@ module fft_stage #(
 					buf_wr_en = 1'b1;
 					out_wr_en = out_valid? 1'b1: 1'b0;
 
-					idx_c = idx + 1'h1;
+					sampl_idx_c = sampl_idx + 1'h1;
 					fsm_state_c = S_GET;
 				end
 
@@ -223,7 +224,7 @@ module fft_stage #(
 		begin
 			fsm_state <= S_GET;
 
-			idx <= 'h0;
+			sampl_idx <= 'h0;
 
 			in2[ RE ] <= 'sh0;
 			in2[ IM ] <= 'sh0;
@@ -239,7 +240,7 @@ module fft_stage #(
 		begin
 			fsm_state <= fsm_state_c;
 
-			idx <= idx_c;
+			sampl_idx <= sampl_idx_c;
 
 			in2[ RE ] <= in2_c[ RE ];
 			in2[ IM ] <= in2_c[ IM ];
