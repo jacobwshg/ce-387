@@ -1,9 +1,14 @@
 
+import globals_pkg::FIFO_DEPTH;
+import globals_pkg::PIPE_FIFO_DEPTH;
+
 module fft_top #(
-	parameter int N = 32,
-	parameter int DWIDTH = 32,
-	parameter int FIFO_DEPTH = 16
-)(
+	parameter int N = 32,				
+	parameter int DWIDTH = 32,				
+	parameter int FIFO_DEPTH = globals_pkg::FIFO_DEPTH,			
+	parameter int PIPE_FIFO_DEPTH = globals_pkg::PIPE_FIFO_DEPTH			
+)
+(
 	input logic clk,
 	input logic rst,
 
@@ -42,7 +47,8 @@ module fft_top #(
 
 	fft #(
 		.N( N ),
-		.DWIDTH( DWIDTH )
+		.DWIDTH( DWIDTH ),
+		.PIPE_FIFO_DEPTH( PIPE_FIFO_DEPTH )
 	) fft_inst (
 		.clk( clk ), .rst( rst ),
 

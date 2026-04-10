@@ -82,11 +82,11 @@ module fft_stage1 #(
 	assign step_idx = sampl_idx[ LOG2_N:STAGE ];
 	assign is_latter_hstep = sampl_idx[ STAGE-1 ];
 
-	assign out_valid = step_idx!==0 || !is_latter_hstep;
+	assign out_valid = step_idx!==0 || is_latter_hstep;
 	/*
- 	 * In lower step, read back buffered out2 and send it downstream,
+ 	 * In former half step, read back buffered out2 and send it downstream,
  	 * buffer in1
- 	 * In higher step, read back buffered in1, run butterfly, overwrite
+ 	 * In latter half step, read back buffered in1, run butterfly, overwrite
  	 * in1 with out2 at same half-step addr in buffer
 	 */
 
@@ -106,8 +106,6 @@ module fft_stage1 #(
 
 		sampl_idx_c = sampl_idx;
 
-		in1 = dly_buf;
-
 		in2_c[ RE ] = in2[ RE ];
 		in2_c[ IM ] = in2[ IM ];
 		v_c[ RE ] = v[ RE ];
@@ -119,6 +117,7 @@ module fft_stage1 #(
 		wi_x_i2r_c = wi_x_i2r;
 
 		/* only significant in S_BF_OUT with is_latter_hstep */
+		in1 = dly_buf;
 		out1[ RE ] = in1[ RE ] + v[ RE ];
 		out1[ IM ] = in1[ IM ] + v[ IM ];
 		out2[ RE ] = in1[ RE ] - v[ RE ];
@@ -171,12 +170,12 @@ module fft_stage1 #(
 				if ( !out_full )
 				begin
 
-					printtime();
-					$display( "sample idx %08b", sampl_idx );
+					//printtime();
+					//$display( "sample idx %08b", sampl_idx );
 
 					if ( !is_latter_hstep )
 					begin
-						$display( "stage 1 former half step, buffering input data %08h + %08hj", in2[ RE ], in2[ IM ] );
+						//$display( "stage 1 former half step, buffering input data %08h + %08hj", in2[ RE ], in2[ IM ] );
 						dout = dly_buf;
 						dly_buf_c = in2;
 					end
@@ -185,15 +184,28 @@ module fft_stage1 #(
 						dout = out1;
 						dly_buf_c = out2;
 
+						/*
 						$display( "stage 1 latter half step, step idx %0d", step_idx );
 						$display( "\tw = %08h + %08hj", w[ RE ], w[ IM ] );
 						$display( "\tin1 = %08h + %08hj, in2 = %08h + %08hj", in1[ RE ], in1[ IM ], in2[ RE ], in2[ IM ] );
 						$display( "\tout1 = %08h + %08hj, out2 = %08h + %08hj", out1[ RE ], out1[ IM ], out2[ RE ], out2[ IM ] );
 						$display( "" );
+						*/
 
 					end
 
 					out_wr_en = out_valid? 1'b1: 1'b0;
+
+					if ( out_wr_en )
+					begin
+						// `out1` was once misused for the format parameters
+						// instead of `dout`. they are the same only in latter 
+						// half steps. however, in former half steps, `out1`
+						// was shown to be the same as the prev butterfly's
+						// `in1`. it should've been the sum of `in` with a
+						// previous nonzero `v`, so why?
+						$display( "stage %0d outputting data %08h+%08hj", STAGE, out1[ RE ], out1[ IM ] );
+					end
 
 					sampl_idx_c = sampl_idx + 1'h1;
 					fsm_state_c = S_GET;

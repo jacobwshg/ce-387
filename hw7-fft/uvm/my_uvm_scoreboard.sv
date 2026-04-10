@@ -50,7 +50,7 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 		// use uvm_fatal to halt the simulation on error
 
 		string msg = $sformatf(
-			"\n\t\tReceived: %08h + %08hj\n\t\tReference: %08h + %08hj\n",
+			"\n\t\tRECEIVED: %08h + %08hj\n\t\tREFERENCE: %08h + %08hj\n",
 			tx_out.re, tx_out.im, tx_cmp.re, tx_cmp.im
 		);
 

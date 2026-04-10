@@ -1,4 +1,5 @@
 
+import globals_pkg::printtime;
 import twdls_pkg::TWDLS;
 
 module fft_stage #(
@@ -6,8 +7,8 @@ module fft_stage #(
 	parameter int N = 32,
 	parameter int DWIDTH = 32,
 
-	parameter logic signed [ 0:1 ] [ DWIDTH-1:0 ]
-		STAGE_TWDLS [ 0:(1<<( STAGE-1 ) )-1 ] =
+	parameter logic signed [ 0:(1<<( STAGE-1 ) )-1 ] [ 0:1 ] [ DWIDTH-1:0 ]
+		STAGE_TWDLS =
 		twdls_pkg::TWDLS [ STAGE-1 ] [ 0:( 1<<( STAGE-1 ) )-1 ]
 )
 (
@@ -56,7 +57,8 @@ module fft_stage #(
  	 * ( when the incoming sample is in the former half step, we ignore
  	 * the butterfly and output the previous butterfly's out2 from buffer;
  	 * but when we're in step 0, there is no prev butterfly and our
- 	 * module output is invalid ) step/
+ 	 * module output is invalid ) step
+ 	 */
 	logic is_latter_hstep;
 	logic out_valid;
 
@@ -100,11 +102,13 @@ module fft_stage #(
 	assign { step_idx, is_latter_hstep, buf_rd_addr }
 		= { sampl_idx[ LOG2_N:STAGE ], sampl_idx[ STAGE-1 ], sampl_idx[ STAGE-2:0 ] };
 
-	assign out_valid = step_idx!==0 || !is_latter_hstep;
+	// if we're in step 0, only the latter half step's output ( which is
+	// butterfly 0's out1 ) is valid
+	assign out_valid = step_idx!==0 || is_latter_hstep;
 	/*
- 	 * In lower step, read back buffered out2 and send it downstream,
+ 	 * In former half step, read back buffered out2 and send it downstream,
  	 * buffer in1
- 	 * In higher step, read back buffered in1, run butterfly, overwrite
+ 	 * In latter half step, read back buffered in1, run butterfly, overwrite
  	 * in1 with out2 at same half-step addr in buffer
 	 */
 	assign buf_wr_addr = buf_rd_addr;
@@ -124,8 +128,6 @@ module fft_stage #(
 
 		sampl_idx_c = sampl_idx;
 
-		in1 = buf_dout;
-
 		in2_c[ RE ] = in2[ RE ];
 		in2_c[ IM ] = in2[ IM ];
 		v_c[ RE ] = v[ RE ];
@@ -137,6 +139,7 @@ module fft_stage #(
 		wi_x_i2r_c = wi_x_i2r;
 
 		/* only significant in S_BF_OUT with is_latter_hstep */
+		in1 = buf_dout;
 		out1[ RE ] = in1[ RE ] + v[ RE ];
 		out1[ IM ] = in1[ IM ] + v[ IM ];
 		out2[ RE ] = in1[ RE ] - v[ RE ];
@@ -187,14 +190,21 @@ module fft_stage #(
 				begin
 					if ( !is_latter_hstep )
 					begin
+						// former half step
+						//
+						// output prev butterfly's buffered out2
 						dout = buf_dout;
 						buf_din = in2;
 					end
 					else
 					begin
+						// latter half step
+						//
+						// output newly computed butterfly's out1
 						dout = out1;
 						buf_din = out2;
 						/*
+ 						printtime();
 						$display( "stage %0d, sampl_idx %0d, buf_rd_addr %0d", STAGE, sampl_idx, buf_rd_addr  );
 						$display( "\tw = %08h + %08hj", w[ RE ], w[ IM ] );
 						$display( "\tin1 = %08h + %08hj, in2 = %08h + %08hj", in1[ RE ], in1[ IM ], in2[ RE ], in2[ IM ] );
@@ -205,6 +215,11 @@ module fft_stage #(
 
 					buf_wr_en = 1'b1;
 					out_wr_en = out_valid? 1'b1: 1'b0;
+
+					if ( out_wr_en )
+					begin
+						//$display( "stage %0d outputting data %08h+%08hj", STAGE, out1[ RE ], out1[ IM ] );
+					end
 
 					sampl_idx_c = sampl_idx + 1'h1;
 					fsm_state_c = S_GET;

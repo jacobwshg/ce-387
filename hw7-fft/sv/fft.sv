@@ -4,7 +4,8 @@ import globals_pkg::PIPE_FIFO_DEPTH;
 
 module fft #(
 	parameter int N = 32,
-	parameter int DWIDTH = 32
+	parameter int DWIDTH = 32,
+	parameter int PIPE_FIFO_DEPTH = globals_pkg::PIPE_FIFO_DEPTH
 )
 (
 	input logic clk,
@@ -197,24 +198,24 @@ module fft #(
 					ROB_din = { din[ 0 ], din[ 1 ] };
 					ROB_wr_en = 1'b1;
 					/* data will write to the reordered ROB_wr_addr */
+
+					/*
 					$display( "" );
 					$display(
 						"@%0t will write data %08h + %08hj, ROB_in_idx = %0d = %08b, ROB_wr_addr = %0d = %08b",
 						$time, din[ 0 ], din[ 1 ], ROB_in_idx_c, ROB_in_idx_c, ROB_in_idx, ROB_in_idx, ROB_wr_addr, ROB_wr_addr
 					);
 					$display( "" );
+					*/
 
 					ROB_in_idx_c = ROB_in_idx + 1'h1;
 
-					$display(
-						"ROB_in_idx_c = %0d = %08b",
-						ROB_in_idx_c, ROB_in_idx_c
-					);
+					//$display( "ROB_in_idx_c = %0d = %08b", ROB_in_idx_c, ROB_in_idx_c );
 
 					if ( ROB_in_idx_c === 'h0 )
 					begin
 						// all samples read
-						$display( "all samples read into ROB" );
+						//$display( "all samples read into ROB" );
 
 						fsm_state_c = S_SHOWROB;
 
@@ -241,17 +242,17 @@ module fft #(
 					pipe_wr_en[ 0 ] = 1'b1;
 					pipe_din  [ 0 ] = ROB_dout;
 
-					printtime();
-					$display( "piping ROB data %016h to stage1", pipe_din[ 0 ] );
+					//printtime();
+					//$display( "piping ROB data %016h to stage1", pipe_din[ 0 ] );
 
 					// keep reading the next ROB sample, even if we wrap, so
 					// as to flush the pipeline
 					ROB_rd_addr_c = ROB_rd_addr + 1'h1;
-					$display( "next ROB read addr %0d", ROB_rd_addr_c );
+					//$display( "next ROB read addr %0d", ROB_rd_addr_c );
 				end
 				else
 				begin
-					$display( "stage1 input full" );
+					//$display( "stage1 input full" );
 				end
 
 				if ( ( !pipe_empty[ STAGE_CNT ] ) && !out_full )
@@ -269,8 +270,8 @@ module fft #(
 				end
 				else
 				begin
-					if ( pipe_empty[ STAGE_CNT ] ) $display( "\tfinal stage output empty" );
-					if ( out_full ) $display( "\tdownstream full" );
+					//if ( pipe_empty[ STAGE_CNT ] ) $display( "\tfinal stage output empty" );
+					//if ( out_full ) $display( "\tdownstream full" );
 				end
 			end
 

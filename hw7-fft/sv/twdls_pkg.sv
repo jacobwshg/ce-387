@@ -4,8 +4,8 @@ package twdls_pkg;
 	localparam int N_DEFAULT = 32;
 	localparam int DWIDTH = 32;
 
-	localparam logic signed [ 0:1 ] [ DWIDTH-1:0 ] 
-		TWDLS [ 0:$clog2( N_DEFAULT )-1 ] [ 0:( N_DEFAULT/2 )-1 ] = 
+	localparam logic signed [ 0:$clog2( N_DEFAULT )-1 ] [ 0:( N_DEFAULT/2 )-1 ] [ 0:1 ] [ DWIDTH-1:0 ] 
+		TWDLS = 
 	'{
 		'{
 			{32'sh00004000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000}, {32'sh00000000,32'sh00000000},

@@ -14,8 +14,11 @@ localparam string CMPFILE_IM = "../sim/outfile_im.txt";
 
 localparam int CLOCK_PERIOD = 10;
 
-localparam int N = 16;
+localparam int N = 32;
 localparam int DWIDTH = 32;
+
+localparam int FIFO_DEPTH = 512;
+localparam int PIPE_FIFO_DEPTH = 512;
 
 localparam int RE = 0, IM = 1;
 
