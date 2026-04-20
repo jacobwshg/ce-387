@@ -113,6 +113,17 @@ module fft_stage #(
 	 */
 	assign buf_wr_addr = buf_rd_addr;
 
+	always_ff @ ( posedge clk )
+	begin: rd_twdl
+		//
+		// read a twiddle factor. buf_rd_addr is part of sampl_idx,
+		// which is updated on the clk edge between S_BF_OUT and S_GET.
+		// the read from the new edge happens on the clk edge
+		// between S_GET and S_BF_MUL ( assuming no stall ).
+		//
+		w <= STAGE_TWDLS[ buf_rd_addr ];
+	end: rd_twdl
+
 	always_comb
 	begin
 		fsm_state_c = fsm_state;
@@ -230,11 +241,6 @@ module fft_stage #(
 		endcase
 
 	end
-
-	always_ff @ ( posedge clk )
-	begin: rd_twdl
-		w <= STAGE_TWDLS[ buf_rd_addr ];
-	end: rd_twdl
 
 	always_ff @ ( posedge clk, posedge rst )
 	begin
