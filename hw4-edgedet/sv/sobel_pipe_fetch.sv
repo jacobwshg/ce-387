@@ -17,10 +17,14 @@ module sobel_pipe_fetch(
 	output logic in_rd_en,
 	// to next stage
 	output logic [ PX_WIDTH-1:0 ] box [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ],
-	output logic valid
+	output logic out_valid
 );
 
-	logic valid_c;
+	logic out_valid_c;
+
+	//
+	// track position of BOTTOM RIGHT px in box
+	//
 	logic [ ROW_IDX_WIDTH:0 ] irow, irow_c;
 	logic [ COL_IDX_WIDTH:0 ] icol, icol_c;
 
@@ -49,8 +53,8 @@ module sobel_pipe_fetch(
 				.BRAM_DATA_WIDTH( PX_WIDTH )
 			) rowbuf (
 				.clock  ( clk ),
-				.rd_addr( buf_rd_addr ),
-				.wr_addr( buf_wr_addr ),
+				.rd_addr( buf_rd_addr[ COL_IDX_WIDTH-1:0 ] ),
+				.wr_addr( buf_wr_addr[ COL_IDX_WIDTH-1:0 ] ),
 				.wr_en  ( buf_wr_en[ i ] ),
 				.dout   ( buf_dout [ i ] ),
 				.din    ( buf_din )
@@ -75,7 +79,7 @@ module sobel_pipe_fetch(
 		// if in_empty && !out_full, still enabKe pipe write
 		//		
 
-		valid_c = 1'b0;
+		out_valid_c = 1'b0;
 		in_rd_en = 1'b0;
 
 		icol_c = icol;
@@ -95,12 +99,14 @@ module sobel_pipe_fetch(
 		// if downstream gives fetch stage green light, then get a bottom-row element from fifo, 
 		// and read top row and bottom row elements from buf to match this element
 		//
-		if ( pipe_wr_en && !in_empty )
+		//  when bottom row idx falls below frame bottom edge, still assert
+		//  "valid" to allow downstream to write the zero bottom edge
+		//
+		if ( pipe_wr_en && ( irow_c>IMG_HEIGHT-1 || !in_empty ) )
 		begin
-			in_rd_en = 1'b1;
-			valid_c = 1'b1;
 
-			icol_c = icol + 1'h1;
+			out_valid_c = 1'b1;
+
 			if ( icol === IMG_WIDTH-1 )
 			begin
 				//
@@ -112,16 +118,29 @@ module sobel_pipe_fetch(
 				irow_c = irow + 1'h1;
 				{ top_row_c, mid_row_c, bot_row_c } = { mid_row, bot_row, top_row };
 			end
+			else
+			begin
+				icol_c = icol + 1'h1;
+			end
 
-			box_c[ 0 ] = box[ 1 ];
-			box_c[ 1 ] = box[ 2 ];
-			box_c[ 2 ] = '{ buf_dout[ top_row ], buf_dout[ mid_row ], din };
+			//
+			// if bottom right px is still in frame, the corresponding fifo
+			// elem is valid; update box and buffer
+			//
+			if ( irow_c < IMG_HEIGHT )
+			begin
+				in_rd_en = 1'b1;
 
-			buf_rd_addr = icol_c;
-			// buf_wr_addr doesn't change, always write to current col
-			buf_wr_en[ bot_row ] = 1'b1;
-			buf_din = din;
+				box_c[ 0 ] = box[ 1 ];
+				box_c[ 1 ] = box[ 2 ];
+				box_c[ 2 ] = '{ buf_dout[ top_row ], buf_dout[ mid_row ], din };
 
+				buf_rd_addr = icol_c;
+				// buf_wr_addr doesn't change, always write to current col
+				buf_wr_en[ bot_row ] = 1'b1;
+				buf_din = din;
+
+			end
 		end
 
 	end
@@ -130,7 +149,7 @@ module sobel_pipe_fetch(
 	begin
 		if ( rst )
 		begin
-			valid <= 1'b0;
+			out_valid <= 1'b0;
 
 			icol <= 'h0;
 			irow <= 'h0;
@@ -140,7 +159,7 @@ module sobel_pipe_fetch(
 		end
 		else
 		begin
-			valid <= valid_c;
+			out_valid <= out_valid_c;
 
 			icol <= icol_c;
 			irow <= irow_c;
