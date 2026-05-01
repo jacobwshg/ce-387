@@ -12,12 +12,12 @@ module sobel_pipe_compute(
 	input logic [ PX_WIDTH-1:0 ] box [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ],
 
 	output logic out_valid,
-	output logic [ SAFE_PX_WIDTH-1:0 ] hgrad, vgrad
+	output logic signed [ SAFE_PX_WIDTH-1:0 ] hgrad, vgrad
 
 );
 
 	logic out_valid_c;
-	logic [ SAFE_PX_WIDTH-1:0 ] hgrad_c, vgrad_c;
+	logic signed [ SAFE_PX_WIDTH-1:0 ] hgrad_c, vgrad_c;
 
 	always_comb
 	begin
