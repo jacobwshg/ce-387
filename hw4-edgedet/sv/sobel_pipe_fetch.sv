@@ -63,7 +63,7 @@ module sobel_pipe_fetch(
 		end
 
 	endgenerate
-	
+
 	always_comb
 	begin
 		//
@@ -165,7 +165,7 @@ module sobel_pipe_fetch(
 			icol <= icol_c;
 			irow <= irow_c;
 
-			{ top_row, mid_row, bot_row } = { top_row_c, mid_row_c, bot_row_c };
+			{ top_row, mid_row, bot_row } <= { top_row_c, mid_row_c, bot_row_c };
 			box <= box_c;
 		end
 
