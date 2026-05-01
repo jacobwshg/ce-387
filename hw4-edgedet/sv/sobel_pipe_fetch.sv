@@ -1,9 +1,10 @@
 
-import globals_pkg::IMG_WIDTH;
-import globals_pkg::COL_IDX_WIDTH;
-import globals_pkg::ROW_IDX_WIDTH;
-import globals_pkg::PX_WIDTH;
-import globals_pkg::BOX_DIM;
+import globals_pkg :: IMG_WIDTH;
+import globals_pkg :: IMG_HEIGHT;
+import globals_pkg :: COL_IDX_WIDTH;
+import globals_pkg :: ROW_IDX_WIDTH;
+import globals_pkg :: PX_WIDTH;
+import globals_pkg :: BOX_DIM;
 
 module sobel_pipe_fetch(
 

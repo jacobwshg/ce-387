@@ -1,7 +1,7 @@
 
-import globals_pkg::PX_WIDTH;
-import globals_pkg::SAFE_PX_WIDTH;
-import globals_pkg::BOX_DIM;
+import globals_pkg :: PX_WIDTH;
+import globals_pkg :: SAFE_PX_WIDTH;
+import globals_pkg :: BOX_DIM;
 
 module sobel_pipe_compute(
 
@@ -11,9 +11,8 @@ module sobel_pipe_compute(
 	input logic in_valid,
 	input logic [ PX_WIDTH-1:0 ] box [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ],
 
-	output logic out_valid,
-	output logic signed [ SAFE_PX_WIDTH-1:0 ] hgrad, vgrad
-
+	output logic signed [ SAFE_PX_WIDTH-1:0 ] hgrad, vgrad,
+	output logic out_valid
 );
 
 	logic out_valid_c;
