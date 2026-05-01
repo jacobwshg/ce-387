@@ -115,7 +115,7 @@ module sobel_pipe_fetch(
 
 			box_c[ 0 ] = box[ 1 ];
 			box_c[ 1 ] = box[ 2 ];
-			box_c[ 2 ] = { buf_dout[ top_row ], buf_dout[ mid_row ], din };
+			box_c[ 2 ] = '{ buf_dout[ top_row ], buf_dout[ mid_row ], din };
 
 			buf_rd_addr = icol_c;
 			// buf_wr_addr doesn't change, always write to current col
