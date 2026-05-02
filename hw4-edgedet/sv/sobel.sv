@@ -10,12 +10,12 @@ module sobel #(
 	input  logic rst,
 
 	input  logic in_empty,
-	input  logic [ 7:0 ] in_dout,
+	input  logic [ 7:0 ] din,
 	input  logic out_full,
 
 	output logic in_rd_en,
 	output logic out_wr_en,
-	output logic [ 7:0 ] out_din
+	output logic [ 7:0 ] dout
 );
 
 
@@ -54,7 +54,7 @@ module sobel #(
 
 	/* 
  	 * The bottom right px fetched from upstream fifo (wired from the less
- 	 * descriptive in_dout when valid), to be written to rowbuf
+ 	 * descriptive din when valid), to be written to rowbuf
  	 */
 	logic [ 7:0 ] bot_px_c;
 
@@ -146,7 +146,7 @@ module sobel #(
 
 		in_rd_en  = 1'b0;
 		out_wr_en = 1'b0;
-		out_din   = 8'h0;
+		dout   = 8'h0;
 		state_c   = state;
 		box_c     = box;
 		{ irow_c, icol_c } = { irow, icol };
@@ -206,7 +206,7 @@ module sobel #(
  					 * so that it can be read back for use in the next iteration.
  					 *
  					 */
-					bot_px_c = in_dout;
+					bot_px_c = din;
 
 					box_c[0] = box[1];
 					box_c[1] = box[2];
@@ -261,11 +261,11 @@ module sobel #(
 						| { ( irow<=1 ), ( irow>=IMG_HEIGHT ), ( icol<=1 ) }
 					)
 					begin
-						out_din = 8'h0;
+						dout = 8'h0;
 					end
 					else
 					begin
-						out_din = ( | result_c[ 11:8 ] ) ? 8'hff : result_c[ 7:0 ];
+						dout = ( | result_c[ 11:8 ] ) ? 8'hff : result_c[ 7:0 ];
 					end
 					out_wr_en = 1'b1;
 					state_c = S_UPDATE_IDX;
@@ -276,7 +276,7 @@ module sobel #(
 			begin
 				in_rd_en  = 1'b0;
 				out_wr_en = 1'b0;
-				out_din   = 8'h0;
+				dout   = 8'h0;
 				state_c   = S_READ;
 				box_c     = 'hx;
 				irow_c    = 'hx;

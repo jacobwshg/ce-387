@@ -3,7 +3,7 @@ import globals_pkg :: SAFE_PX_WIDTH;
 import globals_pkg :: PX_WIDTH;
 import globals_pkg :: BOX_DIM;
 
-module sobel
+module sobel_pipe
 (
 	input logic clk, rst,
 
@@ -58,5 +58,5 @@ module sobel
 		.out_valid( out_valid )
 	);
 
-endmodule: sobel
+endmodule: sobel_pipe
 
