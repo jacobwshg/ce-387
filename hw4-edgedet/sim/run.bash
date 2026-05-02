@@ -1,5 +1,5 @@
 #!/bin/bash
 
-vsim -c -do ./edge_detect_sim.do 
+vsim -c -do ./edgedet_sim.do 
 
 
