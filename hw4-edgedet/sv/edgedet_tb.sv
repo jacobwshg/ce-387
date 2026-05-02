@@ -1,7 +1,7 @@
 
 `timescale 1 ns / 1 ns
 
-module edge_detect_tb();
+module edgedet_tb();
 
 	localparam string INFILE  = "image.bmp";
 	localparam string OUTFILE = "output.bmp";
@@ -32,12 +32,12 @@ module edge_detect_tb();
 	localparam BYTES_PER_PIXEL = 3;
 	localparam BMP_DATA_SIZE = WIDTH * HEIGHT * BYTES_PER_PIXEL;
 
-	edge_detect_top 
+	edgedet_top 
 	#(
 		.WIDTH (WIDTH),
 		.HEIGHT(HEIGHT)
 	) 
-	edge_detect_top_inst (
+	edgedet_top (
 		.clock(clock),
 		.reset(reset),
 
@@ -202,5 +202,5 @@ module edge_detect_tb();
 		out_read_done = 1'b1;
 	end
 
-endmodule
+endmodule: edgedet_tb
 
