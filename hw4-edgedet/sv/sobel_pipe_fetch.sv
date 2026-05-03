@@ -3,7 +3,7 @@ import globals_pkg :: IMG_WIDTH;
 import globals_pkg :: IMG_HEIGHT;
 import globals_pkg :: COL_IDX_WIDTH;
 import globals_pkg :: ROW_IDX_WIDTH;
-import globals_pkg :: PX_WIDTH;
+import globals_pkg :: BYTE_WIDTH;
 import globals_pkg :: BOX_DIM;
 
 module sobel_pipe_fetch(
@@ -12,12 +12,12 @@ module sobel_pipe_fetch(
 	input logic pipe_wr_en,
 
 	input logic in_empty, 
-	input logic [ PX_WIDTH-1:0 ] din,
+	input logic [ BYTE_WIDTH-1:0 ] din,
 
 	// to fifo
 	output logic in_rd_en,
 	// to next stage
-	output logic [ PX_WIDTH-1:0 ] box [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ],
+	output logic [ BYTE_WIDTH-1:0 ] box [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ],
 	output logic out_valid
 );
 
@@ -33,15 +33,15 @@ module sobel_pipe_fetch(
 		top_row, mid_row, bot_row,
 		top_row_c, mid_row_c, bot_row_c;
 	
-	logic [ PX_WIDTH-1:0 ] box_c [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ];
+	logic [ BYTE_WIDTH-1:0 ] box_c [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ];
 
 	//
 	// combinational signals for bram access
 	//
 	logic [ COL_IDX_WIDTH:0 ] buf_rd_addr, buf_wr_addr;
 	logic buf_wr_en [ 0:BOX_DIM-1 ];
-	logic [ PX_WIDTH-1:0 ] buf_dout [ 0:BOX_DIM-1 ];
-	logic [ PX_WIDTH-1:0 ] buf_din;
+	logic [ BYTE_WIDTH-1:0 ] buf_dout [ 0:BOX_DIM-1 ];
+	logic [ BYTE_WIDTH-1:0 ] buf_din;
 
 	generate
 		//
@@ -51,7 +51,7 @@ module sobel_pipe_fetch(
 		begin
 			bram #(
 				.BRAM_ADDR_WIDTH( COL_IDX_WIDTH ),
-				.BRAM_DATA_WIDTH( PX_WIDTH )
+				.BRAM_DATA_WIDTH( BYTE_WIDTH )
 			) rowbuf (
 				.clock  ( clk ),
 				.rd_addr( buf_rd_addr[ COL_IDX_WIDTH-1:0 ] ),

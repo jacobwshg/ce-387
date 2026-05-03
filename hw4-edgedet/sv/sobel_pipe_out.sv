@@ -1,8 +1,8 @@
 
 import globals_pkg :: IMG_WIDTH;
 import globals_pkg :: IMG_HEIGHT;
-import globals_pkg :: SAFE_PX_WIDTH;
-import globals_pkg :: PX_WIDTH;
+import globals_pkg :: SAFE_BYTE_WIDTH;
+import globals_pkg :: BYTE_WIDTH;
 import globals_pkg :: ROW_IDX_WIDTH;
 import globals_pkg :: COL_IDX_WIDTH;
 
@@ -11,12 +11,12 @@ module sobel_pipe_out(
 	input logic clk, rst,
 
 	input logic in_valid,
-	input logic signed [ SAFE_PX_WIDTH-1:0 ] hgrad, vgrad,
+	input logic signed [ SAFE_BYTE_WIDTH-1:0 ] hgrad, vgrad,
 	input logic out_full,
 
 	output logic pipe_wr_en,
 	output logic out_wr_en,
-	output logic [ PX_WIDTH-1:0 ] dout,
+	output logic [ BYTE_WIDTH-1:0 ] dout,
 
 	output logic done
 
@@ -28,7 +28,7 @@ module sobel_pipe_out(
 	} box_center_state_t;
 	box_center_state_t box_center_state, box_center_state_c; 
 
-	logic signed [ SAFE_PX_WIDTH-1:0 ] grad_abs_mean;
+	logic signed [ SAFE_BYTE_WIDTH-1:0 ] grad_abs_mean;
 
 	//
 	// track position of CENTER px in box
@@ -103,14 +103,14 @@ module sobel_pipe_out(
 					S_VALID:
 					begin
 						grad_abs_mean = (
-							( hgrad[ SAFE_PX_WIDTH-1 ] ? -hgrad : hgrad ) 
-							+ ( vgrad[ SAFE_PX_WIDTH-1 ] ? -vgrad : vgrad )
+							( hgrad[ SAFE_BYTE_WIDTH-1 ] ? -hgrad : hgrad ) 
+							+ ( vgrad[ SAFE_BYTE_WIDTH-1 ] ? -vgrad : vgrad )
 						) >>> 1;
 						// saturate
 						dout = (
-							| ( grad_abs_mean[ SAFE_PX_WIDTH-1:PX_WIDTH ] )
+							| ( grad_abs_mean[ SAFE_BYTE_WIDTH-1:BYTE_WIDTH ] )
 							? 8'hFF
-							: grad_abs_mean[ PX_WIDTH-1:0 ]
+							: grad_abs_mean[ BYTE_WIDTH-1:0 ]
 						);
 						out_wr_en = 1'b1;
 

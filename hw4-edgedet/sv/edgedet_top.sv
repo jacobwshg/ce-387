@@ -1,7 +1,7 @@
 
 import globals_pkg :: IMG_WIDTH;
 import globals_pkg :: IMG_HEIGHT;
-import globals_pkg :: PX_WIDTH;
+import globals_pkg :: BYTE_WIDTH;
 import globals_pkg :: RGB_WIDTH;
 import globals_pkg :: FIFO_DEPTH;
 
@@ -20,7 +20,7 @@ module edgedet_top
 
 	output logic in_gs_full,
 	output logic sobel_out_empty,
-	output logic [ PX_WIDTH-1:0 ] sobel_out_dout,
+	output logic [ BYTE_WIDTH-1:0 ] sobel_out_dout,
 
 	output logic sobel_done
 
@@ -30,14 +30,14 @@ module edgedet_top
 	logic in_gs_empty;
 	logic in_gs_rd_en;
 
-	logic [ PX_WIDTH-1:0 ] gs_sobel_din;
+	logic [ BYTE_WIDTH-1:0 ] gs_sobel_din;
 	logic gs_sobel_wr_en;
 	logic gs_sobel_full;
-	logic [ PX_WIDTH-1:0 ] gs_sobel_dout;
+	logic [ BYTE_WIDTH-1:0 ] gs_sobel_dout;
 	logic gs_sobel_rd_en;
 	logic gs_sobel_empty;
 
-	logic [ PX_WIDTH-1:0 ] sobel_out_din;
+	logic [ BYTE_WIDTH-1:0 ] sobel_out_din;
 	logic sobel_out_full;
 	logic sobel_out_wr_en;
 
@@ -60,7 +60,7 @@ module edgedet_top
 
 	fifo #(
 		.FIFO_BUFFER_SIZE( FIFO_DEPTH ),
-		.FIFO_DATA_WIDTH( PX_WIDTH )
+		.FIFO_DATA_WIDTH( BYTE_WIDTH )
 	) f_gs_sobel (
 		.reset ( reset ),
 
@@ -77,7 +77,7 @@ module edgedet_top
 
 	fifo #(
 		.FIFO_BUFFER_SIZE( FIFO_DEPTH ),
-		.FIFO_DATA_WIDTH( PX_WIDTH )
+		.FIFO_DATA_WIDTH( BYTE_WIDTH )
 	) f_sobel_out (
 		.reset ( reset ),
 

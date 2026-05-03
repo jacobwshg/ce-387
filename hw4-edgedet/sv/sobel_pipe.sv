@@ -1,6 +1,6 @@
 
-import globals_pkg :: SAFE_PX_WIDTH;
-import globals_pkg :: PX_WIDTH;
+import globals_pkg :: SAFE_BYTE_WIDTH;
+import globals_pkg :: BYTE_WIDTH;
 import globals_pkg :: BOX_DIM;
 
 module sobel_pipe
@@ -8,11 +8,11 @@ module sobel_pipe
 	input logic clk, rst,
 
 	input  logic in_empty,
-	input  logic [ PX_WIDTH-1:0 ] din,
+	input  logic [ BYTE_WIDTH-1:0 ] din,
 	output logic in_rd_en,
 
 	input logic out_full,
-	output logic [ PX_WIDTH-1:0 ] dout,
+	output logic [ BYTE_WIDTH-1:0 ] dout,
 	output logic out_wr_en,
 
 	output logic done
@@ -23,10 +23,10 @@ module sobel_pipe
 	//
 	logic pipe_wr_en;
 	
-	logic [ PX_WIDTH-1:0 ] box [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ];
+	logic [ BYTE_WIDTH-1:0 ] box [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ];
 	logic fetch_valid;
 
-	logic signed [ SAFE_PX_WIDTH-1:0 ] hgrad, vgrad;
+	logic signed [ SAFE_BYTE_WIDTH-1:0 ] hgrad, vgrad;
 	logic compute_valid; 
 
 	sobel_pipe_out out_stage
