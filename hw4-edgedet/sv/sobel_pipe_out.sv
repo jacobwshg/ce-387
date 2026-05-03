@@ -79,7 +79,7 @@ module sobel_pipe_out(
 				case ( box_center_state )
 					S_OOB:
 					begin
-						if ( irow_c === 1'h1 )
+						if ( irow_c === 1'h0 )
 						begin
 							// next px is on top frame edge
 							box_center_state_c = S_ZERO;
