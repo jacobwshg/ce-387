@@ -45,7 +45,7 @@ module sobel_pipe
 		.clk( clk ), .rst( rst ),
 		.pipe_wr_en( pipe_wr_en ),
 		.in_valid( fetch_valid ), .box( box ),
-		.hgrad( hgrad ), .vgrad( vgrad ), .out_valid( out_valid )
+		.hgrad( hgrad ), .vgrad( vgrad ), .out_valid( compute_valid )
 	); 
 
 	sobel_pipe_fetch fetch_stage
@@ -55,7 +55,7 @@ module sobel_pipe
 		.in_empty( in_empty ), .din( din ),
 		.in_rd_en( in_rd_en ),
 		.box( box ),
-		.out_valid( out_valid )
+		.out_valid( fetch_valid )
 	);
 
 endmodule: sobel_pipe

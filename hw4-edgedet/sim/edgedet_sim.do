@@ -3,10 +3,13 @@ setenv LMC_TIMEUNIT -9
 vlib work
 vmap work work
 
+vlog -work work "../sv/globals_pkg.sv"
 vlog -work work "../sv/fifo.sv"
 vlog -work work "../sv/bram.sv"
 vlog -work work "../sv/grayscale.sv"
-#vlog -work work "../sv/sobel.sv"
+vlog -work work "../sv/sobel_pipe_fetch.sv"
+vlog -work work "../sv/sobel_pipe_compute.sv"
+vlog -work work "../sv/sobel_pipe_out.sv"
 vlog -work work "../sv/sobel_pipe.sv"
 vlog -work work "../sv/edgedet_top.sv"
 vlog -work work "../sv/edgedet_tb.sv"
