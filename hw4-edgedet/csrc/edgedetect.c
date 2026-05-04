@@ -222,49 +222,79 @@ void sobel_filter(
 	}
 }
 	 
-void non_maximum_suppressor(unsigned char *in_data, int height, int width, unsigned char *out_data) {
-		
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
+void non_maximum_suppressor(unsigned char *in_data, int height, int width, unsigned char *out_data)
+{	
+	for ( int y = 0; y < height; ++y )
+	{
+		for ( int x = 0; x < width; ++x )
+		{
+			const int rowbase = y * width;
+
+			out_data[ rowbase + x ] = 0;
 			// Along the boundaries, set to 0
-			if (y == 0 || x == 0 || y == height-1 || x == width-1) {
-				out_data[y*width + x] = 0;
+			if ( y == 0 || x == 0 || y == height-1 || x == width-1 )
+			{
+				//out_data[ y*width + x ] = 0;
 				continue;
 			}
-			unsigned int north_south = 
-				in_data[(y-1)*width + x] + in_data[(y+1)*width + x];
-			unsigned int east_west = 
-				in_data[y*width + x - 1] + in_data[y*width + x + 1];
-			unsigned int north_west = 
-				in_data[(y-1)*width + x - 1] + in_data[(y+1)*width + x + 1];
-			unsigned int north_east = 
-				in_data[(y+1)*width + x - 1] + in_data[(y-1)*width + x + 1];
+
+			const int
+				prev_rowbase = rowbase - width,
+				next_rowbase = rowbase + width;
+
+			const unsigned int
+				north_south = in_data[ prev_rowbase + x ]   + in_data[ next_rowbase + x ],
+				east_west   = in_data[ rowbase      + x-1 ] + in_data[ rowbase      + x+1 ],
+				north_west  = in_data[ prev_rowbase + x-1 ] + in_data[ next_rowbase + x+1 ],
+				north_east  = in_data[ next_rowbase + x-1 ] + in_data[ prev_rowbase + x+1 ];
 			
-			out_data[y*width + x] = 0;
+			//out_data[ y*width + x ] = 0;
 			
-			if (north_south >= east_west && north_south >= north_west && north_south >= north_east) {
-				if (in_data[y*width + x] > in_data[y*width + x - 1] && 
-					in_data[y*width + x] >= in_data[y*width + x + 1])
+			if (
+				north_south >= east_west &&
+				north_south >= north_west &&
+				north_south >= north_east
+			)
+			{
+				if (
+					in_data[ rowbase + x ] >  in_data[ rowbase + x-1 ] && 
+					in_data[ rowbase + x ] >= in_data[ rowbase + x+1 ]
+				)
 				{
-					out_data[y*width + x] = in_data[y*width + x];
+					out_data[ rowbase + x ] = in_data[ rowbase + x ];
 				}
-			} else if (east_west >= north_west && east_west >= north_east) {
-				if (in_data[y*width + x] > in_data[(y-1)*width + x] && 
-					in_data[y*width + x] >= in_data[(y+1)*width + x])
+			}
+			else if (
+				east_west >= north_west &&
+				east_west >= north_east
+			)
+			{
+				if (
+					in_data[ rowbase + x ] >  in_data[ prev_rowbase + x ] && 
+					in_data[ rowbase + x ] >= in_data[ next_rowbase + x ]
+				)
 				{
-					out_data[y*width + x] = in_data[y*width + x];
+					out_data[ rowbase + x ] = in_data[ rowbase + x ];
 				}
-			} else if (north_west >= north_east) {
-				if (in_data[y*width + x] > in_data[(y-1)*width + x + 1] && 
-					in_data[y*width + x] >= in_data[(y+1)*width + x - 1])
+			}
+			else if ( north_west >= north_east )
+			{
+				if (
+					in_data[ rowbase + x ] >  in_data[ prev_rowbase + x+1 ] && 
+					in_data[ rowbase + x ] >= in_data[ next_rowbase + x-1 ]
+				)
 				{
-					out_data[y*width + x] = in_data[y*width + x];
+					out_data[ rowbase + x ] = in_data[ rowbase + x ];
 				}
-			} else {
-				if (in_data[y*width + x] > in_data[(y-1)*width + x - 1] && 
-					in_data[y*width + x] >= in_data[(y+1)*width + x + 1])
+			}
+			else
+			{
+				if (
+					in_data[ rowbase + x ] >  in_data[ prev_rowbase + x-1 ] && 
+					in_data[ rowbase + x ] >= in_data[ next_rowbase + x+1 ]
+				)
 				{
-					out_data[y*width + x] = in_data[y*width + x];
+					out_data[ rowbase + x ] = in_data[ rowbase + x ];
 				}
 			}
 		}
