@@ -15,15 +15,16 @@ module matmul
 	input logic clk,
 	input logic rst,
 	input logic strt,
-	input logic [ DATA_WIDTH-1:0 ] x_rd_row [ 0:MAT_DIM_SIZE-1 ],
-	input logic [ DATA_WIDTH-1:0 ] y_rd_col [ 0:MAT_DIM_SIZE-1 ],
+	input logic [ DATA_WIDTH-1:0 ]
+		x_rd_row [ 0:MAT_DIM_SIZE-1 ],
+		y_rd_col [ 0:MAT_DIM_SIZE-1 ],
 	/*
  	 * I and J are "requests" made respectively to the X and Y BRAMs.
  	 * In the next cycle, they will respectively return X's row I in X_R_ROW
  	 * and Y's column Y in Y_R_COL.
  	 */
-	output logic [ MAT_DIM_WIDTH-1:0 ] i,
-	output logic [ MAT_DIM_WIDTH-1:0 ] j,
+	output logic [ MAT_DIM_WIDTH-1:0 ] 
+		i, j,
 	output logic z_wr_en,
 	output logic [ ADDR_WIDTH-1:0 ] z_wr_addr,
 	output logic [ DATA_WIDTH-1:0 ] z_wr_data,
@@ -49,9 +50,10 @@ module matmul
 		prods   [ 0:MAT_DIM_SIZE-1 ],
 		prods_c [ 0:MAT_DIM_SIZE-1 ];
 
-	// read ahead
-	assign i = i_c[ MAT_DIM_WIDTH-1:0 ];
-	assign j = j_c[ MAT_DIM_WIDTH-1:0 ];
+	// don't use _c indices, so as to faciliatate 
+	// X, Y BRAM inference
+	assign i = i_ff[ MAT_DIM_WIDTH-1:0 ];
+	assign j = j_ff[ MAT_DIM_WIDTH-1:0 ];
 
 	logic done_c;
 
@@ -138,7 +140,15 @@ module matmul
 					j_c = j_ff + 1'h1;
 				end
 
-				z_wr_addr_c = z_wr_addr + 1'h1;
+				//
+				// because we are using clocked indices for X, Y and 
+				// not reading ahead, let z write addr stay at 0 
+				// for one more cycle
+				//
+				if ( i_ff>1'h0 || j_ff>1'h0 )
+				begin
+					z_wr_addr_c = z_wr_addr + 1'h1;
+				end
 
 				if ( i_c === MAT_DIM_SIZE && j_c > 0 )
 				/* next Z write addr is past valid range */

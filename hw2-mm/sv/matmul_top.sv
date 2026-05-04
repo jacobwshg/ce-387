@@ -13,10 +13,12 @@ module matmul_top
 
 	input logic x_wr_en [ 0:MAT_DIM_SIZE-1 ],
 	input logic y_wr_en [ 0:MAT_DIM_SIZE-1 ],
-	input logic [ DATA_WIDTH-1:0 ] x_wr_data,
-	input logic [ DATA_WIDTH-1:0 ] y_wr_data,
-	input logic [ MAT_DIM_WIDTH-1:0 ] x_wr_bank_addr,
-	input logic [ MAT_DIM_WIDTH-1:0 ] y_wr_bank_addr,
+	input logic [ DATA_WIDTH-1:0 ]
+		x_wr_data,
+		y_wr_data,
+	input logic [ MAT_DIM_WIDTH-1:0 ]
+		x_wr_bank_addr,
+		y_wr_bank_addr,
 
 	input logic [ ADDR_WIDTH-1 : 0 ] z_rd_addr,
 	output logic [ DATA_WIDTH-1 : 0 ] z_rd_data,
