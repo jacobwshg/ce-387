@@ -94,7 +94,7 @@ module sobel_pipe_out
 					begin
 						dout = 'h0; // redundant given default assignment
 						out_wr_en = 1'b1;
-						if ( irow!==1'h0 && irow!==FRAME_HEIGHT-1 && icol_c===1'h1 )
+						if ( irow>1'h0 && irow<FRAME_HEIGHT-1 && icol_c===1'h1 )
 						begin
 							// next px is right of left frame edge
 							box_center_state_c = S_VALID;
