@@ -172,6 +172,12 @@ void sobel_filter(unsigned char *in_data, int height, int width, unsigned char *
 	 {
 		for (int x = 0; x < width; x++) 
 		{
+
+			printf(
+				"row %4d, \tcol %4d, \tgs byte 0x%4x\n",
+				y, x, in_data[ y*width + x ]
+			);
+
 			data = 0;
 
 			// Along the boundaries, set to 0
@@ -193,7 +199,7 @@ void sobel_filter(unsigned char *in_data, int height, int width, unsigned char *
 			//	"row %4d, \tcol %4d, \tsobel output 0x%2x\n",
 			//	y, x, data
 			//);	
-			out_data[y*width + x] = data;
+			out_data[ y*width + x ] = data;
 		}
 	}
 }

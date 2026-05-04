@@ -1,13 +1,15 @@
 
-import globals_pkg :: IMG_WIDTH;
-import globals_pkg :: IMG_HEIGHT;
+import globals_pkg :: FRAME_HEIGHT;
+import globals_pkg :: FRAME_WIDTH;
 import globals_pkg :: SAFE_BYTE_WIDTH;
 import globals_pkg :: BYTE_WIDTH;
-import globals_pkg :: ROW_IDX_WIDTH;
-import globals_pkg :: COL_IDX_WIDTH;
 
-module sobel_pipe_out(
-
+module sobel_pipe_out
+#(
+	parameter int FRAME_HEIGHT = globals_pkg::FRAME_HEIGHT,
+	parameter int FRAME_WIDTH  = globals_pkg::FRAME_WIDTH
+)
+(
 	input logic clk, rst,
 
 	input logic in_valid,
@@ -21,6 +23,9 @@ module sobel_pipe_out(
 	output logic done
 
 );
+
+	localparam int ROW_IDX_WIDTH = $clog2( FRAME_HEIGHT );
+	localparam int COL_IDX_WIDTH = $clog2( FRAME_WIDTH );
 
 	typedef enum logic [ 2:0 ]
 	{
@@ -66,7 +71,7 @@ module sobel_pipe_out(
 			if ( in_valid )
 			begin
 
-				if ( icol === IMG_WIDTH-1 )
+				if ( icol === FRAME_WIDTH-1 )
 				begin
 					icol_c = 0;
 					irow_c = irow + 1'h1;
@@ -89,12 +94,12 @@ module sobel_pipe_out(
 					begin
 						dout = 'h0; // redundant given default assignment
 						out_wr_en = 1'b1;
-						if ( icol_c === 1'h1 )
+						if ( irow > 0 && icol_c === 1'h1 )
 						begin
 							// next px is right of left frame edge
 							box_center_state_c = S_VALID;
 						end
-						if ( irow_c === IMG_HEIGHT )
+						if ( irow_c === FRAME_HEIGHT )
 						begin
 							// next px is below bottom frame edge
 							box_center_state_c = S_OOB;
@@ -114,20 +119,29 @@ module sobel_pipe_out(
 						);
 						out_wr_en = 1'b1;
 
-						if ( icol_c === IMG_WIDTH-1 )
+						if ( icol_c === FRAME_WIDTH-1 )
 						begin
 							// next px is on right frame edge
 							box_center_state_c = S_ZERO;
 						end
 					end
 				endcase
+
+				if ( out_wr_en )
+				begin
+			//	$display(
+			//		"row %16d, \tcol %16d, \tsobel output %8h",
+			//		irow, icol, dout
+			//	);
+				end
+
 			end
 
 		end
 
 	end
 
-	assign done = irow_c > IMG_HEIGHT-1;
+	assign done = irow_c > FRAME_HEIGHT-1;
 
 	always_ff @ ( posedge clk, posedge rst )
 	begin

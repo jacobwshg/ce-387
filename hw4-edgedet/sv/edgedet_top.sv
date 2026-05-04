@@ -1,14 +1,14 @@
 
-import globals_pkg :: IMG_WIDTH;
-import globals_pkg :: IMG_HEIGHT;
+import globals_pkg :: FRAME_WIDTH;
+import globals_pkg :: FRAME_HEIGHT;
 import globals_pkg :: BYTE_WIDTH;
 import globals_pkg :: RGB_WIDTH;
 import globals_pkg :: FIFO_DEPTH;
 
 module edgedet_top 
 #(
-	parameter WIDTH  = IMG_WIDTH,
-	parameter HEIGHT = IMG_HEIGHT
+	parameter FRAME_WIDTH  = globals_pkg::FRAME_WIDTH,
+	parameter FRAME_HEIGHT = globals_pkg::FRAME_HEIGHT
 )
 (
 	input  logic clock,
@@ -43,7 +43,7 @@ module edgedet_top
 
 	fifo #(
 		.FIFO_BUFFER_SIZE( FIFO_DEPTH ),
-		.FIFO_DATA_WIDTH( RGB_WIDTH )
+		.FIFO_DATA_WIDTH ( RGB_WIDTH )
 	) f_in_gs (
 		.reset ( reset ),
 
@@ -60,7 +60,7 @@ module edgedet_top
 
 	fifo #(
 		.FIFO_BUFFER_SIZE( FIFO_DEPTH ),
-		.FIFO_DATA_WIDTH( BYTE_WIDTH )
+		.FIFO_DATA_WIDTH ( BYTE_WIDTH )
 	) f_gs_sobel (
 		.reset ( reset ),
 
@@ -77,7 +77,7 @@ module edgedet_top
 
 	fifo #(
 		.FIFO_BUFFER_SIZE( FIFO_DEPTH ),
-		.FIFO_DATA_WIDTH( BYTE_WIDTH )
+		.FIFO_DATA_WIDTH ( BYTE_WIDTH )
 	) f_sobel_out (
 		.reset ( reset ),
 
@@ -105,7 +105,10 @@ module edgedet_top
 		.out_din  ( gs_sobel_din )
 	);
 
-	sobel_pipe sobel (
+	sobel_pipe #(
+		.FRAME_HEIGHT( FRAME_HEIGHT ),
+		.FRAME_WIDTH ( FRAME_WIDTH )
+	) sobel (
 		.clk( clock ), .rst( reset ),
 
 		.in_empty( gs_sobel_empty ),

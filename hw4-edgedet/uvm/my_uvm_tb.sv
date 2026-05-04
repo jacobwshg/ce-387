@@ -11,8 +11,8 @@ module my_uvm_tb;
 	my_uvm_if vif();
 
 	edgedet_top #(
-		.WIDTH( IMG_WIDTH ),
-		.HEIGHT( IMG_HEIGHT )
+		.FRAME_WIDTH ( FRAME_WIDTH ),
+		.FRAME_HEIGHT( FRAME_HEIGHT )
 	) edgedet_top (
 		.clock( vif.clock ),
 		.reset( vif.reset ),

@@ -29,10 +29,10 @@ module sobel_pipe_compute(
 		begin
 			out_valid_c = 1'b1;
 
-			hgrad_c =
+			vgrad_c =
 				- box[ 0 ][ 0 ] - ( box[ 1 ][ 0 ]<<<1 ) - ( box[ 2 ][ 0 ] )
 				+ box[ 0 ][ 2 ] + ( box[ 1 ][ 2 ]<<<1 ) + ( box[ 2 ][ 2 ] );
-			vgrad_c =
+			hgrad_c =
 				-   box[ 0 ][ 0 ]       +   box[ 2 ][ 0 ]
 				- ( box[ 0 ][ 1 ]<<<1 ) + ( box[ 2 ][ 1 ]<<<1 )
 				-   box[ 0 ][ 2 ]       +   box[ 2 ][ 2 ];

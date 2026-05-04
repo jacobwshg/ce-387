@@ -1,7 +1,7 @@
 
 module sobel #(
-	parameter IMG_WIDTH = 720,
-	parameter IMG_HEIGHT = 576,
+	parameter FRAME_WIDTH = 720,
+	parameter FRAME_HEIGHT = 576,
 	parameter IROW_WIDTH = 10,
 	parameter ICOL_WIDTH = 10
 )
@@ -167,7 +167,7 @@ module sobel #(
  				 * the combinational ones computed in this state.
  				 */
 				icol_c = icol + 1'h1;
-				if ( icol_c == IMG_WIDTH )
+				if ( icol_c == FRAME_WIDTH )
 				begin
 					/*
  					 * When reaching end of row, rotate rowbuf line mappings
@@ -183,7 +183,7 @@ module sobel #(
 
 			S_READ:
 			begin
-				if ( irow >= IMG_HEIGHT )
+				if ( irow >= FRAME_HEIGHT )
 				begin
 					/*
 					 * If bottom row idx lies below img, there's nothing to
@@ -240,7 +240,7 @@ module sobel #(
 				else if ( ~out_full )
 				begin
 					/*
- 					 * - When box bottom row idx equals 1 or IMG_HEIGHT, center px 
+ 					 * - When box bottom row idx equals 1 or FRAME_HEIGHT, center px 
  					 *   is on the img's horizontal border and should default to zero.
  					 *
  					 * - When box right col idx equals 0 or 1, center px
@@ -258,7 +258,7 @@ module sobel #(
 					) >> 1;
 
 					if (
-						| { ( irow<=1 ), ( irow>=IMG_HEIGHT ), ( icol<=1 ) }
+						| { ( irow<=1 ), ( irow>=FRAME_HEIGHT ), ( icol<=1 ) }
 					)
 					begin
 						dout = 8'h0;

@@ -1,9 +1,15 @@
 
+import globals_pkg :: FRAME_HEIGHT;
+import globals_pkg :: FRAME_WIDTH;
 import globals_pkg :: SAFE_BYTE_WIDTH;
 import globals_pkg :: BYTE_WIDTH;
 import globals_pkg :: BOX_DIM;
 
 module sobel_pipe
+#(
+	parameter int FRAME_HEIGHT = globals_pkg::FRAME_HEIGHT,
+	parameter int FRAME_WIDTH  = globals_pkg::FRAME_WIDTH
+)
 (
 	input logic clk, rst,
 
@@ -29,8 +35,10 @@ module sobel_pipe
 	logic signed [ SAFE_BYTE_WIDTH-1:0 ] hgrad, vgrad;
 	logic compute_valid; 
 
-	sobel_pipe_out out_stage
-	(
+	sobel_pipe_out #(
+		.FRAME_HEIGHT( FRAME_HEIGHT ),
+		.FRAME_WIDTH ( FRAME_WIDTH )
+	) out_stage (
 		.clk( clk ), .rst( rst ),
 		.in_valid( compute_valid ), .hgrad( hgrad ), .vgrad( vgrad ),
 		.out_full( out_full ),
@@ -48,8 +56,10 @@ module sobel_pipe
 		.hgrad( hgrad ), .vgrad( vgrad ), .out_valid( compute_valid )
 	); 
 
-	sobel_pipe_fetch fetch_stage
-	(
+	sobel_pipe_fetch #(
+		.FRAME_HEIGHT( FRAME_HEIGHT ),
+		.FRAME_WIDTH ( FRAME_WIDTH )
+	) fetch_stage (
 		.clk( clk ), .rst( rst ),
 		.pipe_wr_en( pipe_wr_en ),
 		.in_empty( in_empty ), .din( din ),

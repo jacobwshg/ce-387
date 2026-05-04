@@ -1,13 +1,15 @@
 
-import globals_pkg :: IMG_WIDTH;
-import globals_pkg :: IMG_HEIGHT;
-import globals_pkg :: COL_IDX_WIDTH;
-import globals_pkg :: ROW_IDX_WIDTH;
+import globals_pkg :: FRAME_HEIGHT;
+import globals_pkg :: FRAME_WIDTH;
 import globals_pkg :: BYTE_WIDTH;
 import globals_pkg :: BOX_DIM;
 
-module sobel_pipe_fetch(
-
+module sobel_pipe_fetch
+#(
+	parameter int FRAME_HEIGHT = globals_pkg::FRAME_HEIGHT,
+	parameter int FRAME_WIDTH  = globals_pkg::FRAME_WIDTH
+)
+(
 	input logic clk, rst,
 	input logic pipe_wr_en,
 
@@ -20,6 +22,9 @@ module sobel_pipe_fetch(
 	output logic [ BYTE_WIDTH-1:0 ] box [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ],
 	output logic out_valid
 );
+
+	localparam int ROW_IDX_WIDTH = $clog2( FRAME_HEIGHT );
+	localparam int COL_IDX_WIDTH = $clog2( FRAME_WIDTH );
 
 	logic out_valid_c;
 
@@ -103,12 +108,12 @@ module sobel_pipe_fetch(
 		//  when bottom row idx falls below frame bottom edge, still assert
 		//  "valid" to allow downstream to write the zero bottom edge
 		//
-		if ( pipe_wr_en && ( irow_c>IMG_HEIGHT-1 || !in_empty ) )
+		if ( pipe_wr_en && ( irow_c>FRAME_HEIGHT-1 || !in_empty ) )
 		begin
 
 			out_valid_c = 1'b1;
 
-			if ( icol === IMG_WIDTH-1 )
+			if ( icol === FRAME_WIDTH-1 )
 			begin
 				//
 				// the element read in at the start of this cycle is on the
@@ -128,13 +133,18 @@ module sobel_pipe_fetch(
 			// if bottom right px is still in frame, the corresponding fifo
 			// elem is valid; update box and buffer
 			//
-			if ( irow_c < IMG_HEIGHT )
+			if ( irow_c < FRAME_HEIGHT )
 			begin
 				in_rd_en = 1'b1;
 
 				box_c[ 0 ] = box[ 1 ];
 				box_c[ 1 ] = box[ 2 ];
 				box_c[ 2 ] = '{ buf_dout[ top_row ], buf_dout[ mid_row ], din };
+
+				$display(
+					"row %16d, \tcol %16d, \tgs px %8h",
+					irow, icol, din
+				);
 
 				buf_rd_addr = icol_c;
 				// buf_wr_addr doesn't change, always write to current col
