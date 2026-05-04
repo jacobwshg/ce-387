@@ -2,6 +2,7 @@
 import globals_pkg :: BYTE_WIDTH;
 import globals_pkg :: SAFE_BYTE_WIDTH;
 import globals_pkg :: BOX_DIM;
+import globals_pkg :: box_t;
 
 module sobel_pipe_compute(
 
@@ -9,7 +10,7 @@ module sobel_pipe_compute(
 	input logic pipe_wr_en,
 
 	input logic in_valid,
-	input logic [ BYTE_WIDTH-1:0 ] box [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ],
+	input box_t box,
 
 	output logic signed [ SAFE_BYTE_WIDTH-1:0 ] hgrad, vgrad,
 	output logic out_valid

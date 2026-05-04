@@ -3,6 +3,7 @@ import globals_pkg :: FRAME_HEIGHT;
 import globals_pkg :: FRAME_WIDTH;
 import globals_pkg :: BYTE_WIDTH;
 import globals_pkg :: BOX_DIM;
+import globals_pkg :: box_t;
 
 module sobel_pipe_fetch
 #(
@@ -19,7 +20,7 @@ module sobel_pipe_fetch
 	// to fifo
 	output logic in_rd_en,
 	// to next stage
-	output logic [ BYTE_WIDTH-1:0 ] box [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ],
+	output box_t box,
 	output logic out_valid
 );
 
@@ -37,8 +38,8 @@ module sobel_pipe_fetch
 	logic [ $clog2( BOX_DIM )-1:0 ]
 		top_row, mid_row, bot_row,
 		top_row_c, mid_row_c, bot_row_c;
-	
-	logic [ BYTE_WIDTH-1:0 ] box_c [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ];
+
+	box_t box_c;
 
 	//
 	// combinational signals for bram access
@@ -68,6 +69,27 @@ module sobel_pipe_fetch
 		end
 
 	endgenerate
+
+	//
+	// box is indexed in col-major order ( in terms of orig frame ), 
+	// so print [0][0] [1][0] [2][0], [0][1], ...
+	//
+	function automatic void
+	print_box( input box_t box );
+
+		$write( "box: " );
+
+		for ( int i=0; i<BOX_DIM; ++i )
+		begin
+			for ( int j=0; j<BOX_DIM; ++j )
+			begin
+				$write( "%2h ", box[ j ][ i ] );
+			end
+			$write( ", " );
+		end
+		$display( "" );
+
+	endfunction
 
 	always_comb
 	begin
@@ -139,12 +161,19 @@ module sobel_pipe_fetch
 
 				box_c[ 0 ] = box[ 1 ];
 				box_c[ 1 ] = box[ 2 ];
-				box_c[ 2 ] = '{ buf_dout[ top_row ], buf_dout[ mid_row ], din };
+				// ensure box is defined as [ 0:BOX_DIM-1 ] to match rhs layout
+				box_c[ 2 ] = { buf_dout[ top_row ], buf_dout[ mid_row ], din };
+
+				//{ box_c 2 ][ 0 ], box_c[ 2 ][ 1 ], box_c[ 2 ][ 2 ] }
+				//	 = { buf_dout[ top_row ], buf_dout[ mid_row ], din };
 
 			//	$display(
-			//		"row %16d, \tcol %16d, \tgs px %8h",
+			//		"row %4d, \tcol %4d, \tgs px %2h",
 			//		irow, icol, din
 			//	);
+
+				$write( "row %4d, \tcol %4d, \t", irow, icol );
+				print_box( box_c );
 
 				buf_rd_addr = icol_c;
 				// buf_wr_addr doesn't change, always write to current col
@@ -165,7 +194,7 @@ module sobel_pipe_fetch
 			icol <= 'h0;
 			irow <= 'h0;
 
-			{ top_row, mid_row, bot_row } <= '{ default: 'h0 };
+			top_row <= 2'h0; mid_row <= 2'h1; bot_row <= 2'h2;
 			box <= '{ default: 'h0 };
 		end
 		else

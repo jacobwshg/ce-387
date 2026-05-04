@@ -15,5 +15,7 @@ package globals_pkg;
 
 	localparam int FIFO_DEPTH = 32;
 
+	typedef logic [ BYTE_WIDTH-1:0 ] box_t [ 0:BOX_DIM-1 ] [ 0:BOX_DIM-1 ];
+
 endpackage: globals_pkg
 

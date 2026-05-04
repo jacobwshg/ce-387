@@ -4,6 +4,7 @@ import globals_pkg :: FRAME_WIDTH;
 import globals_pkg :: SAFE_BYTE_WIDTH;
 import globals_pkg :: BYTE_WIDTH;
 import globals_pkg :: BOX_DIM;
+import globals_pkg :: box_t;
 
 module sobel_pipe
 #(
@@ -28,8 +29,8 @@ module sobel_pipe
 	// pipe regs write enable
 	//
 	logic pipe_wr_en;
-	
-	logic [ BYTE_WIDTH-1:0 ] box [ BOX_DIM-1:0 ] [ BOX_DIM-1:0 ];
+
+	box_t box;
 	logic fetch_valid;
 
 	logic signed [ SAFE_BYTE_WIDTH-1:0 ] hgrad, vgrad;
