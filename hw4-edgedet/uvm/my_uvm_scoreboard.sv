@@ -44,18 +44,21 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 			output_fifo.get( tx_out );
 			compare_fifo.get( tx_cmp );			
 			comparison();
-			if ( err_cnt > 1000 ) break;
+			//if ( err_cnt > 100 ) break;
 		end
 	endtask: run
 
 	virtual function void comparison();
 		if ( tx_out.image_pixel !== tx_cmp.image_pixel )
 		begin
-			/*
+			//
 			// use uvm_error to report errors and continue
 			// use uvm_fatal to halt the simulation on error
-			`uvm_info( "SB_CMP", tx_out.sprint(), UVM_LOW );
-			`uvm_info( "SB_CMP", tx_cmp.sprint(), UVM_LOW );
+			//
+
+			//`uvm_info( "SB_CMP", tx_out.sprint(), UVM_LOW );
+			//`uvm_info( "SB_CMP", tx_cmp.sprint(), UVM_LOW );
+			/*
 			`uvm_error(
 				"SB_CMP", 
 				$sformatf(
