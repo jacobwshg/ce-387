@@ -129,25 +129,27 @@ void gaussian_blur(unsigned char *in_data, int height, int width, unsigned char 
 	}
 }
 
-void sobel(unsigned char in_data[3][3], unsigned char *out_data) 
+void sobel( unsigned char in_data[3][3], unsigned char *out_data ) 
 {	 
-	 // Definition of Sobel filter in horizontal direction
-	 const int horizontal_operator[3][3] = {
+	// Definition of Sobel filter in horizontal direction
+	const int horizontal_operator[3][3] =
+	{
 		{ -1,  0,  1 },
 		{ -2,  0,  2 },
 		{ -1,  0,  1 }
-	 };
-	 const int vertical_operator[3][3] = {
+	};
+	const int vertical_operator[3][3] =
+	{
 		{ -1, -2, -1 },
 		{  0,  0,  0 },
 		{  1,  2,  1 }
-	 };
+	};
 
-	 int horizontal_gradient = 0;
-	 int vertical_gradient = 0;
+	int horizontal_gradient = 0;
+	int vertical_gradient = 0;
 
-	 for (int j = 0; j < 3; j++) 
-	 {
+	for (int j = 0; j < 3; j++) 
+	{
 		for (int i = 0; i < 3; i++) 
 		{
 			horizontal_gradient += in_data[j][i] * horizontal_operator[i][j];
@@ -155,15 +157,19 @@ void sobel(unsigned char in_data[3][3], unsigned char *out_data)
 			//printf("h: %d * %d\n", in_data[j][i], horizontal_operator[i][j] );
 			//printf("v: %d * %d\n", in_data[j][i], vertical_operator[i][j] );
 		}
-	 }
+	}
 
-	 // Check for overflow
-	 int v = (abs(horizontal_gradient) + abs(vertical_gradient)) / 2;
-	 //printf("grad: %d\n\n", v);
-	 *out_data = (unsigned char)(v > 255 ? 255 : v);
+	// Check for overflow
+	int v = (abs(horizontal_gradient) + abs(vertical_gradient)) / 2;
+	//printf("grad: %d\n\n", v);
+	*out_data = (unsigned char)(v > 255 ? 255 : v);
 }
 
-void sobel_filter(unsigned char *in_data, int height, int width, unsigned char *out_data) 
+void sobel_filter(
+	unsigned char *in_data,
+	int height, int width,
+	unsigned char *out_data
+) 
 {
 	 unsigned char buffer[3][3];
 	 unsigned char data = 0;
@@ -173,10 +179,12 @@ void sobel_filter(unsigned char *in_data, int height, int width, unsigned char *
 		for (int x = 0; x < width; x++) 
 		{
 
+			/*
 			printf(
 				"row %4d, \tcol %4d, \tgs byte 0x%4x\n",
 				y, x, in_data[ y*width + x ]
 			);
+			*/
 
 			data = 0;
 
@@ -184,21 +192,31 @@ void sobel_filter(unsigned char *in_data, int height, int width, unsigned char *
 
 			if (y != 0 && x != 0 && y != height-1 && x != width-1) 
 			{
+
+				
+				//printf( "row %4d, \tcol %4d, \tbox: ", y, x ); ////
+
 				 for (int j = -1; j <= 1; j++) 
 				 {
 					for (int i = -1; i <= 1; i++) 
 					{
 						buffer[ j+1 ][ i+1 ] = in_data[ ( y+j ) * width + ( x+i ) ];
+
+						//printf( "%02x ", buffer[ j+1 ][ i+1 ] ); ////////
 					}
+					//printf( ", " ); //////
 				 }
 
-				 sobel( buffer, &data );
+				//printf( "\n" ); ///////
+
+				sobel( buffer, &data );
 			}
-			////
-			//printf(
-			//	"row %4d, \tcol %4d, \tsobel output 0x%2x\n",
-			//	y, x, data
-			//);	
+			///*
+			printf(
+				"row %4d, \tcol %4d, \tsobel output 0x%2x\n",
+				y, x, data
+			);
+			//*/
 			out_data[ y*width + x ] = data;
 		}
 	}

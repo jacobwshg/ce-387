@@ -58,7 +58,7 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 
 			//`uvm_info( "SB_CMP", tx_out.sprint(), UVM_LOW );
 			//`uvm_info( "SB_CMP", tx_cmp.sprint(), UVM_LOW );
-			/*
+			///*
 			`uvm_error(
 				"SB_CMP", 
 				$sformatf(
@@ -66,7 +66,7 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 					tx_cmp.image_pixel, tx_out.image_pixel
 				)
 			);
-			*/
+			//*/
 			++err_cnt;
 		end
 	endfunction: comparison

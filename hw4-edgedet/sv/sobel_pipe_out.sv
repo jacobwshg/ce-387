@@ -127,13 +127,15 @@ module sobel_pipe_out
 					end
 				endcase
 
-				if ( out_wr_en )
+				/*
+				if ( out_wr_en && ( irow > FRAME_HEIGHT-3 ) )
 				begin
-			//	$display(
-			//		"row %16d, \tcol %16d, \tsobel output %8h",
-			//		irow, icol, dout
-			//	);
+				$display(
+					"row %4d, \tcol %4d, state: %2d, \tsobel output %8h",
+					irow, icol, box_center_state, dout
+				);
 				end
+				*/
 
 			end
 

@@ -130,7 +130,7 @@ module sobel_pipe_fetch
 		//  when bottom row idx falls below frame bottom edge, still assert
 		//  "valid" to allow downstream to write the zero bottom edge
 		//
-		if ( pipe_wr_en && ( irow==FRAME_HEIGHT || !in_empty ) )
+		if ( pipe_wr_en && ( ( !in_empty ) || irow>=FRAME_HEIGHT ) )
 		begin
 
 			out_valid_c = 1'b1;
@@ -155,7 +155,7 @@ module sobel_pipe_fetch
 			// if bottom right px is still in frame, the corresponding fifo
 			// elem is valid; update box and buffer
 			//
-			if ( irow_c < FRAME_HEIGHT )
+			if ( irow < FRAME_HEIGHT )
 			begin
 				in_rd_en = 1'b1;
 
