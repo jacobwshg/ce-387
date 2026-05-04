@@ -172,8 +172,8 @@ module sobel_pipe_fetch
 			//		irow, icol, din
 			//	);
 
-				$write( "row %4d, \tcol %4d, \t", irow, icol );
-				print_box( box_c );
+				//$write( "row %4d, \tcol %4d, \t", irow, icol );
+				//print_box( box_c );
 
 				buf_rd_addr = icol_c;
 				// buf_wr_addr doesn't change, always write to current col
