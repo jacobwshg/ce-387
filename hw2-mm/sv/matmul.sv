@@ -15,8 +15,8 @@ module matmul
 	input logic clk,
 	input logic rst,
 	input logic strt,
-	input logic [ MAT_DIM_SIZE-1:0 ] [ DATA_WIDTH-1:0 ] x_r_row,
-	input logic [ MAT_DIM_SIZE-1:0 ] [ DATA_WIDTH-1:0 ] y_r_col,
+	input logic [ DATA_WIDTH-1:0 ] x_rd_row [ 0:MAT_DIM_SIZE-1 ],
+	input logic [ DATA_WIDTH-1:0 ] y_rd_col [ 0:MAT_DIM_SIZE-1 ],
 	/*
  	 * I and J are "requests" made respectively to the X and Y BRAMs.
  	 * In the next cycle, they will respectively return X's row I in X_R_ROW
@@ -24,9 +24,9 @@ module matmul
  	 */
 	output logic [ MAT_DIM_WIDTH-1:0 ] i,
 	output logic [ MAT_DIM_WIDTH-1:0 ] j,
-	output logic z_we,
-	output logic [ ADDR_WIDTH-1:0 ] z_addr,
-	output logic [ DATA_WIDTH-1:0 ] z_w_data,
+	output logic z_wr_en,
+	output logic [ ADDR_WIDTH-1:0 ] z_wr_addr,
+	output logic [ DATA_WIDTH-1:0 ] z_wr_data,
 	output logic done
 );
 
@@ -41,17 +41,19 @@ module matmul
 
 	state_t state, state_c;
 
-	addr_t i_o, j_o;
-	addr_t i_c, j_c, z_addr_c;
+	addr_t i_ff, j_ff;
+	addr_t i_c, j_c, z_wr_addr_c;
 
 	// element-wise products
-	logic [ MAT_DIM_SIZE-1:0 ] [ DATA_WIDTH-1:0 ] prods, prods_c;
+	logic [ DATA_WIDTH-1:0 ]
+		prods   [ 0:MAT_DIM_SIZE-1 ],
+		prods_c [ 0:MAT_DIM_SIZE-1 ];
 
-	data_t z_w_data_c;
-	logic z_we_c, done_c;
+	// read ahead
+	assign i = i_c[ MAT_DIM_WIDTH-1:0 ];
+	assign j = j_c[ MAT_DIM_WIDTH-1:0 ];
 
-	assign i = i_o[ MAT_DIM_WIDTH-1:0 ];
-	assign j = j_o[ MAT_DIM_WIDTH-1:0 ];
+	logic done_c;
 
 	/* state and output regs */
 	always_ff @ ( posedge clk, posedge rst )
@@ -59,29 +61,19 @@ module matmul
 		if ( rst )
 		begin
 			state <= S_IDLE;
-
-			i_o <= 'h0;
-			j_o <= 'h0;
-
+			i_ff <= 'h0;
+			j_ff <= 'h0;
 			prods <= '{ default: 'h0 };
-
-			z_addr <= 'h0;
-			z_w_data <= 'h0;
-			z_we <= 'b0;
-			done <= 'b0;
+			z_wr_addr <= 'h0;
+			done <= 1'b0;
 		end
 		else
 		begin
 			state <= state_c;
-
-			i_o <= i_c;
-			j_o <= j_c;
-
+			i_ff <= i_c;
+			j_ff <= j_c;
 			prods <= prods_c;
-
-			z_addr <= z_addr_c;
-			z_w_data <= z_w_data_c;
-			z_we <= z_we_c;
+			z_wr_addr <= z_wr_addr_c;
 			done <= done_c;
 		end
 	end
@@ -90,14 +82,15 @@ module matmul
 	always_comb
 	begin
 		state_c = state;
-		i_c = i_o;
-		j_c = j_o;
+		i_c = i_ff;
+		j_c = j_ff;
 
 		prods_c = prods;
 
-		z_addr_c = z_addr;
-		z_w_data_c = 'h0;
-		z_we_c = 'b0;
+		z_wr_addr_c = z_wr_addr;
+		z_wr_data = 'h0;
+		z_wr_en = 'b0;
+
 		done_c = done;
 
 		case ( state )
@@ -106,6 +99,8 @@ module matmul
 				if ( strt )
 				begin
 					state_c = S_MUL;
+					i_c = 'h0;
+					j_c = 'h0;
 				end
 			end
 
@@ -113,38 +108,42 @@ module matmul
 			begin
 				prods_c = '{ default: 'h0 };
 				/* compute X row dot Y col */
-				foreach ( x_r_row[ k ] )
+				foreach ( x_rd_row[ k ] )
 				begin
-					prods_c[ k ] = x_r_row[ k ] * y_r_col[ k ];
+					prods_c[ k ] = x_rd_row[ k ] * y_rd_col[ k ];
 				end
+				//$display( "@%0t, prods_c: %p", $time, prods_c );
 				state_c = S_ADD;
 			end
 
 			S_ADD:
 			begin
+				z_wr_data = 'h0;
 				foreach ( prods[ k ] )
 				begin
-					z_w_data_c += prods[ k ];
+					z_wr_data += prods[ k ];
 				end
+				//$display( "%08d", z_wr_data );
 
-				/* Update Z cell addr to write
- 				 * At the beginning, stagger Z addr by 1 behind the X/Y fetch
- 				 * addrs as instructed by the observation at top of file */
-				z_addr_c = ( i_c == 0 && j_c == 1 )? 0: z_addr + 1;
-				z_we_c = 'b1;
+				z_wr_en = 1'b1;
 
 				/* update X row idx and Y col idx to fetch in next cycle */
-				j_c = j_o + 1;
-				if ( j_c === MAT_DIM_SIZE )
+				if ( j_ff + 1'h1 === MAT_DIM_SIZE )
 				begin
-					j_c = 0;
-					i_c = i_o + 1;
+					j_c = 'h0;
+					i_c = i_ff + 1'h1;
 				end
+				else
+				begin
+					j_c = j_ff + 1'h1;
+				end
+
+				z_wr_addr_c = z_wr_addr + 1'h1;
 
 				if ( i_c === MAT_DIM_SIZE && j_c > 0 )
 				/* next Z write addr is past valid range */
 				begin
-					done_c = 'b1;
+					done_c = 1'b1;
 				end
 
 				if ( done_c )
@@ -163,9 +162,8 @@ module matmul
 				i_c = 'h0;
 				j_c = 'h0;
 				prods_c = '{ default: 'h0 };
-				z_addr_c = 'h0;
-				z_w_data_c = 'h0;
-				z_we_c = 'b0;
+				z_wr_addr_c = 'h0;
+				z_wr_data = 'h0;
 				done_c = 'b0;
 			end
 		endcase

@@ -25,20 +25,18 @@ module matmul_tb();
 		strt = 'b0,
 		done;
 
-	logic [ MAT_DIM_SIZE-1 : 0 ]
-		x_we = 'b0,
-		y_we = 'b0;
+	logic 
+		x_wr_en [ MAT_DIM_SIZE-1:0 ] = '{ default: 'b0 },
+		y_wr_en [ MAT_DIM_SIZE-1:0 ] = '{ default: 'b0 };
 	logic [ DATA_WIDTH-1 : 0 ] 
-		x_w_data = 'b0,
-		y_w_data = 'b0;
+		x_wr_data = 'b0,
+		y_wr_data = 'b0;
 	logic [ MAT_DIM_WIDTH-1 : 0 ]
-		//x_w_bank_id = 'b0,
-		//y_w_bank_id = 'b0,
-		x_w_bank_addr = 'b0,
-		y_w_bank_addr = 'b0;
+		x_wr_bank_addr = 'b0,
+		y_wr_bank_addr = 'b0;
 
-	logic [ ADDR_WIDTH-1 : 0 ] z_r_addr = 'b0;
-	logic [ DATA_WIDTH-1 : 0 ] z_r_data; 
+	logic [ ADDR_WIDTH-1 : 0 ] z_rd_addr = 'b0;
+	logic [ DATA_WIDTH-1 : 0 ] z_rd_data; 
 
 	matmul_top #(
 		.DATA_WIDTH ( DATA_WIDTH ),
@@ -51,16 +49,14 @@ module matmul_tb();
 		.clk ( clk ),
 		.rst ( rst ),
 		.strt ( strt ),
-		.x_we( x_we ),
-		.y_we( y_we ),
-		.x_w_data ( x_w_data ),
-		.y_w_data ( y_w_data ),
-		//.x_w_bank_id ( x_w_bank_id ),
-		//.y_w_bank_id ( y_w_bank_id ),
-		.x_w_bank_addr ( x_w_bank_addr ),
-		.y_w_bank_addr ( y_w_bank_addr ),
-		.z_r_addr( z_r_addr ),
-		.z_r_data( z_r_data ),
+		.x_wr_en( x_wr_en ),
+		.y_wr_en( y_wr_en ),
+		.x_wr_data ( x_wr_data ),
+		.y_wr_data ( y_wr_data ),
+		.x_wr_bank_addr ( x_wr_bank_addr ),
+		.y_wr_bank_addr ( y_wr_bank_addr ),
+		.z_rd_addr( z_rd_addr ),
+		.z_rd_data( z_rd_data ),
 		.done( done )
 	);
 
@@ -77,7 +73,7 @@ module matmul_tb();
 		y_buf [ MAT_SIZE-1 : 0 ],
 		z_buf [ MAT_SIZE-1 : 0 ];
 	
-	logic[64] starttime = 0;
+	time starttime = 0;
 
 	initial
 	begin
@@ -93,19 +89,19 @@ module matmul_tb();
 			for ( int j=0; j<MAT_DIM_SIZE; ++j )
 			begin
 				@ ( negedge clk );
-				x_w_data = x_buf[ i * MAT_DIM_SIZE + j ];
-				y_w_data = y_buf[ i * MAT_DIM_SIZE + j ];
+				x_wr_data = x_buf[ i * MAT_DIM_SIZE + j ];
+				y_wr_data = y_buf[ i * MAT_DIM_SIZE + j ];
 				/* X is read one row at a time, so each bank stores a 
  				 * column */
-				//x_w_bank_id   = j;
-				x_w_bank_addr = i;
-				//y_w_bank_id   = i;
-				y_w_bank_addr = j;
-				x_we[j] = 'b1;
-				y_we[i] = 'b1;
+				//x_wr_bank_id   = j;
+				x_wr_bank_addr = i;
+				//y_wr_bank_id   = i;
+				y_wr_bank_addr = j;
+				x_wr_en[ j ] = 'b1;
+				y_wr_en[ i ] = 'b1;
 				@ ( negedge clk );
-				x_we = 'b0;
-				y_we = 'b0;
+				x_wr_en = '{ default: 'b0 };
+				y_wr_en = '{ default: 'b0 };
 			end
 		end
 
@@ -136,15 +132,15 @@ module matmul_tb();
 			for ( int j=0; j<MAT_DIM_SIZE; ++j )
 			begin
 				@ ( negedge clk );
-				z_r_addr = i * MAT_DIM_SIZE + j;
+				z_rd_addr = i * MAT_DIM_SIZE + j;
 				#PERIOD;
 				@ ( negedge clk );
 				$display( 
 					"Z[ %2d ][ %2d ]: \texpected %8d, \tactual %8d", 
 					i,
 					j,
-					z_buf[ z_r_addr ],
-					z_r_data
+					z_buf[ z_rd_addr ],
+					z_rd_data
 				);
 			end
 		end

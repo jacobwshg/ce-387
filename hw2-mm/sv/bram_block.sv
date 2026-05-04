@@ -7,11 +7,11 @@ module bram_block
 	parameter BRAM_DATA_WIDTH = BANK_DATA_WIDTH * BANK_CNT
 ) 
 (   input  logic clock,
-    input  logic [BRAM_ADDR_WIDTH-1:0] rd_addr,
-    input  logic [BRAM_ADDR_WIDTH-1:0] wr_addr,
-    input  logic [BANK_CNT-1:0] wr_en,
-    input  logic [BANK_DATA_WIDTH-1:0] din,
-    output logic [BANK_CNT-1:0][BANK_DATA_WIDTH-1:0] dout
+    input  logic [ BRAM_ADDR_WIDTH-1:0 ] rd_addr,
+    input  logic [ BRAM_ADDR_WIDTH-1:0 ] wr_addr,
+    input  logic wr_en [ 0:BANK_CNT-1 ],
+    input  logic [ BANK_DATA_WIDTH-1:0 ] din,
+    output logic [ BANK_DATA_WIDTH-1:0 ] dout [ 0:BANK_CNT-1 ]
 );
 
 /*
