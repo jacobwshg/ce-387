@@ -140,7 +140,7 @@ module matmul_tb();
 				#PERIOD;
 				@ ( negedge clk );
 				$display( 
-					"Z[%0d][%0d]: expected %0d, actual %0d", 
+					"Z[ %2d ][ %2d ]: \texpected %8d, \tactual %8d", 
 					i,
 					j,
 					z_buf[ z_r_addr ],
