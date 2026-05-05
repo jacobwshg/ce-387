@@ -42,7 +42,7 @@ module fft_stage1 #(
 
 	typedef enum logic [ 2:0 ]
 	{
-		S_GET, S_BF_MUL_WI, S_BF_MUL_WR,
+		S_FETCH, S_BF_MUL_WI, S_BF_MUL_WR,
 		S_BF_V, S_BF_OUT
 	} fsm_state_t;
 	fsm_state_t fsm_state, fsm_state_c;
@@ -76,10 +76,10 @@ module fft_stage1 #(
 
 	/* intermediate results */
 	logic signed [ DWIDTH-1:0 ]
-		wr_x_i2r, wr_x_i2r_c,
-		wi_x_i2i, wi_x_i2i_c,
-		wr_x_i2i, wr_x_i2i_c,
-		wi_x_i2r, wi_x_i2r_c;
+		prod_wr_i2r, prod_wr_i2r_c,
+		prod_wi_i2i, prod_wi_i2i_c,
+		prod_wr_i2i, prod_wr_i2i_c,
+		prod_wi_i2r, prod_wi_i2r_c;
 
 	assign step_idx = sampl_idx[ LOG2_N:STAGE ];
 	assign is_latter_hstep = sampl_idx[ STAGE-1 ];
@@ -110,23 +110,20 @@ module fft_stage1 #(
 
 		in2_c[ RE ] = in2[ RE ];
 		in2_c[ IM ] = in2[ IM ];
-		v_c[ RE ] = v[ RE ];
-		v_c[ IM ] = v[ IM ];
+		v_c  [ RE ] = v  [ RE ];
+		v_c  [ IM ] = v  [ IM ];
 
-		wr_x_i2r_c = wr_x_i2r;
-		wi_x_i2i_c = wi_x_i2i;
-		wr_x_i2i_c = wr_x_i2i;
-		wi_x_i2r_c = wi_x_i2r;
+		prod_wr_i2r_c = prod_wr_i2r;
+		prod_wi_i2i_c = prod_wi_i2i;
+		prod_wr_i2i_c = prod_wr_i2i;
+		prod_wi_i2r_c = prod_wi_i2r;
 
-		/* only significant in S_BF_OUT with is_latter_hstep */
-		in1 = dly_buf;
-		out1[ RE ] = in1[ RE ] + v[ RE ];
-		out1[ IM ] = in1[ IM ] + v[ IM ];
-		out2[ RE ] = in1[ RE ] - v[ RE ];
-		out2[ IM ] = in1[ IM ] - v[ IM ];
+		in1  = '{ default: 'sh0 };
+		out1 = '{ default: 'sh0 };
+		out2 = '{ default: 'sh0 };
 
 		case ( fsm_state )
-			S_GET:
+			S_FETCH:
 			begin
 				if ( !in_empty )
 				begin
@@ -144,26 +141,26 @@ module fft_stage1 #(
 
 			S_BF_MUL_WI:
 			begin
-				wi_x_i2r_c = w[ IM ] * in2[ RE ];
-				wi_x_i2i_c = w[ IM ] * in2[ IM ];
+				prod_wi_i2r_c = w[ IM ] * in2[ RE ];
+				prod_wi_i2i_c = w[ IM ] * in2[ IM ];
 				fsm_state_c = S_BF_MUL_WR;
 			end
 
 			S_BF_MUL_WR:
 			begin
-				wi_x_i2r_c = quant_pkg::DEQUANT( wi_x_i2r );
-				wi_x_i2i_c = quant_pkg::DEQUANT( wi_x_i2i );
+				prod_wi_i2r_c = quant_pkg::DEQUANT( prod_wi_i2r );
+				prod_wi_i2i_c = quant_pkg::DEQUANT( prod_wi_i2i );
 
-				wr_x_i2r_c = w[ RE ] * in2[ RE ];
-				wr_x_i2i_c = w[ RE ] * in2[ IM ];
+				prod_wr_i2r_c = w[ RE ] * in2[ RE ];
+				prod_wr_i2i_c = w[ RE ] * in2[ IM ];
 
 				fsm_state_c = S_BF_V;
 			end
 
 			S_BF_V:
 			begin
-				v_c[ RE ] = quant_pkg::DEQUANT( wr_x_i2r ) - wi_x_i2i;
-				v_c[ IM ] = quant_pkg::DEQUANT( wr_x_i2i ) + wi_x_i2r;
+				v_c[ RE ] = quant_pkg::DEQUANT( prod_wr_i2r ) - prod_wi_i2i;
+				v_c[ IM ] = quant_pkg::DEQUANT( prod_wr_i2i ) + prod_wi_i2r;
 				fsm_state_c = S_BF_OUT;
 			end
 
@@ -178,12 +175,18 @@ module fft_stage1 #(
 					if ( !is_latter_hstep )
 					begin
 						//$display( "stage 1 former half step, buffering input data %08h + %08hj", in2[ RE ], in2[ IM ] );
-						dout = dly_buf;
+						dout      = dly_buf;
 						dly_buf_c = in2;
 					end
 					else
 					begin
-						dout = out1;
+						in1        = dly_buf;
+						out1[ RE ] = in1[ RE ] + v[ RE ];
+						out1[ IM ] = in1[ IM ] + v[ IM ];
+						out2[ RE ] = in1[ RE ] - v[ RE ];
+						out2[ IM ] = in1[ IM ] - v[ IM ];
+
+						dout      = out1;
 						dly_buf_c = out2;
 
 						/*
@@ -210,7 +213,7 @@ module fft_stage1 #(
 					end
 
 					sampl_idx_c = sampl_idx + 1'h1;
-					fsm_state_c = S_GET;
+					fsm_state_c = S_FETCH;
 				end
 
 			end
@@ -223,7 +226,7 @@ module fft_stage1 #(
 	begin
 		if ( rst )
 		begin
-			fsm_state <= S_GET;
+			fsm_state <= S_FETCH;
 
 			dly_buf[ RE ] <= 'sh0;
 			dly_buf[ IM ] <= 'sh0;
@@ -232,13 +235,13 @@ module fft_stage1 #(
 
 			in2[ RE ] <= 'sh0;
 			in2[ IM ] <= 'sh0;
-			v[ RE ] <= 'sh0;
-			v[ IM ] <= 'sh0;
+			v  [ RE ] <= 'sh0;
+			v  [ IM ] <= 'sh0;
 
-			wr_x_i2r <= 'sh0;
-			wi_x_i2i <= 'sh0;
-			wr_x_i2i <= 'sh0;
-			wi_x_i2r <= 'sh0;
+			prod_wr_i2r <= 'sh0;
+			prod_wi_i2i <= 'sh0;
+			prod_wr_i2i <= 'sh0;
+			prod_wi_i2r <= 'sh0;
 		end
 		else
 		begin
@@ -251,13 +254,13 @@ module fft_stage1 #(
 
 			in2[ RE ] <= in2_c[ RE ];
 			in2[ IM ] <= in2_c[ IM ];
-			v[ RE ] <= v_c[ RE ];
-			v[ IM ] <= v_c[ IM ];
+			v  [ RE ] <= v_c  [ RE ];
+			v  [ IM ] <= v_c  [ IM ];
 
-			wr_x_i2r <= wr_x_i2r_c;
-			wi_x_i2i <= wi_x_i2i_c;
-			wr_x_i2i <= wr_x_i2i_c;
-			wi_x_i2r <= wi_x_i2r_c;
+			prod_wr_i2r <= prod_wr_i2r_c;
+			prod_wi_i2i <= prod_wi_i2i_c;
+			prod_wr_i2i <= prod_wr_i2i_c;
+			prod_wi_i2r <= prod_wi_i2r_c;
 		end
 	end
 

@@ -42,12 +42,12 @@ module fft_stage #(
 
 	typedef enum logic [ 2:0 ]
 	{
-		S_GET, S_BF_MUL_WI, S_BF_MUL_WR,
+		S_FETCH, S_BF_MUL_WI, S_BF_MUL_WR,
 		S_BF_V, S_BF_OUT
 	} fsm_state_t;
 	fsm_state_t fsm_state, fsm_state_c;
 
-	/* Sample sampl_idx = { step sampl_idx, lower step flag, buf sample addr } */ 
+	/* Sample idx = { step idx, lower step flag, buf sample addr } */ 
 	logic [ LOG2_N:0 ] sampl_idx, sampl_idx_c;
 	/* Step sampl_idx - has an extra high bit to accommodate final stage, 
 	 * which has all samples within a single step but step sampl_idx couldn't possibly 
@@ -81,10 +81,10 @@ module fft_stage #(
 
 	/* intermediate results */
 	logic signed [ DWIDTH-1:0 ]
-		wr_x_i2r, wr_x_i2r_c,
-		wi_x_i2i, wi_x_i2i_c,
-		wr_x_i2i, wr_x_i2i_c,
-		wi_x_i2r, wi_x_i2r_c;
+		prod_wr_i2r, prod_wr_i2r_c,
+		prod_wi_i2i, prod_wi_i2i_c,
+		prod_wr_i2i, prod_wr_i2i_c,
+		prod_wi_i2r, prod_wi_i2r_c;
 
 	bram #(
 		.BRAM_ADDR_WIDTH( STAGE-1 ),
@@ -119,9 +119,9 @@ module fft_stage #(
 	begin: rd_twdl
 		//
 		// read a twiddle factor. buf_rd_addr is part of sampl_idx,
-		// which is updated on the clk edge between S_BF_OUT and S_GET.
+		// which is updated on the clk edge between S_BF_OUT and S_FETCH.
 		// the read from the new edge happens on the clk edge
-		// between S_GET and S_BF_MUL ( assuming no stall ).
+		// between S_FETCH and S_BF_MUL ( assuming no stall ).
 		//
 		w <= STAGE_TWDLS[ buf_rd_addr ];
 	end: rd_twdl
@@ -143,28 +143,27 @@ module fft_stage #(
 
 		in2_c[ RE ] = in2[ RE ];
 		in2_c[ IM ] = in2[ IM ];
-		v_c[ RE ] = v[ RE ];
-		v_c[ IM ] = v[ IM ];
+		v_c  [ RE ] = v  [ RE ];
+		v_c  [ IM ] = v  [ IM ];
 
-		wr_x_i2r_c = wr_x_i2r;
-		wi_x_i2i_c = wi_x_i2i;
-		wr_x_i2i_c = wr_x_i2i;
-		wi_x_i2r_c = wi_x_i2r;
+		prod_wr_i2r_c = prod_wr_i2r;
+		prod_wi_i2i_c = prod_wi_i2i;
+		prod_wr_i2i_c = prod_wr_i2i;
+		prod_wi_i2r_c = prod_wi_i2r;
 
-		/* only significant in S_BF_OUT with is_latter_hstep */
-		in1 = buf_dout;
-		out1[ RE ] = in1[ RE ] + v[ RE ];
-		out1[ IM ] = in1[ IM ] + v[ IM ];
-		out2[ RE ] = in1[ RE ] - v[ RE ];
-		out2[ IM ] = in1[ IM ] - v[ IM ];
+		in1  = '{ default: 'sh0 };
+		out1 = '{ default: 'sh0 };
+		out2 = '{ default: 'sh0 };
 
 		case ( fsm_state )
-			S_GET:
+			S_FETCH:
 			begin
 				if ( !in_empty )
 				begin
 					in_rd_en = 1'b1;
+
 					in2_c = din;
+
 					// only run butterfly if in latter half step
 					fsm_state_c = is_latter_hstep
 						? S_BF_MUL_WI
@@ -174,26 +173,26 @@ module fft_stage #(
 
 			S_BF_MUL_WI:
 			begin
-				wi_x_i2r_c = w[ IM ] * in2[ RE ];
-				wi_x_i2i_c = w[ IM ] * in2[ IM ];
+				prod_wi_i2r_c = w[ IM ] * in2[ RE ];
+				prod_wi_i2i_c = w[ IM ] * in2[ IM ];
 				fsm_state_c = S_BF_MUL_WR;
 			end
 
 			S_BF_MUL_WR:
 			begin
-				wi_x_i2r_c = quant_pkg::DEQUANT( wi_x_i2r );
-				wi_x_i2i_c = quant_pkg::DEQUANT( wi_x_i2i );
+				prod_wi_i2r_c = quant_pkg::DEQUANT( prod_wi_i2r );
+				prod_wi_i2i_c = quant_pkg::DEQUANT( prod_wi_i2i );
 
-				wr_x_i2r_c = w[ RE ] * in2[ RE ];
-				wr_x_i2i_c = w[ RE ] * in2[ IM ];
+				prod_wr_i2r_c = w[ RE ] * in2[ RE ];
+				prod_wr_i2i_c = w[ RE ] * in2[ IM ];
 
 				fsm_state_c = S_BF_V;
 			end
 
 			S_BF_V:
 			begin
-				v_c[ RE ] = quant_pkg::DEQUANT( wr_x_i2r ) - wi_x_i2i;
-				v_c[ IM ] = quant_pkg::DEQUANT( wr_x_i2i ) + wi_x_i2r;
+				v_c[ RE ] = quant_pkg::DEQUANT( prod_wr_i2r ) - prod_wi_i2i;
+				v_c[ IM ] = quant_pkg::DEQUANT( prod_wr_i2i ) + prod_wi_i2r;
 				fsm_state_c = S_BF_OUT;
 			end
 
@@ -204,17 +203,21 @@ module fft_stage #(
 					if ( !is_latter_hstep )
 					begin
 						// former half step
-						//
+
 						// output prev butterfly's buffered out2
-						dout = buf_dout;
+						dout    = buf_dout;
 						buf_din = in2;
 					end
 					else
 					begin
-						// latter half step
-						//
+						// latter half step; butterfly is valid
+						in1        = buf_dout;
+						out1[ RE ] = in1[ RE ] + v[ RE ];
+						out1[ IM ] = in1[ IM ] + v[ IM ];
+						out2[ RE ] = in1[ RE ] - v[ RE ];
+						out2[ IM ] = in1[ IM ] - v[ IM ];
 						// output newly computed butterfly's out1
-						dout = out1;
+						dout    = out1;
 						buf_din = out2;
 						/*
  						printtime();
@@ -235,7 +238,7 @@ module fft_stage #(
 					end
 
 					sampl_idx_c = sampl_idx + 1'h1;
-					fsm_state_c = S_GET;
+					fsm_state_c = S_FETCH;
 				end
 
 			end
@@ -248,7 +251,7 @@ module fft_stage #(
 	begin
 		if ( rst )
 		begin
-			fsm_state <= S_GET;
+			fsm_state <= S_FETCH;
 
 			sampl_idx <= 'h0;
 
@@ -257,10 +260,10 @@ module fft_stage #(
 			v[ RE ] <= 'sh0;
 			v[ IM ] <= 'sh0;
 
-			wr_x_i2r <= 'sh0;
-			wi_x_i2i <= 'sh0;
-			wr_x_i2i <= 'sh0;
-			wi_x_i2r <= 'sh0;
+			prod_wr_i2r <= 'sh0;
+			prod_wi_i2i <= 'sh0;
+			prod_wr_i2i <= 'sh0;
+			prod_wi_i2r <= 'sh0;
 		end
 		else
 		begin
@@ -273,10 +276,10 @@ module fft_stage #(
 			v[ RE ] <= v_c[ RE ];
 			v[ IM ] <= v_c[ IM ];
 
-			wr_x_i2r <= wr_x_i2r_c;
-			wi_x_i2i <= wi_x_i2i_c;
-			wr_x_i2i <= wr_x_i2i_c;
-			wi_x_i2r <= wi_x_i2r_c;
+			prod_wr_i2r <= prod_wr_i2r_c;
+			prod_wi_i2i <= prod_wi_i2i_c;
+			prod_wr_i2i <= prod_wr_i2i_c;
+			prod_wi_i2r <= prod_wi_i2r_c;
 		end
 	end
 
