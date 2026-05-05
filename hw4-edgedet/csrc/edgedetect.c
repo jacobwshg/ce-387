@@ -211,12 +211,12 @@ void sobel_filter(
 
 				sobel( buffer, &data );
 			}
-			///*
+			/*
 			printf(
 				"row %4d, \tcol %4d, \tsobel output 0x%2x\n",
 				y, x, data
 			);
-			//*/
+			*/
 			out_data[ y*width + x ] = data;
 		}
 	}
@@ -242,59 +242,60 @@ void non_maximum_suppressor(unsigned char *in_data, int height, int width, unsig
 				prev_rowbase = rowbase - width,
 				next_rowbase = rowbase + width;
 
+			const unsigned char
+				nw     = in_data[ prev_rowbase + x-1 ],
+				north  = in_data[ prev_rowbase + x   ],
+				ne     = in_data[ prev_rowbase + x+1 ],
+
+				west   = in_data[ rowbase      + x-1 ],
+				center = in_data[ rowbase      + x   ],
+				east   = in_data[ rowbase      + x+1 ],
+
+				sw     = in_data[ next_rowbase + x-1 ],
+				south  = in_data[ next_rowbase + x   ],
+				se     = in_data[ next_rowbase + x+1 ];
+
 			const unsigned int
-				north_south = in_data[ prev_rowbase + x ]   + in_data[ next_rowbase + x ],
-				east_west   = in_data[ rowbase      + x-1 ] + in_data[ rowbase      + x+1 ],
-				north_west  = in_data[ prev_rowbase + x-1 ] + in_data[ next_rowbase + x+1 ],
-				north_east  = in_data[ next_rowbase + x-1 ] + in_data[ prev_rowbase + x+1 ];
-			
+				sum_n_s   = in_data[ prev_rowbase + x   ] + in_data[ next_rowbase + x   ],
+				sum_w_e   = in_data[ rowbase      + x-1 ] + in_data[ rowbase      + x+1 ],
+				sum_nw_se = in_data[ prev_rowbase + x-1 ] + in_data[ next_rowbase + x+1 ],
+				sum_ne_sw = in_data[ next_rowbase + x-1 ] + in_data[ prev_rowbase + x+1 ];
+
 			//out_data[ y*width + x ] = 0;
 			
 			if (
-				north_south >= east_west &&
-				north_south >= north_west &&
-				north_south >= north_east
+				sum_n_s >= sum_w_e &&
+				sum_n_s >= sum_nw_se &&
+				sum_n_s >= sum_ne_sw
 			)
 			{
-				if (
-					in_data[ rowbase + x ] >  in_data[ rowbase + x-1 ] && 
-					in_data[ rowbase + x ] >= in_data[ rowbase + x+1 ]
-				)
+				if ( center > west && center >= east )
 				{
-					out_data[ rowbase + x ] = in_data[ rowbase + x ];
+					out_data[ rowbase + x ] = center;
 				}
 			}
 			else if (
-				east_west >= north_west &&
-				east_west >= north_east
+				sum_w_e >= sum_nw_se &&
+				sum_w_e >= sum_ne_sw
 			)
 			{
-				if (
-					in_data[ rowbase + x ] >  in_data[ prev_rowbase + x ] && 
-					in_data[ rowbase + x ] >= in_data[ next_rowbase + x ]
-				)
+				if ( center > north && center >= south )
 				{
-					out_data[ rowbase + x ] = in_data[ rowbase + x ];
+					out_data[ rowbase + x ] = center;
 				}
 			}
-			else if ( north_west >= north_east )
+			else if ( sum_nw_se >= sum_ne_sw )
 			{
-				if (
-					in_data[ rowbase + x ] >  in_data[ prev_rowbase + x+1 ] && 
-					in_data[ rowbase + x ] >= in_data[ next_rowbase + x-1 ]
-				)
+				if ( center > ne && center >= sw )
 				{
-					out_data[ rowbase + x ] = in_data[ rowbase + x ];
+					out_data[ rowbase + x ] = center; 
 				}
 			}
 			else
 			{
-				if (
-					in_data[ rowbase + x ] >  in_data[ prev_rowbase + x-1 ] && 
-					in_data[ rowbase + x ] >= in_data[ next_rowbase + x+1 ]
-				)
+				if ( center > nw && center >= se )
 				{
-					out_data[ rowbase + x ] = in_data[ rowbase + x ];
+					out_data[ rowbase + x ] = center; 
 				}
 			}
 		}
@@ -369,8 +370,8 @@ int main(int argc, char *argv[]) {
 	write_grayscale_bmp("stage2_sobel.bmp", header, sobel_data);
 
 	/// Non-maximum suppression
-	//non_maximum_suppressor(sobel_data, height, width, nms_data);
-	//write_grayscale_bmp("stage3_nonmax_suppression.bmp", header, nms_data);
+	non_maximum_suppressor(sobel_data, height, width, nms_data);
+	write_grayscale_bmp("stage3_nonmax_suppression.bmp", header, nms_data);
 
 	/// Hysteresis
 	//hysteresis_filter(nms_data, height, width, h_data);
