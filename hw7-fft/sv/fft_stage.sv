@@ -1,11 +1,13 @@
 
-import globals_pkg::printtime;
-import twdls_pkg::TWDLS;
+import globals_pkg :: N;
+import globals_pkg :: DWIDTH;
+import globals_pkg :: printtime;
+import twdls_pkg :: TWDLS;
 
 module fft_stage #(
 	parameter int STAGE = 2,
-	parameter int N = 32,
-	parameter int DWIDTH = 32,
+	parameter int N = globals_pkg::N,
+	parameter int DWIDTH = globals_pkg::DWIDTH,
 
 	parameter logic signed [ 0:(1<<( STAGE-1 ) )-1 ] [ 0:1 ] [ DWIDTH-1:0 ]
 		STAGE_TWDLS =

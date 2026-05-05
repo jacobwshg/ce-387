@@ -1,10 +1,12 @@
 
-import globals_pkg::printtime;
-import globals_pkg::PIPE_FIFO_DEPTH;
+import globals_pkg :: printtime;
+import globals_pkg :: N;
+import globals_pkg :: DWIDTH;
+import globals_pkg :: PIPE_FIFO_DEPTH;
 
 module fft #(
-	parameter int N = 32,
-	parameter int DWIDTH = 32,
+	parameter int N = globals_pkg::N,
+	parameter int DWIDTH = globals_pkg::DWIDTH,
 	parameter int PIPE_FIFO_DEPTH = globals_pkg::PIPE_FIFO_DEPTH
 )
 (
