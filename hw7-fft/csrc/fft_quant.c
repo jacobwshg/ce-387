@@ -226,20 +226,23 @@ void fft(Complex *in, Complex *out, int N)
 	//////////////////////
 	///*
 	// Print the twiddle factor table for SystemVerilog
-	printf( "localparam logic [0:%d][0:%d][0:1][31:0] ctable = {\n", NUM_STAGES - 1, N - 1 );
+	printf(
+		"\tlocalparam logic [ 0:%d ][ 0:%d ][ 0:1 ][ 31:0 ] TWDLS =\n\t{\n",
+		NUM_STAGES-1, N-1
+	);
 	for ( int i = 0; i < NUM_STAGES; i++ )
 	{
-		printf( "\t{" );
+		printf( "\t\t{" );
 		for ( int j = 0; j < N; ++j ) 
 		{
 			printf(
-				"%s{32'sh%08x,32'sh%08x}",
-				( j == 0 ) ? "" : ", ", ctable[ i ][ j ].real, ctable[ i ][ j ].imag
+				"%s%s{ 32'sh%08x,32'sh%08x }",
+				( j==0 ? "" : ", " ), ( j%4 ? "" : "\n\t\t\t" ), ctable[ i ][ j ].real, ctable[ i ][ j ].imag
 			);
 		}
-		printf( "}%s\n", ( i == NUM_STAGES - 1 ) ? "" : "," );
+		printf( "\n\t\t}%s\n", ( i==NUM_STAGES-1 ) ? "" : "," );
 	}
-	printf( "};\n" );
+	printf( "\t};\n" );
 	//*/
 
 	// Copy final output 

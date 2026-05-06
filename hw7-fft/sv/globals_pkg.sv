@@ -3,7 +3,7 @@ package globals_pkg;
 
 	localparam DWIDTH = 32;
 
-	localparam int N = 16;
+	localparam int N = 32;
 
 	localparam FIFO_DEPTH = N;
 	//localparam PIPE_FIFO_DEPTH = N;

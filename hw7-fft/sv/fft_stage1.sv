@@ -115,13 +115,13 @@ module fft_stage1 #(
 		v_c  [ IM ] = v  [ IM ];
 
 		prod_wr_i2r_c = prod_wr_i2r;
-		prod_wi_i2i_c = prod_wi_i2i;
 		prod_wr_i2i_c = prod_wr_i2i;
+		prod_wi_i2i_c = prod_wi_i2i;
 		prod_wi_i2r_c = prod_wi_i2r;
 
-		in1  = '{ default: 'sh0 };
-		out1 = '{ default: 'sh0 };
-		out2 = '{ default: 'sh0 };
+		in1  = '{ default: 'shX };
+		out1 = '{ default: 'shX };
+		out2 = '{ default: 'shX };
 
 		case ( fsm_state )
 			S_FETCH:
@@ -131,32 +131,36 @@ module fft_stage1 #(
 					in_rd_en = 1'b1;
 					in2_c = din;
 
-					$display( "stage1 read piped ROB data %016h", din );
+					prod_wr_i2r_c = w[ RE ] * in2_c[ RE ];
+					prod_wr_i2i_c = w[ RE ] * in2_c[ IM ];
+					prod_wi_i2i_c = w[ IM ] * in2_c[ IM ];
+					prod_wi_i2r_c = w[ IM ] * in2_c[ RE ];
 
-					// only run butterfly if in latter half step
-					fsm_state_c = is_latter_hstep
-						? S_BF_MUL
-						: S_BF_OUT;
+					$display( "stage1 read piped ROB data %016h", din );
+					//$display( "\tw r*r: %08h, dq: %08h", prod_wr_i2r_c, quant_pkg::DEQUANT( prod_wr_i2r_c ) );
+					//$display( "\tw r*i: %08h, dq: %08h", prod_wr_i2i_c, quant_pkg::DEQUANT( prod_wr_i2i_c ) );
+					//$display( "\tw i*i: %08h, dq: %08h", prod_wi_i2i_c, quant_pkg::DEQUANT( prod_wi_i2i_c ) );
+					//$display( "\tw i*r: %08h, dq: %08h", prod_wi_i2r_c, quant_pkg::DEQUANT( prod_wi_i2r_c ) );
+
+					fsm_state_c = S_BF_OUT;
 				end
 			end
 
 			S_BF_MUL:
 			begin
-				prod_wi_i2r_c = w[ IM ] * in2[ RE ];
-				prod_wi_i2i_c = w[ IM ] * in2[ IM ];
-				prod_wr_i2r_c = w[ RE ] * in2[ RE ];
-				prod_wr_i2i_c = w[ RE ] * in2[ IM ];
-				fsm_state_c = S_BF_DQ;
+				fsm_state_c = S_BF_OUT;
 			end
 
+			/*
 			S_BF_DQ:
 			begin
 				prod_wr_i2r_c = quant_pkg::DEQUANT( prod_wr_i2r );
-				prod_wi_i2i_c = quant_pkg::DEQUANT( prod_wi_i2i );
 				prod_wr_i2i_c = quant_pkg::DEQUANT( prod_wr_i2i );
+				prod_wi_i2i_c = quant_pkg::DEQUANT( prod_wi_i2i );
 				prod_wi_i2r_c = quant_pkg::DEQUANT( prod_wi_i2r );
 				fsm_state_c = S_BF_OUT;
 			end
+			*/
 
 			S_BF_OUT:
 			begin
@@ -182,10 +186,10 @@ module fft_stage1 #(
 						// latter half step
 						//
 						in1        = dly_buf;
-						//v_c[ RE ]  = quant_pkg::DEQUANT( prod_wr_i2r ) - quant_pkg::DEQUANT( prod_wi_i2i );
-						//v_c[ IM ]  = quant_pkg::DEQUANT( prod_wr_i2i ) + quant_pkg::DEQUANT( prod_wi_i2r );
-						v_c [ RE ] = prod_wr_i2r - prod_wi_i2i;
-						v_c [ IM ] = prod_wr_i2i + prod_wi_i2r
+						v_c[ RE ]  = quant_pkg::DEQUANT( prod_wr_i2r ) - quant_pkg::DEQUANT( prod_wi_i2i );
+						v_c[ IM ]  = quant_pkg::DEQUANT( prod_wr_i2i ) + quant_pkg::DEQUANT( prod_wi_i2r );
+						//v_c [ RE ] = prod_wr_i2r - prod_wi_i2i;
+						//v_c [ IM ] = prod_wr_i2i + prod_wi_i2r
 ;
 						out1[ RE ] = in1[ RE ] + v_c[ RE ];
 						out1[ IM ] = in1[ IM ] + v_c[ IM ];
@@ -195,13 +199,13 @@ module fft_stage1 #(
 						dout      = out1;
 						dly_buf_c = out2;
 
-						/*
+						///*
 						$display( "stage 1 latter half step, step idx %0d", step_idx );
 						$display( "\tw = %08h + %08hj", w[ RE ], w[ IM ] );
 						$display( "\tin1 = %08h + %08hj, in2 = %08h + %08hj", in1[ RE ], in1[ IM ], in2[ RE ], in2[ IM ] );
 						$display( "\tout1 = %08h + %08hj, out2 = %08h + %08hj", out1[ RE ], out1[ IM ], out2[ RE ], out2[ IM ] );
 						$display( "" );
-						*/
+						//*/
 
 					end
 
