@@ -73,7 +73,7 @@ void butterfly(
 	const int stage, const int sampl_idx,
 	Complex *in1,  Complex *in2,
 	Complex *out1, Complex *out2,
-	Complex w
+	Complex *w
 ) 
 {
 	/*
@@ -84,10 +84,15 @@ void butterfly(
 	};
 	*/
 
-	const int prod_wr_i2r_qq = w.real * in2->real;
-	const int prod_wr_i2i_qq = w.real * in2->imag;
-	const int prod_wi_i2i_qq = w.imag * in2->imag;
-	const int prod_wi_i2r_qq = w.imag * in2->real;
+	const int
+		w_re = w->real, w_im = w->imag,
+		in1_re = in1->real, in1_im = in1->imag,
+		in2_re = in2->real, in2_im = in2->imag;
+
+	const int prod_wr_i2r_qq = w_re * in2_re;
+	const int prod_wr_i2i_qq = w_re * in2_im;
+	const int prod_wi_i2i_qq = w_im * in2_im;
+	const int prod_wi_i2r_qq = w_im * in2_re;
 
 	const int prod_wr_i2r = DEQUANTIZE_I( prod_wr_i2r_qq );
 	const int prod_wr_i2i = DEQUANTIZE_I( prod_wr_i2i_qq );
@@ -100,10 +105,10 @@ void butterfly(
 		prod_wr_i2i + prod_wi_i2r,
 	};
 	
-	out1->real = in1->real + v.real;
-	out1->imag = in1->imag + v.imag;
-	out2->real = in1->real - v.real;
-	out2->imag = in1->imag - v.imag;
+	out1->real = in1_re + v.real;
+	out1->imag = in1_im + v.imag;
+	out2->real = in1_re - v.real;
+	out2->imag = in1_im - v.imag;
 
 	/////////
 	///*
@@ -111,17 +116,15 @@ void butterfly(
 	{
 
 	printf( "stage 1 butterfly:\n" );
-	printf( "\tw = %08x + %08xj\n", w.real, w.imag );
-	printf( "\tin1 = %08x + %08xj\n", in1->real, in1->imag );
-	printf( "\tin2 = %08x + %08xj\n", in2->real, in2->imag );
+	printf( "\tw = %08x + %08xj\n", w_re, w_im );
+	printf( "\tin1 = %08x + %08xj\n", in1_re, in1_im );
+	printf( "\tin2 = %08x + %08xj\n", in2_re, in2_im );
 
 	//printf( "\tr*r: %08x, dq: %08x", prod_wr_i2r_qq, prod_wr_i2r );
 	//printf( "\tr*i: %08x, dq: %08x", prod_wr_i2i_qq, prod_wr_i2i );
 	//printf( "\ti*i: %08x, dq: %08x", prod_wi_i2i_qq, prod_wi_i2i );
 	//printf( "\ti*r: %08x, dq: %08x\n", prod_wi_i2r_qq, prod_wi_i2r );
 
-	//printf("\tv.real = %08x - %08x = %08x\n", DEQUANTIZE_I(w.real * in2->real), DEQUANTIZE_I(w.imag * in2->imag), v.real);
-	//printf("\tv.imag = %08x + %08x = %08x\n", DEQUANTIZE_I(w.real * in2->imag), DEQUANTIZE_I(w.imag * in2->real), v.imag);
 	printf( "\tv.real = %08x - %08x = %08x\n", prod_wr_i2r, prod_wi_i2i, v.real );
 	printf( "\tv.imag = %08x + %08x = %08x\n", prod_wr_i2i, prod_wi_i2r, v.imag );
 	printf( "\tout1 = %08x + %08xj\n", out1->real, out1->imag );
@@ -167,6 +170,16 @@ void fft(Complex *in, Complex *out, int N)
 		// step size doubles per stage
 		const int step = 1 << ( stage + 1 );
 		const int half_step = step / 2;
+
+		for ( int j = 0; j < half_step; ++j )
+		{
+			// Calculate the twiddle factor
+			const float angle_step = -PI / half_step;
+			float angle = j * angle_step;
+			Complex w = { QUANTIZE_F( cos( angle ) ), QUANTIZE_F( sin( angle ) ) };
+			ctable[ stage ][ j ] = w;
+		}
+
 		/* step ( = butterfly group ) idx */
 		for ( int i = 0; i < N; i += step )
 		{
@@ -179,12 +192,7 @@ void fft(Complex *in, Complex *out, int N)
 				const int out1_idx = write_offset + i + j;
 				const int out2_idx = out1_idx + half_step;
 
-				// Calculate the twiddle factor
-				const float angle_step = -PI / half_step;
-				float angle = j * angle_step;
-				Complex w = { QUANTIZE_F(cos(angle)), QUANTIZE_F(sin(angle)) };
-
-				ctable[ stage ][ j ] = w;
+				Complex *const w = &ctable[ stage ][ j ];
 
 				// Perform the FFT stage operation
 				butterfly(
@@ -204,7 +212,7 @@ void fft(Complex *in, Complex *out, int N)
 					"X[%d] = %08x + %08xj, "
 					"X[%d] = %08x + %08xj\n",
 					stage+1, i, j,
-					w.real, w.imag,
+					w->real, w->imag,
 					in1_idx,  x[ in1_idx  ].real, x[ in1_idx  ].imag,
 					in2_idx,  x[ in2_idx  ].real, x[ in2_idx  ].imag,
 					out1_idx, x[ out1_idx ].real, x[ out1_idx ].imag,
