@@ -2,12 +2,10 @@
 import globals_pkg :: printtime;
 import globals_pkg :: N;
 import globals_pkg :: DWIDTH;
-import globals_pkg :: PIPE_FIFO_DEPTH;
 
 module fft #(
 	parameter int N = globals_pkg::N,
-	parameter int DWIDTH = globals_pkg::DWIDTH,
-	parameter int PIPE_FIFO_DEPTH = globals_pkg::PIPE_FIFO_DEPTH
+	parameter int DWIDTH = globals_pkg::DWIDTH
 )
 (
 	input logic clk,
@@ -88,7 +86,7 @@ module fft #(
 	* Stage 1 has its own template because its buffer is a 
 	* single element deep; with the normal stage template, 
 	* its buffer address will be of width 0, which is illegal.
-	* Also, it requires reading the only buffer element 
+	* Also, it requires reading the only buffer element
 	* immediately after it is written, which leads to its buffer
 	* being implemented with FF rather than BRAM.
 	*/
@@ -96,15 +94,13 @@ module fft #(
 		genvar s;
 		for ( s=0; s<=STAGE_CNT; ++s )
 		begin
-			fifo #(
-				.FIFO_DATA_WIDTH( 2 * DWIDTH ),
-				.FIFO_BUFFER_SIZE( PIPE_FIFO_DEPTH )
-			) pipe_fifo (
-				.reset( rst ),
-				.wr_clk( ~clk ), .wr_en( pipe_wr_en[ s ] ),
-				.din( pipe_din[ s ] ), .full( pipe_full[ s ] ),
-				.rd_clk( clk ), .rd_en( pipe_rd_en[ s ] ),
-				.dout( pipe_dout[ s ] ), .empty( pipe_empty[ s ] )
+			pipe_buf #(
+				.DWIDTH( 2 * DWIDTH )
+			) pipe_buf (
+				.clk( clk ), .rst( rst ),
+				.rd_en( pipe_rd_en[ s ] ), .wr_en( pipe_wr_en[ s ] ),
+				.din( pipe_din[ s ] ), .dout( pipe_dout[ s ] ), 
+				.full( pipe_full[ s ] ), .empty( pipe_empty[ s ] )
 			);
 
 			if ( s == 1 )

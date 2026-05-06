@@ -13,8 +13,7 @@ module my_uvm_tb;
 	fft_top #(
 		.N( N ),
 		.DWIDTH( DWIDTH ),
-		.FIFO_DEPTH( FIFO_DEPTH ),
-		.PIPE_FIFO_DEPTH( PIPE_FIFO_DEPTH )
+		.FIFO_DEPTH( FIFO_DEPTH )
 	) fft_top_inst (
 		.clk( vif.clock ),
 		.rst( vif.reset ),

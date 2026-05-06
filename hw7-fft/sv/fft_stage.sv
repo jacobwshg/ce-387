@@ -42,7 +42,7 @@ module fft_stage #(
 
 	typedef enum logic [ 2:0 ]
 	{
-		S_FETCH, S_BF_MUL_WI, S_BF_MUL_WR,
+		S_FETCH, S_BF_MUL, S_BF_DQ,
 		S_BF_V, S_BF_OUT
 	} fsm_state_t;
 	fsm_state_t fsm_state, fsm_state_c;
@@ -166,33 +166,36 @@ module fft_stage #(
 
 					// only run butterfly if in latter half step
 					fsm_state_c = is_latter_hstep
-						? S_BF_MUL_WI
+						? S_BF_MUL
 						: S_BF_OUT;
 				end
 			end
 
-			S_BF_MUL_WI:
+			S_BF_MUL:
 			begin
 				prod_wi_i2r_c = w[ IM ] * in2[ RE ];
 				prod_wi_i2i_c = w[ IM ] * in2[ IM ];
-				fsm_state_c = S_BF_MUL_WR;
+				prod_wr_i2r_c = w[ RE ] * in2[ RE ];
+				prod_wr_i2i_c = w[ RE ] * in2[ IM ];
+
+				fsm_state_c = S_BF_DQ;
 			end
 
-			S_BF_MUL_WR:
+			S_BF_DQ:
 			begin
 				prod_wi_i2r_c = quant_pkg::DEQUANT( prod_wi_i2r );
 				prod_wi_i2i_c = quant_pkg::DEQUANT( prod_wi_i2i );
-
-				prod_wr_i2r_c = w[ RE ] * in2[ RE ];
-				prod_wr_i2i_c = w[ RE ] * in2[ IM ];
+				prod_wr_i2r_c = quant_pkg::DEQUANT( prod_wr_i2r );
+				prod_wr_i2i_c = quant_pkg::DEQUANT( prod_wr_i2i );
 
 				fsm_state_c = S_BF_V;
 			end
 
 			S_BF_V:
 			begin
-				v_c[ RE ] = quant_pkg::DEQUANT( prod_wr_i2r ) - prod_wi_i2i;
-				v_c[ IM ] = quant_pkg::DEQUANT( prod_wr_i2i ) + prod_wi_i2r;
+				v_c[ RE ] = prod_wr_i2r - prod_wi_i2i;
+				v_c[ IM ] = prod_wr_i2i + prod_wi_i2r;
+
 				fsm_state_c = S_BF_OUT;
 			end
 
