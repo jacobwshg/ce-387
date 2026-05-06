@@ -5,7 +5,7 @@ package globals_pkg;
 
 	localparam int N = 32;
 
-	localparam FIFO_DEPTH = N;
+	localparam FIFO_DEPTH = 16;
 	//localparam PIPE_FIFO_DEPTH = N;
 
 	function automatic void printtime();

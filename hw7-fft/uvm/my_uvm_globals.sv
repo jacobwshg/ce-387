@@ -17,7 +17,7 @@ localparam int CLOCK_PERIOD = 10;
 localparam int N = 32;
 localparam int DWIDTH = 32;
 
-localparam int FIFO_DEPTH = N;
+localparam int FIFO_DEPTH = 16;
 //localparam int PIPE_FIFO_DEPTH = N;
 
 localparam int RE = 0, IM = 1;

@@ -49,7 +49,7 @@ class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 		$readmemh( INFILE_RE, real_mem );
 		$readmemh( INFILE_IM, imag_mem );
 
-		for ( i=0; i<2*N; ++i )
+		for ( i=0; i<N; ++i )
 		begin
 			tx = my_uvm_transaction::type_id::create(
 				.name( "tx" ), .contxt( get_full_name() )
