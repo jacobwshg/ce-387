@@ -233,23 +233,30 @@ void fft( Complex *in, Complex *out, const int N )
 	//////////////////////
 	///*
 	// Print the twiddle factor table for SystemVerilog
+	printf( "package twdls_pkg;\n\n" );
+	printf( "\tlocalparam int N_MAX     = %d;\n", N );
+	printf( "\tlocalparam int STAGE_MAX = $clog2( N_MAX );\n\n", N );
 	printf(
-		"\tlocalparam logic [ 0:%d ][ 0:%d ][ 0:1 ][ 31:0 ] TWDLS =\n\t{\n",
-		NUM_STAGES-1, HALF_N-1
+		"\tlocalparam logic signed [ 0:STAGE_MAX-1 ] [ 0:( N_MAX/2 )-1 ] [ 0:1 ] [ 31:0 ]\n"
+		"\t\tTWDLS=\n"
+		"\t'{\n"
 	);
 	for ( int i = 0; i < NUM_STAGES; i++ )
 	{
-		printf( "\t\t{" );
+		printf( "\t\t'{" );
 		for ( int j = 0; j < HALF_N; ++j ) 
 		{
 			printf(
-				"%s%s{ 32'sh%08x,32'sh%08x }",
+				"%s%s{32'sh%08x,32'sh%08x}",
 				( j==0 ? "" : ", " ), ( j%4 ? "" : "\n\t\t\t" ), ctable[ i ][ j ].real, ctable[ i ][ j ].imag
 			);
 		}
 		printf( "\n\t\t}%s\n", ( i==NUM_STAGES-1 ) ? "" : "," );
 	}
-	printf( "\t};\n" );
+	printf(
+		"\t};\n\n"
+		"endpackage: twdls_pkg\n\n"
+	);
 	//*/
 
 	// Copy final output 

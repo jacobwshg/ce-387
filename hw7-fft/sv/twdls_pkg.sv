@@ -3,10 +3,10 @@ package twdls_pkg;
 
 	import globals_pkg :: DWIDTH;
 
-	localparam int N_DEFAULT = 32;
-	//localparam int DWIDTH = globals_pkg::DWIDTH;
+	localparam int N_MAX     = 32;
+	localparam int STAGE_MAX = $clog2( N_MAX );
 
-	localparam logic signed [ 0:$clog2( N_DEFAULT )-1 ] [ 0:( N_DEFAULT/2 )-1 ] [ 0:1 ] [ DWIDTH-1:0 ] 
+	localparam logic signed [ 0:STAGE_MAX-1 ] [ 0:( N_MAX/2 )-1 ] [ 0:1 ] [ DWIDTH-1:0 ] 
 		TWDLS = 
 	'{
 		'{
