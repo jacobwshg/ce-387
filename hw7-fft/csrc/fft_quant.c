@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include <string.h>
+#include <assert.h>
 
 // quantization
 #define BITS            14
@@ -111,7 +112,7 @@ void butterfly(
 	out2->imag = in1_im - v.imag;
 
 	/////////
-	///*
+	/*
 	if ( stage == 0 )
 	{
 
@@ -131,16 +132,22 @@ void butterfly(
 	printf( "\tout2 = %08x + %08xj\n", out2->real, out2->imag );
 	
 	}
-	//*/
+	*/
 }
 
 // FFT function with feed-forward memory allocation
-void fft(Complex *in, Complex *out, int N) 
+void fft( Complex *in, Complex *out, const int N ) 
 {
-	const int NUM_STAGES = log2(N);
+	assert( N > 0 );
+	assert( !( N & ( N-1 ) ) ); // sanity check: power of 2
+
+	const int HALF_N = N >> 1;
+
+	const int NUM_STAGES = log2( N );
 	const int TOTAL_SIZE = N * (NUM_STAGES + 1);
+
 	Complex x[ TOTAL_SIZE ];
-	Complex ctable[ NUM_STAGES ][ N ];
+	Complex ctable[ NUM_STAGES ][ HALF_N ];
 
 	memset( ctable, 0x0, sizeof ctable );
 
@@ -203,7 +210,7 @@ void fft(Complex *in, Complex *out, int N)
 				);
 
 				//////////////////
-				///*
+				/*
 				printf(
 					"Stage %d, i=%d, j=%d: "
 					"W = %08x + %08xj, "
@@ -218,7 +225,7 @@ void fft(Complex *in, Complex *out, int N)
 					out1_idx, x[ out1_idx ].real, x[ out1_idx ].imag,
 					out2_idx, x[ out2_idx ].real, x[ out2_idx ].imag
 				);
-				//*/
+				*/
 			}
 		}
 	}
@@ -228,12 +235,12 @@ void fft(Complex *in, Complex *out, int N)
 	// Print the twiddle factor table for SystemVerilog
 	printf(
 		"\tlocalparam logic [ 0:%d ][ 0:%d ][ 0:1 ][ 31:0 ] TWDLS =\n\t{\n",
-		NUM_STAGES-1, N-1
+		NUM_STAGES-1, HALF_N-1
 	);
 	for ( int i = 0; i < NUM_STAGES; i++ )
 	{
 		printf( "\t\t{" );
-		for ( int j = 0; j < N; ++j ) 
+		for ( int j = 0; j < HALF_N; ++j ) 
 		{
 			printf(
 				"%s%s{ 32'sh%08x,32'sh%08x }",
@@ -264,7 +271,7 @@ int main( int argc, char *argv[] )
 	}
 	N_ = atoi( argv[1] );
 
-	if ( N_ > 128 )
+	if ( N_ > 4096 )
 	{
 		fprintf( stderr, "Number of inputs too large: %d\n", N_ );
 		exit( 2 );
