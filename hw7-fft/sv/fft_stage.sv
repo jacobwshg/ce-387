@@ -70,11 +70,11 @@ module fft_stage #(
 
 	/* Butterfly and buffer signals */
 	logic signed [ 0:1 ] [ DWIDTH-1:0 ]
-		in1,
 		out1, out2,
 		w,
 		buf_din, buf_dout;
 	logic signed [ 0:1 ] [ DWIDTH-1:0 ]
+		in1, in1_c,
 		in2, in2_c,
 		v, v_c;
 
@@ -133,28 +133,24 @@ module fft_stage #(
 
 		in_rd_en = 1'b0;
 		out_wr_en = 1'b0;
-		dout[ RE ] = 'shX;
-		dout[ IM ] = 'shX;
+		dout = '{ default: 'shX };
 
-		buf_din[ RE ] = 'shX;
-		buf_din[ IM ] = 'shX;
 		buf_wr_en = 1'b0;
+		buf_din = '{ default: 'shX };
 
 		sampl_idx_c = sampl_idx;
 
-		in2_c[ RE ] = in2[ RE ];
-		in2_c[ IM ] = in2[ IM ];
-		v_c  [ RE ] = v  [ RE ];
-		v_c  [ IM ] = v  [ IM ];
+		in1_c = in1;
+		in2_c = in2;
+		v_c   = v;
 
 		prod_wr_i2r_c = prod_wr_i2r;
 		prod_wi_i2i_c = prod_wi_i2i;
 		prod_wr_i2i_c = prod_wr_i2i;
 		prod_wi_i2r_c = prod_wi_i2r;
 
-		in1  = '{ default: 'sh0 };
-		out1 = '{ default: 'sh0 };
-		out2 = '{ default: 'sh0 };
+		out1 = '{ default: 'shX };
+		out2 = '{ default: 'shX };
 
 		case ( fsm_state )
 			S_FETCH:
@@ -178,6 +174,9 @@ module fft_stage #(
 				prod_wi_i2i_c = w[ IM ] * in2[ IM ];
 				prod_wr_i2r_c = w[ RE ] * in2[ RE ];
 				prod_wr_i2i_c = w[ RE ] * in2[ IM ];
+
+				in1_c = buf_dout;
+
 				fsm_state_c = S_BF_DQ;
 			end
 
@@ -187,6 +186,7 @@ module fft_stage #(
 				prod_wi_i2i_c = quant_pkg::DEQUANT( prod_wi_i2i );
 				prod_wr_i2i_c = quant_pkg::DEQUANT( prod_wr_i2i );
 				prod_wi_i2r_c = quant_pkg::DEQUANT( prod_wi_i2r );
+
 				fsm_state_c = S_BF_OUT;
 			end
 
@@ -210,7 +210,6 @@ module fft_stage #(
 						//
 						// latter half step; butterfly is valid
 						//
-						in1        = buf_dout;
 						//v_c[ RE ]  = quant_pkg::DEQUANT( prod_wr_i2r ) - quant_pkg::DEQUANT( prod_wi_i2i );
 						//v_c[ IM ]  = quant_pkg::DEQUANT( prod_wr_i2i ) + quant_pkg::DEQUANT( prod_wi_i2r );
 						v_c [ RE ] = prod_wr_i2r - prod_wi_i2i;
@@ -259,10 +258,9 @@ module fft_stage #(
 
 			sampl_idx <= 'h0;
 
-			in2[ RE ] <= 'sh0;
-			in2[ IM ] <= 'sh0;
-			v[ RE ] <= 'sh0;
-			v[ IM ] <= 'sh0;
+			in1 <= '{ default: 'sh0 };
+			in2 <= '{ default: 'sh0 };
+			v   <= '{ default: 'sh0 };
 
 			prod_wr_i2r <= 'sh0;
 			prod_wi_i2i <= 'sh0;
@@ -275,10 +273,9 @@ module fft_stage #(
 
 			sampl_idx <= sampl_idx_c;
 
-			in2[ RE ] <= in2_c[ RE ];
-			in2[ IM ] <= in2_c[ IM ];
-			v[ RE ] <= v_c[ RE ];
-			v[ IM ] <= v_c[ IM ];
+			in1 <= in1_c;
+			in2 <= in2_c;
+			v   <= v_c;
 
 			prod_wr_i2r <= prod_wr_i2r_c;
 			prod_wi_i2i <= prod_wi_i2i_c;
