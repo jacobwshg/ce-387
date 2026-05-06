@@ -22,7 +22,11 @@ inline int
 DEQUANTIZE_I( const int i )
 {
 	int dq = i >> BITS;
-	if ( dq<0 && ( ( ( QUANT_VAL-1 ) & dq ) != 0 ) )
+	//
+	// add 1 if `i` both is negative and has any set fraction bits
+	// important: test `i` itself and not `dq`
+	//
+	if ( i<0 && ( ( i & ( QUANT_VAL-1 ) ) != 0 ) )
 	{
 		++dq;
 	}
@@ -80,10 +84,15 @@ void butterfly(
 	};
 	*/
 
-	const int prod_wr_i2r = DEQUANTIZE_I( w.real * in2->real );
-	const int prod_wi_i2i = DEQUANTIZE_I( w.imag * in2->imag );
-	const int prod_wr_i2i = DEQUANTIZE_I( w.real * in2->imag );
-	const int prod_wi_i2r = DEQUANTIZE_I( w.imag * in2->real );
+	const int prod_wr_i2r_qq = w.real * in2->real;
+	const int prod_wr_i2i_qq = w.real * in2->imag;
+	const int prod_wi_i2i_qq = w.imag * in2->imag;
+	const int prod_wi_i2r_qq = w.imag * in2->real;
+
+	const int prod_wr_i2r = DEQUANTIZE_I( prod_wr_i2r_qq );
+	const int prod_wr_i2i = DEQUANTIZE_I( prod_wr_i2i_qq );
+	const int prod_wi_i2i = DEQUANTIZE_I( prod_wi_i2i_qq );
+	const int prod_wi_i2r = DEQUANTIZE_I( prod_wi_i2r_qq );
 
 	Complex v =
 	{
@@ -97,18 +106,29 @@ void butterfly(
 	out2->imag = in1->imag - v.imag;
 
 	/////////
-	/*
-	printf("Butterfly:\n");
-	printf("\tw = %08x + %08xj\n", w.real, w.imag);
-	printf("\tin1 = %08x + %08xj\n", in1->real, in1->imag);
-	printf("\tin2 = %08x + %08xj\n", in2->real, in2->imag);
+	///*
+	if ( stage == 0 )
+	{
+
+	printf( "stage 1 butterfly:\n" );
+	printf( "\tw = %08x + %08xj\n", w.real, w.imag );
+	printf( "\tin1 = %08x + %08xj\n", in1->real, in1->imag );
+	printf( "\tin2 = %08x + %08xj\n", in2->real, in2->imag );
+
+	//printf( "\tr*r: %08x, dq: %08x", prod_wr_i2r_qq, prod_wr_i2r );
+	//printf( "\tr*i: %08x, dq: %08x", prod_wr_i2i_qq, prod_wr_i2i );
+	//printf( "\ti*i: %08x, dq: %08x", prod_wi_i2i_qq, prod_wi_i2i );
+	//printf( "\ti*r: %08x, dq: %08x\n", prod_wi_i2r_qq, prod_wi_i2r );
+
 	//printf("\tv.real = %08x - %08x = %08x\n", DEQUANTIZE_I(w.real * in2->real), DEQUANTIZE_I(w.imag * in2->imag), v.real);
 	//printf("\tv.imag = %08x + %08x = %08x\n", DEQUANTIZE_I(w.real * in2->imag), DEQUANTIZE_I(w.imag * in2->real), v.imag);
-	printf("\tv.real = %08x - %08x = %08x\n", prod_wr_i2r, prod_wi_i2i, v.real);
-	printf("\tv.imag = %08x + %08x = %08x\n", prod_wr_i2i, prod_wi_i2r, v.imag);
-	printf("\tout1 = %08x + %08xj\n", out1->real, out1->imag);
-	printf("\tout2 = %08x + %08xj\n", out2->real, out2->imag);
-	*/
+	printf( "\tv.real = %08x - %08x = %08x\n", prod_wr_i2r, prod_wi_i2i, v.real );
+	printf( "\tv.imag = %08x + %08x = %08x\n", prod_wr_i2i, prod_wi_i2r, v.imag );
+	printf( "\tout1 = %08x + %08xj\n", out1->real, out1->imag );
+	printf( "\tout2 = %08x + %08xj\n", out2->real, out2->imag );
+	
+	}
+	//*/
 }
 
 // FFT function with feed-forward memory allocation
