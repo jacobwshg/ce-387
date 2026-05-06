@@ -8,8 +8,7 @@ module pipe_buf #(
 	input  logic clk, rst,
 
 	input  logic rd_en, wr_en,
-	output logic read, written,
-	
+
 	input  logic [ DWIDTH-1:0 ] din,
 	output logic [ DWIDTH-1:0 ] dout,
 
@@ -17,6 +16,8 @@ module pipe_buf #(
 	output logic empty
 
 );
+
+	logic read, written;
 
 	always_ff @ ( posedge clk, posedge rst )
 	begin
