@@ -5,7 +5,7 @@ import globals_pkg :: printtime;
 import twdls_pkg :: TWDLS;
 
 module fft_stage #(
-	parameter int STAGE = 2,
+	parameter int STAGE = 4,
 	parameter int N = globals_pkg::N,
 	parameter int DWIDTH = globals_pkg::DWIDTH,
 
@@ -28,8 +28,7 @@ module fft_stage #(
 	import quant_pkg::DEQUANT;
 
 	localparam int
-		RE = 0,
-		IM = 1;
+		RE = 0, IM = 1;
 
 	/*
 	 * 1-based stage index
@@ -48,25 +47,42 @@ module fft_stage #(
 	} fsm_state_t;
 	fsm_state_t fsm_state, fsm_state_c;
 
-	/* Sample idx = { step idx, lower step flag, buf sample addr } */ 
+	/*
+	 * Sample idx in frame, which can be partitioned into step idx and 
+	 * sample idx within step
+	 * The latter's MSB can serve as a flag:
+	 *   0 when in former half step ( butterfly output is invalid ),
+	 *   and 1 when in latter half step,
+	 * and less-significant bits can serve as index into delay buffer
+	 * ( if implementing with BRAM ) or twiddle table
+	 *
+	 */
 	logic [ LOG2_N:0 ] sampl_idx, sampl_idx_c;
-	/* Step sampl_idx - has an extra high bit to accommodate final stage, 
+	/* 
+ 	 * Step idx - has an extra high bit to accommodate final stage, 
 	 * which has all samples within a single step but step sampl_idx couldn't possibly 
 	 * be 0-bit wide. Also, it needs to enter a higher "ghost step" to flush the
 	 * pipeline.
 	 */
 	logic [ LOG2_N-STAGE:0 ] step_idx;
-	/* Sample belongs in former or latter half of step? 
- 	 * ( when the incoming sample is in the former half step, we ignore
+	/* 
+ 	 * Sample belongs in former or latter half of step? 
+ 	 * ( when the incoming sample is in a former half step, we ignore
  	 * the butterfly and output the previous butterfly's out2 from buffer;
  	 * but when we're in step 0, there is no prev butterfly and our
- 	 * module output is invalid ) step
+ 	 * module output is invalid regardless of half-step )
  	 */
 	logic is_latter_hstep;
+
 	logic out_valid;
 
 	/* Read/write addrs for delay buffer; buffering half a step is enough */
-	logic [ STAGE-2:0 ] buf_rd_addr, buf_wr_addr;
+	//logic [ STAGE-2:0 ] buf_rd_addr, buf_wr_addr;
+
+	//
+	// twiddle factor index ( unique to each sample within a half-step )
+	//
+	logic [ STAGE-2:0 ] twdl_idx;
 
 	/* Butterfly and buffer signals */
 	logic signed [ 0:1 ] [ DWIDTH-1:0 ]
@@ -87,44 +103,56 @@ module fft_stage #(
 		prod_wr_i2i, prod_wr_i2i_c,
 		prod_wi_i2r, prod_wi_i2r_c;
 
-	bram #(
-		.BRAM_ADDR_WIDTH( STAGE-1 ),
-		.BRAM_DATA_WIDTH( 2 * DWIDTH )
+	//bram #(
+	//	.BRAM_ADDR_WIDTH( STAGE-1 ),
+	//	.BRAM_DATA_WIDTH( 2 * DWIDTH )
+ 	//) dly_buf (
+	//	.clock  ( clk ),
+	//
+	//	.rd_addr( buf_rd_addr ),
+	//	.wr_addr( buf_wr_addr ),
+	//
+	//	.wr_en  ( buf_wr_en ),
+	//
+ 	//	.din    ( buf_din ),
+ 	//	.dout   ( buf_dout )
+ 	//); 
+
+	shiftreg #(
+		.WIDTH( HALF_STEP ),
+		.DWIDTH( 2 * DWIDTH )
 	) dly_buf (
-		.clock  ( clk ),
-
-		.rd_addr( buf_rd_addr ),
-		.wr_addr( buf_wr_addr ),
-
-		.wr_en  ( buf_wr_en ),
-
+		.clk  ( clk ),
+		.sh_en  ( buf_wr_en ),
 		.din    ( buf_din ),
 		.dout   ( buf_dout )
 	); 
 
-	assign { step_idx, is_latter_hstep, buf_rd_addr }
+	assign { step_idx, is_latter_hstep, twdl_idx }
 		= { sampl_idx[ LOG2_N:STAGE ], sampl_idx[ STAGE-1 ], sampl_idx[ STAGE-2:0 ] };
 
+	//
 	// if we're in step 0, only the latter half step's output ( which is
-	// butterfly 0's out1 ) is valid
+	// butterfly 0's out1 ) is valid.
+	//
 	assign out_valid = step_idx!==0 || is_latter_hstep;
+
 	/*
  	 * In former half step, read back buffered out2 and send it downstream,
  	 * buffer in1
  	 * In latter half step, read back buffered in1, run butterfly, overwrite
  	 * in1 with out2 at same half-step addr in buffer
 	 */
-	assign buf_wr_addr = buf_rd_addr;
 
 	always_ff @ ( posedge clk )
 	begin: rd_twdl
 		//
-		// read a twiddle factor. buf_rd_addr is part of sampl_idx,
+		// read a twiddle factor. twdl_idx is part of sampl_idx,
 		// which is updated on the clk edge between S_BF_OUT and S_FETCH.
 		// the read from the new edge happens on the clk edge
 		// between S_FETCH and S_BF_MUL ( assuming no stall ).
 		//
-		w <= STAGE_TWDLS[ buf_rd_addr ];
+		w <= STAGE_TWDLS[ twdl_idx ];
 	end: rd_twdl
 
 	always_comb

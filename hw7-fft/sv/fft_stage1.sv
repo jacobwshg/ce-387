@@ -31,13 +31,8 @@ module fft_stage1 #(
 		RE = 0,
 		IM = 1;
 
-	/*
-	 * 1-based stage index
-	 * Stage 2: step = 4
-	 * Stage 3: step = 8
-	 */ 
-	localparam int STEP = 1 << STAGE;
-	localparam int HALF_STEP = STEP >> 1;
+	localparam int STEP = 1 << STAGE;     // 2
+	localparam int HALF_STEP = STEP >> 1; // 1
 	localparam int LOG2_N = $clog2( N );
 
 	typedef enum logic [ 2:0 ]
@@ -48,30 +43,46 @@ module fft_stage1 #(
 	} fsm_state_t;
 	fsm_state_t fsm_state, fsm_state_c;
 
-	/* Sample idx = { step idx, lower step flag } */ 
+	/*
+	 * Sample idx in frame, which can be partitioned into step idx and 
+	 * sample idx within step.
+	 * In the case of stage 1, which has step size 2, the sole
+	 * step-internal sample idx bit coincides with the latter half-step flag,
+	 * which indicates whether butterfly output is valid.
+	 */	
 	logic [ LOG2_N:0 ] sampl_idx, sampl_idx_c;
 
-	/* Index of current step */
+	/*
+ 	 * Idx of current step
+ 	 */
 	logic [ LOG2_N-STAGE:0 ] step_idx;
+
 	/* Sample belongs in former or latter half of step? 
- 	 * ( when the incoming sample is in the former half step, we ignore
+ 	 * ( when the incoming sample is in a former half-step, we ignore
  	 * the butterfly and output the previous butterfly's out2 from buffer;
  	 * but when we're in step 0, there is no prev butterfly and our
- 	 * module output is invalid ) 
+ 	 * module output is invalid regardless of half-step )
  	 */
 	logic is_latter_hstep;
+
 	logic out_valid;
 
-	/* There are no dedicated signals for buffer read/write addrs,
- 	 * since the buffer at stage 1 has only a single element */
+	/* 
+ 	 * Since the delay buffer at stage 1 has only a single element,
+ 	 * there are no dedicated signals for buffer read/write addrs
+ 	 * if implementing the buffer with BRAM.
+ 	 */
 
 	/* Butterfly and buffer signals */
 	logic signed [ 0:1 ] [ DWIDTH-1:0 ]
-		in1,
 		w,
 		out1, out2,
+
+		// single-element delay buffer
 		dly_buf, dly_buf_c;
+
 	logic signed [ 0:1 ] [ DWIDTH-1:0 ]
+		in1, in1_c,
 		in2, in2_c,
 		v, v_c;
 
@@ -85,7 +96,12 @@ module fft_stage1 #(
 	assign step_idx = sampl_idx[ LOG2_N:STAGE ];
 	assign is_latter_hstep = sampl_idx[ STAGE-1 ];
 
+	//
+	// if we're in step 0, only the latter half step's output ( which is
+	// butterfly 0's out1 ) is valid
+	//
 	assign out_valid = step_idx!==0 || is_latter_hstep;
+
 	/*
  	 * In former half step, read back buffered out2 and send it downstream,
  	 * buffer in1
@@ -101,25 +117,21 @@ module fft_stage1 #(
 
 		in_rd_en = 1'b0;
 		out_wr_en = 1'b0;
-		dout[ RE ] = 'shX;
-		dout[ IM ] = 'shX;
+		dout = '{ default: 'shX };
 
-		dly_buf_c[ RE ] = dly_buf[ RE ];
-		dly_buf_c[ IM ] = dly_buf[ IM ];
+		dly_buf_c = dly_buf;
 
 		sampl_idx_c = sampl_idx;
 
-		in2_c[ RE ] = in2[ RE ];
-		in2_c[ IM ] = in2[ IM ];
-		v_c  [ RE ] = v  [ RE ];
-		v_c  [ IM ] = v  [ IM ];
+		in1_c = in1;
+		in2_c = in2;
+		v_c   = v;
 
 		prod_wr_i2r_c = prod_wr_i2r;
 		prod_wr_i2i_c = prod_wr_i2i;
 		prod_wi_i2i_c = prod_wi_i2i;
 		prod_wi_i2r_c = prod_wi_i2r;
 
-		in1  = '{ default: 'shX };
 		out1 = '{ default: 'shX };
 		out2 = '{ default: 'shX };
 
@@ -130,6 +142,8 @@ module fft_stage1 #(
 				begin
 					in_rd_en = 1'b1;
 					in2_c = din;
+
+					in1_c = dly_buf;
 
 					prod_wr_i2r_c = w[ RE ] * in2_c[ RE ];
 					prod_wr_i2i_c = w[ RE ] * in2_c[ IM ];
@@ -148,6 +162,11 @@ module fft_stage1 #(
 
 			S_BF_MUL:
 			begin
+				//
+				// currently experimenting with timing, so multiplies are
+				// moved out of this state
+				//
+
 				fsm_state_c = S_BF_OUT;
 			end
 
@@ -185,7 +204,6 @@ module fft_stage1 #(
 						//
 						// latter half step
 						//
-						in1        = dly_buf;
 						v_c[ RE ]  = quant_pkg::DEQUANT( prod_wr_i2r ) - quant_pkg::DEQUANT( prod_wi_i2i );
 						v_c[ IM ]  = quant_pkg::DEQUANT( prod_wr_i2i ) + quant_pkg::DEQUANT( prod_wi_i2r );
 						//v_c [ RE ] = prod_wr_i2r - prod_wi_i2i;
@@ -238,15 +256,13 @@ module fft_stage1 #(
 		begin
 			fsm_state <= S_FETCH;
 
-			dly_buf[ RE ] <= 'sh0;
-			dly_buf[ IM ] <= 'sh0;
+			dly_buf[ RE ] <= 'sh0; dly_buf[ IM ] <= 'sh0;
 
 			sampl_idx <= 'h0;
 
-			in2[ RE ] <= 'sh0;
-			in2[ IM ] <= 'sh0;
-			v  [ RE ] <= 'sh0;
-			v  [ IM ] <= 'sh0;
+			in1[ RE ] <= 'sh0; in1[ IM ] <= 'sh0;
+			in2[ RE ] <= 'sh0; in2[ IM ] <= 'sh0;
+			v  [ RE ] <= 'sh0; v  [ IM ] <= 'sh0;
 
 			prod_wr_i2r <= 'sh0;
 			prod_wi_i2i <= 'sh0;
@@ -257,15 +273,13 @@ module fft_stage1 #(
 		begin
 			fsm_state <= fsm_state_c;
 
-			dly_buf[ RE ] <= dly_buf_c[ RE ];
-			dly_buf[ IM ] <= dly_buf_c[ IM ];
+			dly_buf <= dly_buf_c;
 
 			sampl_idx <= sampl_idx_c;
 
-			in2[ RE ] <= in2_c[ RE ];
-			in2[ IM ] <= in2_c[ IM ];
-			v  [ RE ] <= v_c  [ RE ];
-			v  [ IM ] <= v_c  [ IM ];
+			in1 <= in1_c;
+			in2 <= in2_c;
+			v   <= v_c;		
 
 			prod_wr_i2r <= prod_wr_i2r_c;
 			prod_wi_i2i <= prod_wi_i2i_c;
