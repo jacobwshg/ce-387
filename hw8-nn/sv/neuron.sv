@@ -94,7 +94,7 @@ module neuron #(
 				if ( out_ready )
 				begin
 					idx_c   = 'h0;
-					acc_c   = 'sh0;
+					acc_c   = BIAS;
 					state_c = S_MUL;
 				end
 			end
