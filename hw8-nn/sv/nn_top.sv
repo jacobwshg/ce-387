@@ -2,7 +2,7 @@
 import biases_pkg::*;
 import weights_pkg::*;
 
-module neuralnet_top #(
+module nn_top #(
 	parameter int DATA_WIDTH = 32,
 	parameter int FRAC_WIDTH = 14,
 
@@ -40,7 +40,7 @@ module neuralnet_top #(
 	fifo #(
 		.FIFO_DATA_WIDTH( DATA_WIDTH ),
 		.FIFO_BUFFER_SIZE( FIFO_DEPTH )
-	) fifo_in_l0_inst (
+	) fifo_in_l0 (
 		.reset ( rst ),
 
 		.wr_clk( clk ),
@@ -66,7 +66,7 @@ module neuralnet_top #(
 
 		.LAYER_BIASES( LAYER0_BIASES ),
 		.LAYER_WEIGHTS( LAYER0_WEIGHTS )
-	) layer0_inst (
+	) l0 (
 		.clk      ( clk ),
 		.rst      ( rst ),
 
@@ -82,7 +82,7 @@ module neuralnet_top #(
 	fifo #(
 		.FIFO_DATA_WIDTH( DATA_WIDTH ),
 		.FIFO_BUFFER_SIZE( FIFO_DEPTH )
-	) fifo_l0_l1_inst (
+	) fifo_l0_l1 (
 		.reset ( rst ),
 
 		.wr_clk( clk ),
@@ -109,7 +109,7 @@ module neuralnet_top #(
 
 		.LAYER_BIASES( LAYER1_BIASES ),
 		.LAYER_WEIGHTS( LAYER1_WEIGHTS )
-	) layer1_inst (
+	) l1 (
 		.clk( clk ),
 		.rst( rst ),
 
@@ -125,7 +125,7 @@ module neuralnet_top #(
 	fifo #(
 		.FIFO_DATA_WIDTH( DATA_WIDTH ),
 		.FIFO_BUFFER_SIZE( FIFO_DEPTH )
-	) fifo_l1_amax_inst (
+	) fifo_l1_amax (
 		.reset ( rst ),
 
 		.wr_clk( clk ),
@@ -142,7 +142,7 @@ module neuralnet_top #(
 	argmax #(
 		.DATA_WIDTH( DATA_WIDTH ),
 		.INPUT_SIZE( LAYER_SIZES[ LAYER_CNT-1 ] )
-	) argmax_inst (
+	) argmax (
 		.clk     ( clk ),
 		.rst     ( rst ),
 		.in_empty( l1_amax_empty ),

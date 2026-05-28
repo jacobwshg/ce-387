@@ -10,7 +10,7 @@ module my_uvm_tb;
 
 	my_uvm_if vif();
 
-	neuralnet_top #(
+	nn_top #(
 		.DATA_WIDTH( DATA_WIDTH ),
 		.FRAC_WIDTH( FRAC_WIDTH ),
 
@@ -19,7 +19,7 @@ module my_uvm_tb;
 		.LAYER_SIZES( LAYER_SIZES ),
 
 		.FIFO_DEPTH( FIFO_DEPTH )
-	) nn_top_inst (
+	) nn (
 		.clk( vif.clock ),
 		.rst( vif.reset ),
 
