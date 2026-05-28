@@ -43,7 +43,8 @@ void neuron(
 		acc += DEQUANTIZE_I( inputs[i] * weights[i] );
 	}
 
-	*output = DEQUANTIZE_I( acc ); // Dequantize output by shifting right by number of bits
+	//*output = DEQUANTIZE_I( acc ); // Dequantize output by shifting right by number of bits
+	*output = acc;
 
 	printf(
 		"neuron (%d, %d) output pre-dequant: %08x, dequant: %08x\n", 
