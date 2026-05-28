@@ -1,36 +1,40 @@
 
+import globals_pkg::DWIDTH;
+import globals_pkg::FRACWIDTH;
+
 import weights_pkg::*;
+
 
 module layer #(
 	parameter int ID,
 
-	parameter int DATA_WIDTH = 32,
-	parameter int FRAC_WIDTH = 14,
+	parameter int DWIDTH = globals_pkg::DWIDTH,
+	parameter int FRACWIDTH = globals_pkg::FRACWIDTH,
 
-	parameter int INPUT_SIZE = 10,
-	parameter int OUTPUT_SIZE = 10,
-	parameter int IDX_WIDTH = $clog2( INPUT_SIZE )+1,
+	parameter int INPUT_SZ = 10,
+	parameter int OUTPUT_SZ = 10,
+	parameter int IDX_WIDTH = $clog2( INPUT_SZ )+1,
 
-	parameter logic signed [ 0:OUTPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
+	parameter logic signed [ 0:OUTPUT_SZ-1 ] [ DWIDTH-1:0 ]
 		LAYER_BIASES,
-	parameter logic signed [ 0:INPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
-		LAYER_WEIGHTS [ 0:OUTPUT_SIZE-1 ]
+	parameter logic signed [ 0:INPUT_SZ-1 ] [ DWIDTH-1:0 ]
+		LAYER_WEIGHTS [ 0:OUTPUT_SZ-1 ]
 )
 (
 	input logic clk,
 	input logic rst,
 
-	input logic signed [ DATA_WIDTH-1:0 ] din,
+	input logic signed [ DWIDTH-1:0 ] din,
 	input logic in_empty,
 	input logic out_full,
 
-	output logic signed [ DATA_WIDTH-1:0 ] dout,
+	output logic signed [ DWIDTH-1:0 ] dout,
 	output logic in_rd_en,
 	output logic out_wr_en
 );
 
-	function automatic logic signed [ DATA_WIDTH-1:0 ]
-	ReLU( input logic signed [ DATA_WIDTH-1:0 ] x );
+	function automatic logic signed [ DWIDTH-1:0 ]
+	ReLU( input logic signed [ DWIDTH-1:0 ] x );
 		return ( x>'sh0 )? x: 'sh0;
 	endfunction;
 
@@ -41,20 +45,20 @@ module layer #(
 		in_idx, in_idx_c,
 		out_idx, out_idx_c;
 
-	logic signed [ 0:OUTPUT_SIZE-1 ] [ DATA_WIDTH-1:0 ]
+	logic signed [ 0:OUTPUT_SZ-1 ] [ DWIDTH-1:0 ]
 		acc, acc_c, acc_neurons;
 
 	genvar n;
 	generate
-		for ( n=0; n<OUTPUT_SIZE; ++n )
+		for ( n=0; n<OUTPUT_SZ; ++n )
 		begin
 			neuron #(
-				.DATA_WIDTH( DATA_WIDTH ),
-				.FRAC_WIDTH( FRAC_WIDTH ),
-				.INPUT_SIZE( INPUT_SIZE ),
+				.DWIDTH( DWIDTH ),
+				.FRACWIDTH( FRACWIDTH ),
+				.INPUT_SZ( INPUT_SZ ),
 				.IDX_WIDTH( IDX_WIDTH ),
-				.WEIGHTS( LAYER_WEIGHTS[n] )
-			) neuron_inst (
+				.WEIGHTS( LAYER_WEIGHTS[ n ] )
+			) neuron (
 				.acc_in( acc[ n ] ),
 				.din   ( din ),
 				.in_idx( in_idx ),
@@ -100,7 +104,7 @@ module layer #(
 		case ( state )
 			S_ACC:
 			begin
-				if ( ~in_empty )
+				if ( !in_empty )
 				begin
 					if ( ID > 0 )
 					begin
@@ -116,7 +120,7 @@ module layer #(
 					*/
 					acc_c = acc_neurons;
 
-					if ( in_idx_c == INPUT_SIZE )
+					if ( in_idx_c == INPUT_SZ )
 					begin
 						state_c = S_OUT;
 						in_idx_c = 'h0;
@@ -137,14 +141,14 @@ module layer #(
 					* In this state, the live output `acc_neurons` stays out of
 					* the acc_c <-> acc path.
 					*/ 
-					dout = ReLU( $signed(acc[out_idx])>>>FRAC_WIDTH );
+					dout = ReLU( $signed(acc[out_idx])>>>FRACWIDTH );
 
 					$display(
 						"@ %0t layer %0d raw output %0d = %08h, dequant = %08h, relu = %08h",
-						$time, ID, out_idx, acc[out_idx], $signed(acc[out_idx])>>>FRAC_WIDTH, dout
+						$time, ID, out_idx, acc[out_idx], $signed(acc[out_idx])>>>FRACWIDTH, dout
 					);
 
-					if ( out_idx_c == OUTPUT_SIZE )
+					if ( out_idx_c == OUTPUT_SZ )
 					begin
 
 					$display( "@ %0t layer %0d moving to S_ACC, final outputs:", $time, ID );
@@ -168,7 +172,7 @@ module layer #(
 				state_c   = S_ACC;
 				in_idx_c  = 'h0;
 				out_idx_c = 'h0;
-				for ( int i=0; i<OUTPUT_SIZE; ++i )
+				for ( int i=0; i<OUTPUT_SZ; ++i )
 				begin
 					acc_c = 'shx;
 				end

@@ -1,8 +1,14 @@
 
 package weights_pkg;
 
-localparam logic signed [ 0:783 ] [ 31:0 ]
-	LAYER0_WEIGHTS [ 0:9 ] =
+import globals_pkg::DWIDTH;
+import globals_pkg::INPUT_SZ;
+import globals_pkg::L0_SZ;
+import globals_pkg::L1_SZ;
+
+
+localparam logic signed [ 0:INPUT_SZ-1 ] [ DWIDTH-1:0 ]
+	LAYER0_WEIGHTS [ 0:L0_SZ-1 ] =
 {
 	{
 		32'sh0000059C, 32'sh000012F6, 32'sh00000A6C, 32'shFFFFEED2, 
@@ -1988,8 +1994,8 @@ localparam logic signed [ 0:783 ] [ 31:0 ]
 
 
 
-localparam logic signed [ 0:9 ] [ 31:0 ]
-	LAYER1_WEIGHTS [ 0:9 ] =
+localparam logic signed [ 0:L0_SZ-1 ] [ DWIDTH-1:0 ]
+	LAYER1_WEIGHTS [ 0:L1_SZ ] =
 {
 	{
 		32'sh0000095D, 32'shFFFFBF0A, 32'sh0000A1F7, 32'sh00007799, 

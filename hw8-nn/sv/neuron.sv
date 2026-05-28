@@ -1,11 +1,14 @@
 
 import globals_pkg::DWIDTH;
+import globals_pkg::FRACWIDTH;
+import globals_pkg::INPUT_SZ;
+
 import quant_pkg::DEQUANT;
 
 module neuron #(
-	parameter int FRAC_WIDTH = 14,
-	parameter int INPUT_SIZE = 784,
-	parameter int DATA_WIDTH = globals_pkg::DWIDTH,
+	parameter int DWIDTH = globals_pkg::DWIDTH,
+	parameter int FRACWIDTH = globals_pkg::FRACWIDTH,
+	parameter int INPUT_SZ = globals_pkg::INPUT_SZ,
 	parameter int IDX_WIDTH = 16
 )(
 	input logic clk,
@@ -14,11 +17,11 @@ module neuron #(
 	input logic in_empty,
 	input logic out_full,
 
-	input logic signed [ DATA_WIDTH-1:0 ] din,
-	input logic signed [ DATA_WIDTH-1:0 ] win,
+	input logic signed [ DWIDTH-1:0 ] din,
+	input logic signed [ DWIDTH-1:0 ] win,
 	input logic in_valid,
 
-	output logic signed [ DATA_WIDTH-1:0 ] dout,
+	output logic signed [ DWIDTH-1:0 ] dout,
 	output logic in_rd_en,
 	output logic out_wr_en
 );
@@ -27,7 +30,7 @@ module neuron #(
 	state_t state, state_c;
 
 	logic [ IDX_WIDTH-1:0 ] idx, idx_c;
-	logic signed [ DATA_WIDTH-1:0 ]
+	logic signed [ DWIDTH-1:0 ]
 		prod, prod_c,
 		acc, acc_c;
 
@@ -80,7 +83,7 @@ module neuron #(
 			S_ADD:
 			begin
 				acc_c = acc + quant_pkg::DEQUANT( prod );
-				state_c = ( idx === INPUT_SIZE ) ? S_OUT : S_MUL;
+				state_c = ( idx === INPUT_SZ ) ? S_OUT : S_MUL;
 			end
 
 			S_OUT:
