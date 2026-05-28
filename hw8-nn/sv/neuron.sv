@@ -88,7 +88,7 @@ module neuron #(
 
 			S_OUT:
 			begin
-				dout = acc;
+				dout = quant_pkg::DEQUANT( acc );
 				out_valid = 1'b1;
 
 				if ( out_ready )
