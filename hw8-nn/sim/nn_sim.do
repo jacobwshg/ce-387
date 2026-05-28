@@ -3,9 +3,9 @@ setenv LMC_TIMEUNIT -9
 vlib work
 vmap work work
 
-
-# constants
+# utilities
 vlog -work work "../sv/globals_pkg.sv"
+vlog -work work "../sv/quant_pkg.sv"
 
 # biases and weights
 vlog -work work "../sv/biases_pkg.sv"
