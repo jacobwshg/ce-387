@@ -1,14 +1,15 @@
 
+import globals_pkg::*;
 import biases_pkg::*;
 import weights_pkg::*;
 
 module nn_top #(
-	parameter int DATA_WIDTH = 32,
-	parameter int FRAC_WIDTH = 14,
+	parameter int DATA_WIDTH = globals_pkg::DWIDTH,
+	parameter int FRAC_WIDTH = globals_pkg::FRACWIDTH,
 
-	parameter int FEATURE_CNT = 784,
+	parameter int FEATURE_CNT = globals_pkg::INPUT_SZ,
 	parameter int LAYER_CNT = 2,
-	parameter int LAYER_SIZES [ 0:LAYER_CNT-1 ] = { 8, 8 },
+	parameter int LAYER_SIZES [ 0:LAYER_CNT-1 ] = { globals_pkg::L0_SZ, globals_pkg::L1_SZ },
 
 	parameter int FIFO_DEPTH = 16
 )(
@@ -57,15 +58,15 @@ module nn_top #(
 	layer #(
 		.ID( 0 ),
 
-		.DATA_WIDTH( DATA_WIDTH ),
-		.FRAC_WIDTH( FRAC_WIDTH ),
+		.DWIDTH( DATA_WIDTH ),
+		.FRACWIDTH( FRAC_WIDTH ),
 
-		.INPUT_SIZE( FEATURE_CNT ),
-		.OUTPUT_SIZE( LAYER_SIZES[0] ),
-		.IDX_WIDTH( $clog2( FEATURE_CNT )+1 ),
+		.INPUT_SZ ( globals_pkg::INPUT_SZ ),
+		.OUTPUT_SZ( globals_pkg::L0_SZ ),
+		.IDX_WIDTH( $clog2( globals_pkg::INPUT_SZ )+1 ),
 
-		.LAYER_BIASES( LAYER0_BIASES ),
-		.LAYER_WEIGHTS( LAYER0_WEIGHTS )
+		.LAYER_BIASES ( biases_pkg::L0_BIASES ),
+		.LAYER_WEIGHTS( weights_pkg::L0_WEIGHTS )
 	) l0 (
 		.clk      ( clk ),
 		.rst      ( rst ),
@@ -100,15 +101,15 @@ module nn_top #(
 	layer #(
 		.ID( 1 ),
 
-		.DATA_WIDTH( DATA_WIDTH ),
-		.FRAC_WIDTH( FRAC_WIDTH ),
+		.DWIDTH( DATA_WIDTH ),
+		.FRACWIDTH( FRAC_WIDTH ),
 
-		.INPUT_SIZE( LAYER_SIZES[ 0 ] ),
-		.OUTPUT_SIZE( LAYER_SIZES[ 1 ] ),
-		.IDX_WIDTH( $clog2( LAYER_SIZES[ 0 ] )+1 ),
+		.INPUT_SZ( globals_pkg::L0_SZ ),
+		.OUTPUT_SZ( globals_pkg::L1_SZ ),
+		.IDX_WIDTH( $clog2( globals_pkg::L0_SZ )+1 ),
 
-		.LAYER_BIASES( LAYER1_BIASES ),
-		.LAYER_WEIGHTS( LAYER1_WEIGHTS )
+		.LAYER_BIASES ( biases_pkg::L1_BIASES ),
+		.LAYER_WEIGHTS( weights_pkg::L1_WEIGHTS )
 	) l1 (
 		.clk( clk ),
 		.rst( rst ),
@@ -152,5 +153,5 @@ module nn_top #(
 		.i_max   ( label_out )
 	);	
 
-endmodule: neuralnet_top
+endmodule: nn_top
 
