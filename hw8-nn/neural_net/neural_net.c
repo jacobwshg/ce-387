@@ -23,8 +23,9 @@
 static inline int
 DEQUANTIZE_I( const int i )
 {
-	int q = ( i + ( QUANT_VAL>>1 ) ) >> BITS;
-	return ( q==-1 ) ? 0 : q;
+	int dq = i >> BITS;
+	if ( i<0 && ( i & ( QUANT_VAL-1 ) ) ) ++dq;
+	return dq;
 };
 
 void neuron(
@@ -42,8 +43,7 @@ void neuron(
 		acc += DEQUANTIZE_I( inputs[i] * weights[i] );
 	}
 
-
-	*output = acc >> BITS; // Dequantize output by shifting right by number of bits
+	*output = DEQUANTIZE_I( acc ); // Dequantize output by shifting right by number of bits
 
 	printf(
 		"neuron (%d, %d) output pre-dequant: %08x, dequant: %08x\n", 
