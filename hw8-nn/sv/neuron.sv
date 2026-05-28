@@ -1,8 +1,11 @@
 
+import globals_pkg::DWIDTH;
+import quant_pkg::DEQUANT;
+
 module neuron #(
 	parameter int FRAC_WIDTH = 14,
 	parameter int INPUT_SIZE = 784,
-	parameter int DATA_WIDTH = 32,
+	parameter int DATA_WIDTH = globals_pkg::DWIDTH,
 	parameter int IDX_WIDTH = 16
 )(
 	input logic clk,
@@ -20,35 +23,28 @@ module neuron #(
 	output logic out_wr_en
 );
 
-	localparam logic signed [ DATA_WIDTH-1:0 ] Q_STEP = 1 << FRAC_WIDTH;
-
-	function automatic logic signed [ DATA_WIDTH-1:0 ]
-	DEQUANT( input logic signed [ DATA_WIDTH-1:0 ] x );
-		if ( x[DATA_WIDTH-1] && ( -x < Q_STEP ) )
-		begin
-			return 'sd0;
-		end
-		return $signed( x + ( Q_STEP>>1 ) ) >>> FRAC_WIDTH;
-	endfunction
-
-	typedef enum logic [ 1:0 ] { S_ACC, S_OUT } state_t;
+	typedef enum logic [ 1:0 ] { S_MUL, S_ADD, S_OUT } state_t;
 	state_t state, state_c;
 
 	logic [ IDX_WIDTH-1:0 ] idx, idx_c;
-	logic signed [ DATA_WIDTH-1:0 ] acc, acc_c;
+	logic signed [ DATA_WIDTH-1:0 ]
+		prod, prod_c,
+		acc, acc_c;
 
 	always_ff @ ( posedge clk, posedge rst )
 	begin
 		if ( rst )
 		begin
-			state <= S_ACC;
+			state <= S_MUL;
 			idx <= 'd0;
+			prod <= 'sh0;
 			acc <= 'sh0;
 		end
 		else
 		begin
 			state <= state_c;
 			idx <= idx_c;
+			prod <= prod_c;
 			acc <= acc_c;
 		end
 	end
@@ -61,49 +57,55 @@ module neuron #(
 
 		state_c = state;
 		idx_c = idx;
+		prod_c = prod;
 		acc_c = acc;
 
 		case ( state )
-		S_ACC:
-		begin
-			if ( ~in_empty )
+
+			S_MUL:
 			begin
-				in_rd_en = 1'b1;
-				if ( in_valid )
+				if ( !in_empty )
 				begin
-					idx_c = idx + 2'd1;
-					acc_c = acc + DEQUANT( din * win );
-
-					if ( idx_c == INPUT_SIZE )
+					in_rd_en = 1'b1;
+					if ( in_valid )
 					begin
-						state_c = S_OUT;
-					end
+						prod_c = din * win;
+						idx_c = idx + 1'h1;
 
+						state_c = S_ADD;
+					end
 				end
 			end
-		end
 
-		S_OUT:
-		begin
-			dout = acc >>> FRAC_WIDTH;
-			if ( ~out_full )
+			S_ADD:
 			begin
-				out_wr_en = 1'b1;
-				idx_c = 'd0;
-				acc_c = 'sh0;
-				state_c = S_ACC;
+				acc_c = acc + quant_pkg::DEQUANT( prod );
+				state_c = ( idx === INPUT_SIZE ) ? S_OUT : S_MUL;
 			end
-		end
 
-		default:
-		begin
-			dout = 'shx;
-			in_rd_en = 1'b0;
-			out_wr_en = 1'b0;
-			state_c = S_ACC;
-			idx_c = 'd0;
-			acc_c = 'shx;
-		end
+			S_OUT:
+			begin
+				dout = quant_pkg::DEQUANT( acc );
+				if ( !out_full )
+				begin
+					out_wr_en = 1'b1;
+					idx_c = 'h0;
+					acc_c = 'sh0;
+					state_c = S_MUL;
+				end
+			end
+
+			default:
+			begin
+				dout = 'shX;
+				in_rd_en = 1'b0;
+				out_wr_en = 1'b0;
+				state_c = S_MUL;
+				idx_c = 'h0;
+				prod_c = 'shX;
+				acc_c  = 'shX;
+			end
+
 		endcase
 
 	end
