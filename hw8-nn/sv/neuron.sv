@@ -5,25 +5,27 @@ import globals_pkg::INPUT_SZ;
 
 import quant_pkg::DEQUANT;
 
+import biases_pkg::L0_BIASES;
+
 module neuron #(
 	parameter int DWIDTH = globals_pkg::DWIDTH,
 	parameter int FRACWIDTH = globals_pkg::FRACWIDTH,
 	parameter int INPUT_SZ = globals_pkg::INPUT_SZ,
-	parameter int IDX_WIDTH = 16
+	parameter int IDX_WIDTH = 16,
+	parameter logic signed [ DWIDTH-1:0 ] BIAS = biases_pkg::L0_BIASES[ 0 ]
 )(
 	input logic clk,
 	input logic rst,
 
-	input logic in_empty,
-	input logic out_full,
+	input  logic signed [ DWIDTH-1:0 ] din,
+	input  logic signed [ DWIDTH-1:0 ] win,
+	input  logic in_valid,
+	output logic in_ready,
 
-	input logic signed [ DWIDTH-1:0 ] din,
-	input logic signed [ DWIDTH-1:0 ] win,
-	input logic in_valid,
-
+	input  logic out_ready,
 	output logic signed [ DWIDTH-1:0 ] dout,
-	output logic in_rd_en,
-	output logic out_wr_en
+	output logic out_valid
+
 );
 
 	typedef enum logic [ 1:0 ] { S_MUL, S_ADD, S_OUT } state_t;
@@ -39,44 +41,42 @@ module neuron #(
 		if ( rst )
 		begin
 			state <= S_MUL;
-			idx <= 'd0;
-			prod <= 'sh0;
-			acc <= 'sh0;
+			idx   <= 'd0;
+			prod  <= 'sh0;
+			acc   <= BIAS; 
 		end
 		else
 		begin
 			state <= state_c;
-			idx <= idx_c;
-			prod <= prod_c;
-			acc <= acc_c;
+			idx   <= idx_c;
+			prod  <= prod_c;
+			acc   <= acc_c;
 		end
 	end
 
 	always_comb
 	begin
-		dout = 'sh0;
-		in_rd_en = 1'b0;
-		out_wr_en = 1'b0;
+		in_ready  = 1'b0;
+		dout      = 'shX;
+		out_valid = 1'b0;
 
 		state_c = state;
-		idx_c = idx;
-		prod_c = prod;
-		acc_c = acc;
+		idx_c   = idx;
+		prod_c  = prod;
+		acc_c   = acc;
 
 		case ( state )
 
 			S_MUL:
 			begin
-				if ( !in_empty )
-				begin
-					in_rd_en = 1'b1;
-					if ( in_valid )
-					begin
-						prod_c = din * win;
-						idx_c = idx + 1'h1;
+				in_ready = 1'b1;
 
-						state_c = S_ADD;
-					end
+				if ( in_valid )
+				begin
+					prod_c  = din * win;
+					idx_c   = idx + 1'h1;
+
+					state_c = S_ADD;
 				end
 			end
 
@@ -88,25 +88,27 @@ module neuron #(
 
 			S_OUT:
 			begin
-				dout = quant_pkg::DEQUANT( acc );
-				if ( !out_full )
+				dout = acc;
+				out_valid = 1'b1;
+
+				if ( out_ready )
 				begin
-					out_wr_en = 1'b1;
-					idx_c = 'h0;
-					acc_c = 'sh0;
+					idx_c   = 'h0;
+					acc_c   = 'sh0;
 					state_c = S_MUL;
 				end
 			end
 
 			default:
 			begin
-				dout = 'shX;
-				in_rd_en = 1'b0;
-				out_wr_en = 1'b0;
+				in_ready  = 1'b0;
+				dout      = 'shX;
+				out_valid = 1'b0;
+
 				state_c = S_MUL;
-				idx_c = 'h0;
-				prod_c = 'shX;
-				acc_c  = 'shX;
+				idx_c   = 'h0;
+				prod_c  = 'shX;
+				acc_c   = 'shX;
 			end
 
 		endcase

@@ -6,8 +6,8 @@ package biases_pkg;
 	import globals_pkg::L1_SZ;
 	
 
-localparam logic signed [ 0:L0_SZ-1 ] [ DWIDTH-1:0 ] 
-	LAYER0_BIASES =
+localparam logic signed [ DWIDTH-1:0 ] 
+	L0_BIASES [ 0:L0_SZ-1 ] =
 
 {
 	32'shFFFFDE52,
@@ -22,8 +22,8 @@ localparam logic signed [ 0:L0_SZ-1 ] [ DWIDTH-1:0 ]
 	32'sh000017CC
 };
 
-localparam logic signed [ 0:L1_SZ-1 ] [ DWIDTH-1:0 ]
-	LAYER1_BIASES = 
+localparam logic signed [ DWIDTH-1:0 ]
+	L1_BIASES [ 0:L1_SZ-1 ] = 
 {
 	32'sh0000006A,
 	32'sh000022CB,
