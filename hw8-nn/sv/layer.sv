@@ -6,19 +6,19 @@ import weights_pkg::*;
 import biases_pkg::*;
 
 module layer #(
-	parameter int ID = 0,
+	parameter int ID = 1,
 
 	parameter int DWIDTH = globals_pkg::DWIDTH,
 	parameter int FRACWIDTH = globals_pkg::FRACWIDTH,
 
-	parameter int INPUT_SZ  = globals_pkg::INPUT_SZ,
-	parameter int OUTPUT_SZ = globals_pkg::L0_SZ,
-	parameter int IDX_WIDTH = $clog2( INPUT_SZ>OUTPUT_SZ ? INPUT_SZ : OUTPUT_SZ  )+1,
+	parameter int INPUT_SZ  = globals_pkg::L0_SZ,
+	parameter int OUTPUT_SZ = globals_pkg::L1_SZ,
+	parameter int IDX_WIDTH = $clog2( INPUT_SZ>OUTPUT_SZ ? INPUT_SZ : OUTPUT_SZ )+1,
 
 	parameter logic signed [ DWIDTH-1:0 ]
-		LAYER_BIASES  [ 0:OUTPUT_SZ-1 ] = biases_pkg::L0_BIASES,
+		LAYER_BIASES  [ 0:OUTPUT_SZ-1 ] = biases_pkg::L1_BIASES,
 	parameter logic signed [ 0:INPUT_SZ-1 ] [ DWIDTH-1:0 ]
-		LAYER_WEIGHTS [ 0:OUTPUT_SZ-1 ] = weights_pkg::L0_WEIGHTS
+		LAYER_WEIGHTS [ 0:OUTPUT_SZ-1 ] = weights_pkg::L1_WEIGHTS
 )
 (
 	input logic clk,
@@ -61,9 +61,8 @@ module layer #(
 		neur_in_ready,
 		neur_out_valid;
 
-	genvar i;
 	generate
-		for ( i=0; i<OUTPUT_SZ; ++i )
+		for ( genvar i=0; i<OUTPUT_SZ; ++i )
 		begin
 			neuron #(
 				.DWIDTH( DWIDTH ),
@@ -148,7 +147,6 @@ module layer #(
 					// delay incrementing in_idx so that we have stable
 					// weights based on current in_idx in S_SEND
 					//
-					//in_idx_c = in_idx + 1'h1;
 
 					if ( in_idx_c == INPUT_SZ )
 					begin
