@@ -9,7 +9,8 @@
 #define low_threshold 12
 	
 
-struct pixel {
+struct pixel
+{
 	unsigned char b;
 	unsigned char g;
 	unsigned char r;
@@ -20,7 +21,7 @@ struct pixel {
 int read_bmp(
 	FILE *f, unsigned char* header,
 	int *height, int *width,
-	struct pixel* data
+	struct pixel *data
 ) 
 {
 	printf( "reading file...\n" );
@@ -107,8 +108,11 @@ void convert_to_grayscale(
 }
 
 // Gaussian blur. 
-void gaussian_blur(unsigned char *in_data, int height, int width, unsigned char *out_data) {
-	unsigned int gaussian_filter[5][5] = {
+void
+gaussian_blur( unsigned char *in_data, const int height, const int width, unsigned char *out_data )
+{
+	unsigned int gaussian_filter[5][5] =
+	{
 		{ 2, 4, 5, 4, 2 },
 		{ 4, 9,12, 9, 4 },
 		{ 5,12,15,12, 5 },
@@ -118,20 +122,31 @@ void gaussian_blur(unsigned char *in_data, int height, int width, unsigned char 
 	int x, y, i, j;
 	unsigned int numerator_r, denominator;
 
-	for (y = 0; y < height; y++) {
-		for (x = 0; x < width; x++) {
+	for ( y = 0; y < height; ++y )
+	{
+		const int rowbase = y * width;
+		for ( x = 0; x < width; ++x )
+		{
 			numerator_r = 0;
 			denominator = 0;
-			for (j = -2; j <= 2; j++) {
-				for (i = -2; i <= 2; i++) {
-					if ( (x+i) >= 0 && (x+i) < width && (y+j) >= 0 && (y+j) < height) {
-					unsigned char d = in_data[(y+j)*width + (x+i)];
-						 numerator_r += d * gaussian_filter[i+2][j+2];
-						 denominator += gaussian_filter[i+2][j+2];
+			int coeff_rowbase = rowbase - ( width * 3 );
+			for ( j = -2; j <= 2; ++j )
+			{
+				coeff_rowbase += width;
+				for ( i = -2; i <= 2; ++i )
+				{
+					if (
+						( x+i ) >= 0 && ( x+i ) < width && 
+						( y+j ) >= 0 && ( y+j ) < height
+					)
+					{
+						const unsigned char d = in_data[ coeff_rowbase + ( x+i ) ];
+						numerator_r += ( unsigned int ) d * gaussian_filter[ 2+i ][ 2+j ];
+						denominator += gaussian_filter[ 2+i ][ 2+j ];
 					}
 				}
 			}
-		 out_data[y*width + x] = numerator_r / denominator;
+			out_data[ rowbase + x ] = numerator_r / denominator;
 		}
 	}
 }
