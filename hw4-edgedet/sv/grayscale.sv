@@ -1,25 +1,27 @@
 
+import globals_pkg :: BYTE_WIDTH;
+
 module grayscale (
-	input  logic clock,
-	input  logic reset,
+	input  logic clk,
+	input  logic rst,
 
 	input  logic in_empty,
-	input  logic [ 23:0 ] in_dout,
+	input  logic [ ( 3*BYTE_WIDTH )-1:0 ] in_dout,
 	input  logic out_full,
 
 	output logic in_rd_en,
 	output logic out_wr_en,
-	output logic [ 7:0 ] out_din
+	output logic [ BYTE_WIDTH-1:0 ] out_din
 );
 
 	typedef enum logic { S_RD, S_WR } state_t;
 	state_t state, state_c;
 
-	logic [ 9:0 ] gs_sum, gs_sum_c;
+	logic [ ( 2*BYTE_WIDTH )-1:0 ] gs_sum, gs_sum_c;
 
-	always_ff @ (posedge clock, posedge reset)
+	always_ff @ ( posedge clk, posedge rst )
 	begin
-		if ( reset )
+		if ( rst )
 		begin
 			state  <= S_RD;
 			gs_sum <= 10'h0;
@@ -37,16 +39,15 @@ module grayscale (
 		state_c   = state;
 		gs_sum_c  = gs_sum;
 
-		case (state)
+		case ( state )
 			S_RD:
 			begin
 				if ( ~in_empty )
 				begin
-					gs_sum_c = (
-						  10'( in_dout[ 23:16 ] )
-						+ 10'( in_dout[ 15: 8 ] )
-						+ 10'( in_dout[  7: 0 ] )
-					);
+					gs_sum_c =
+						in_dout[ ( 3*BYTE_WIDTH )-1 : 2*BYTE_WIDTH ] +
+						in_dout[ ( 2*BYTE_WIDTH )-1 : BYTE_WIDTH ] +
+						in_dout[ BYTE_WIDTH-1 : 0 ];
 					in_rd_en = 1'b1;
 					state_c = S_WR;
 				end
@@ -56,7 +57,7 @@ module grayscale (
 			begin
 				if ( ~out_full )
 				begin
-					out_din = 8'(gs_sum / 10'd3);
+					out_din = ( gs_sum * 85 ) >>> 8;
 					out_wr_en = 1'b1;
 					state_c = S_RD;
 				end

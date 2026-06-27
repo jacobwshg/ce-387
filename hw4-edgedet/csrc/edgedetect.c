@@ -1,7 +1,9 @@
+#include <sys/time.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>
 
 #define high_threshold 48
 #define low_threshold 12
@@ -87,14 +89,19 @@ void write_grayscale_bmp(
 	fclose( file );
 }
 
-// Determine the grayscale 8 bit value by averaging the r, g, and b channel values.
+//
+/// Determine the grayscale 8 bit value by averaging the r, g, and b channel values.
+//
 void convert_to_grayscale(
 	struct pixel * data, int height, int width, unsigned char *grayscale_data
 ) 
 {
 	for ( int i = 0; i < width*height; ++i )
 	{
-		grayscale_data[ i ] = ( data[ i ].r + data[ i ].g + data[ i ].b ) / 3;
+		uint16_t gsbyte = ( uint16_t ) data[ i ].r + data[ i ].g + data[ i ].b;
+		///gsbyte /= 3;
+		gsbyte = ( gsbyte * 85 ) >> 8;
+		grayscale_data[ i ] = ( unsigned char ) gsbyte;
 		//printf("%3d: %02x %02x %02x  ->  %02x\n", i,data[i].r, data[i].g, data[i].b, grayscale_data[i]);
 	}
 }
@@ -226,15 +233,15 @@ void non_maximum_suppressor(unsigned char *in_data, int height, int width, unsig
 {	
 	for ( int y = 0; y < height; ++y )
 	{
+		const int rowbase = y * width;
+
 		for ( int x = 0; x < width; ++x )
 		{
-			const int rowbase = y * width;
 
 			out_data[ rowbase + x ] = 0;
 			// Along the boundaries, set to 0
 			if ( y == 0 || x == 0 || y == height-1 || x == width-1 )
 			{
-				//out_data[ y*width + x ] = 0;
 				continue;
 			}
 
@@ -261,8 +268,6 @@ void non_maximum_suppressor(unsigned char *in_data, int height, int width, unsig
 				sum_nw_se = in_data[ prev_rowbase + x-1 ] + in_data[ next_rowbase + x+1 ],
 				sum_ne_sw = in_data[ next_rowbase + x-1 ] + in_data[ prev_rowbase + x+1 ];
 
-			//out_data[ y*width + x ] = 0;
-			
 			if (
 				sum_n_s >= sum_w_e &&
 				sum_n_s >= sum_nw_se &&
@@ -334,25 +339,49 @@ void hysteresis_filter(unsigned char *in_data, int height, int width, unsigned c
 	}
 }
 
+static inline void *
+alloc_framebuf( const size_t elem_sz )
+{
+	static const size_t 
+		WIDTH = 720,
+		HEIGHT = 540
+	;
+	return malloc( WIDTH * HEIGHT * elem_sz );
+}
 
-int main(int argc, char *argv[]) {
-	struct pixel *rgb_data = (struct pixel *)malloc(720*540*sizeof(struct pixel));
-	unsigned char *gs_data = (unsigned char *)malloc(720*540*sizeof(unsigned char));
-	unsigned char *gb_data = (unsigned char *)malloc(720*540*sizeof(unsigned char));
-	unsigned char *sobel_data = (unsigned char *)malloc(720*540*sizeof(unsigned char));
-	unsigned char *nms_data = (unsigned char *)malloc(720*540*sizeof(unsigned char));
-	unsigned char *h_data = (unsigned char *)malloc(720*540*sizeof(unsigned char));
-	unsigned char header[64];
+static inline struct pixel *
+alloc_rgb_framebuf( void )
+{
+	return ( struct pixel * ) alloc_framebuf( sizeof( struct pixel ) );
+}
+
+static inline unsigned char *
+alloc_gs_framebuf( void )
+{
+	return ( unsigned char * ) alloc_framebuf( sizeof( unsigned char ) );
+}
+
+int main( int argc, char *argv[] )
+{
+	unsigned char header[ 64 ];
 	int height, width;
 
 	// Check inputs
-	if (argc < 2) {
-		printf("Usage: edgedetect <BMP filename>\n");
+	if ( argc < 2 )
+	{
+		printf( "Usage: edgedetect <BMP filename>\n" );
 		return 0;
 	}
 
-	FILE * f = fopen(argv[1],"rb");
-	if ( f == NULL ) return 0;
+	FILE * f = fopen( argv[ 1 ],"rb" );
+	if ( !f ) { return 0; }
+
+	struct pixel *rgb_data = alloc_rgb_framebuf();
+	unsigned char *gs_data = alloc_gs_framebuf();
+	unsigned char *gb_data = alloc_gs_framebuf();
+	unsigned char *sobel_data = alloc_gs_framebuf();
+	unsigned char *nms_data = alloc_gs_framebuf(); 
+	unsigned char *h_data = alloc_gs_framebuf();
 
 	// read the bitmap
 	read_bmp(f, header, &height, &width, rgb_data);
@@ -376,6 +405,13 @@ int main(int argc, char *argv[]) {
 	/// Hysteresis
 	//hysteresis_filter(nms_data, height, width, h_data);
 	//write_grayscale_bmp("stage4_hysteresis.bmp", header, h_data);
+
+	if ( rgb_data )   { free( rgb_data ); }
+	if ( gs_data )    { free( gs_data ); }
+	if ( gb_data )    { free( gb_data ); }
+	if ( sobel_data ) { free( sobel_data ); }
+	if ( nms_data )   { free( nms_data ); }
+	if ( h_data )     { free( h_data ); }
 
 	return 0;
 }

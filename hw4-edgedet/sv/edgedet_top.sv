@@ -93,8 +93,8 @@ module edgedet_top
 	);
 
 	grayscale gs (
-		.clock( clock ),
-		.reset( reset ),
+		.clk( clock ),
+		.rst( reset ),
 
 		.in_empty ( in_gs_empty ),
 		.in_dout  ( in_gs_dout ),
