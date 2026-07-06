@@ -15,7 +15,7 @@ module grayscale (
 typedef enum logic [0:0] {s0, s1} state_types;
 state_types state, state_c;
 
-logic [7:0] gs, gs_c;
+logic [ 11:0 ] gs, gs_c;
 
 always_ff @ (posedge clock, posedge reset)
 begin
@@ -40,15 +40,12 @@ begin
 	case (state)
 		s0:
 		begin
-			if (in_empty == 1'b0)
+			if ( !in_empty )
 			begin
-				gs_c = 8'(
-					(
-						$unsigned({2'b0, in_dout[23:16]}) 
-						+ $unsigned({2'b0, in_dout[15:8]}) 
-						+ $unsigned({2'b0, in_dout[7:0]})
-					) 
-					/ $unsigned(10'd3)
+				gs_c = 12'(
+					$unsigned( { 4'b0, in_dout[ 23:16 ] } ) + 
+					$unsigned( { 4'b0, in_dout[ 15:8 ] } ) +
+					$unsigned( { 4'b0, in_dout[ 7:0 ] } )
 				);
 				in_rd_en = 1'b1;
 				state_c = s1;
@@ -57,9 +54,9 @@ begin
 
 		s1:
 		begin
-			if (out_full == 1'b0)
+			if ( !out_full )
 			begin
-				out_din = gs;
+				out_din = 8'( gs / $unsigned( 12'd3 ) );
 				out_wr_en = 1'b1;
 				state_c = s0;
 			end
