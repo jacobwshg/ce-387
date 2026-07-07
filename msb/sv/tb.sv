@@ -37,7 +37,8 @@ module msb_tb();
 			$strobe( "@ %0t, n = %0d", $time, n );
 			n = n + 1;
 		end
-		$stop;
+		#( PERIOD*2 );
+		$finish;
 	end
 
 	always

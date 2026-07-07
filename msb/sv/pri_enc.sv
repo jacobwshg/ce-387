@@ -6,12 +6,13 @@ module pri_enc
 (
 	input  logic clk,
 	input  logic [ DWIDTH-1:0 ] n,
-	output logic [ DWIDTH-1:0 ] i_msb
+	output logic [ $clog2( DWIDTH ):0 ] i_msb
 );
 
-	logic [ DWIDTH-1:0 ] n_ff, i_msb_ff;
+	logic [ DWIDTH-1:0 ] n_ff;
+	logic [ $clog2( DWIDTH ):0 ] i_msb_ff;
 
-	function automatic logic [ DWIDTH-1:0 ]
+	function automatic logic [ $clog2( DWIDTH ):0 ]
 	getmsb( input logic [ DWIDTH-1:0 ] val );
 		for ( int i = DWIDTH-1; i >= 0; --i )
 		begin
