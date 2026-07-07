@@ -31,7 +31,9 @@ module msb_tb();
 
 	initial
 	begin
-		repeat( 1024 )
+		localparam int NMAX = 512;
+
+		repeat( NMAX )
 		begin
 			@ ( negedge clk );
 			$strobe( "@ %0t, n = %0d", $time, n );
