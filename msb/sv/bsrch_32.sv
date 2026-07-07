@@ -29,7 +29,7 @@ module bsrch_32
 
 		if ( | n_ff[ 31:16 ] )
 		begin
-			i_msb_c = i_msb_c + 6'd16;
+			i_msb_c[ 4 ] = 1'b1;
 			msb_slice_16[ 15:0 ] = n_ff[ 31:16 ];
 		end
 		else
@@ -39,7 +39,7 @@ module bsrch_32
 
 		if ( | msb_slice_16[ 15:8 ] )
 		begin
-			i_msb_c = i_msb_c + 6'd8;
+			i_msb_c[ 3 ] = 1'b1;
 			msb_slice_8[ 7:0 ] = msb_slice_16[ 15:8 ];
 		end
 		else
@@ -49,7 +49,7 @@ module bsrch_32
 
 		if ( | msb_slice_8[ 7:4 ] )
 		begin
-			i_msb_c = i_msb_c + 6'd4;
+			i_msb_c[ 2 ] = 1'b1;
 			msb_slice_4[ 3:0 ] = msb_slice_8[ 7:4 ];
 		end
 		else
@@ -59,7 +59,7 @@ module bsrch_32
 
 		if ( | msb_slice_4[ 3:2 ] )
 		begin
-			i_msb_c = i_msb_c + 6'd2;
+			i_msb_c[ 1 ] = 1'b1;
 			msb_slice_2[ 1:0 ] = msb_slice_4[ 3:2 ];
 		end
 		else
@@ -69,7 +69,7 @@ module bsrch_32
 
 		if ( 1'b1 === msb_slice_2[ 1 ] )
 		begin
-			i_msb_c = i_msb_c + 6'd1;
+			i_msb_c[ 0 ] = 1'b1;
 		end
 
 	end
