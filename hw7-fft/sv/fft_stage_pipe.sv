@@ -1,0 +1,301 @@
+
+import globals_pkg :: N;
+import globals_pkg :: DWIDTH;
+import globals_pkg :: printtime;
+import twdls_pkg :: TWDLS;
+
+module fft_stage #(
+	parameter int STAGE = 1,
+	parameter int N = globals_pkg::N,
+	parameter int DWIDTH = globals_pkg::DWIDTH,
+
+	parameter logic signed [ 0:(1<<( STAGE-1 ) )-1 ] [ 0:1 ] [ DWIDTH-1:0 ]
+		STAGE_TWDLS =
+		twdls_pkg::TWDLS [ STAGE-1 ] [ 0:( 1<<( STAGE-1 ) )-1 ]
+)
+(
+	input  logic clk,
+	input  logic rst,
+
+	input  logic signed [ DWIDTH-1:0 ] din_real, din_imag,
+	input  logic in_empty,
+	output logic in_rd_en,
+
+	input  logic out_full,
+	output logic signed [ DWIDTH-1:0 ] dout_real, dout_imag,
+	output logic out_wr_en
+);
+	import quant_pkg::DEQUANT;
+
+	localparam int
+		RE = 0, IM = 1;
+
+	/* 
+	 * width of sample IDs within a frame
+	 * add an overflow bit above MSB to facilitate pipeline flush
+	 * 8-point:  3+1
+	 * 16-point: 4+1
+	 */
+	localparam int SAMPLE_ID_WIDTH = $clog2( N ) + 1;
+	/* 
+	 * distance ( sample ID diff ) between a butterfly's sample pair
+	 * stage 0:1; stage 1:2; stage 2:4; stage 3:8
+	 */
+	localparam int STEP = 2 ** STAGE; 
+	/* 
+ 	 * addr width of twdl table / in1 buf / out2 buf
+	 * stage 0:1 ( 1 elem, for addr 0 only )
+	 * stage 1:1 ( 2 elems )
+	 * stage 2:2 ( 4 elems )
+	 * stage 3:3 ( 8 elems )
+	 */
+	localparam int MEM_ADDR_WIDTH = ( 0===STAGE ) ? STAGE+1 : STAGE;
+	localparam int IN2_FLAGBIT_POS = ( 0===STAGE ) ? 0 : MEM_ADDR_WIDTH;
+	localparam int STEPID_WIDTH = SAMPLE_ID_WIDTH - MEM_ADDR_WIDTH - ( ( 0===STAGE ) ? 0 : 1 );
+
+	logic pipe_wr_en;
+
+	// butterfly operands memory
+	logic bf_in1_wr_en, bf_out2_wr_en;
+	logic [ MEM_ADDR_WIDTH-1:0 ]
+		w_rd_addr, // assume clocked by ROM controller
+		bf_in1_wr_addr, bf_in1_rd_addr,
+		bf_out2_wr_addr, bf_out2_rd_addr;
+	logic signed [ DWIDTH-1:0 ]
+		w_rd_real, w_rd_imag,
+		bf_in1_wr_real, bf_in1_wr_imag, bf_in1_rd_real, bf_in1_rd_imag,
+		bf_out2_wr_real, bf_out2_wr_imag, bf_out2_rd_real, bf_out2_rd_imag;
+
+	// TODO twdl rom
+
+	bram #(
+		.BRAM_ADDR_WIDTH( MEM_ADDR_WIDTH ),
+		.BRAM_DATA_WIDTH( DWIDTH * 2 )
+	) bf_in1_buf (
+		.clock( clk ),
+		.rd_addr( bf_in1_rd_addr ), .wr_addr( bf_in1_wr_addr ),
+		.wr_en( bf_in1_wr_en ),
+		.din( { $unsigned( bf_in1_wr_real ), $unsigned( bf_in1_wr_imag ) } ),
+		.dout( { $signed( bf_in1_rd_real ), $signed( bf_in1_rd_imag ) } )
+	);
+
+	bram #(
+		.BRAM_ADDR_WIDTH( MEM_ADDR_WIDTH ),
+		.BRAM_DATA_WIDTH( DWIDTH * 2 )
+	) bf_out2_buf (
+		.clock( clk ),
+		.rd_addr( bf_out2_rd_addr ), .wr_addr( bf_out2_wr_addr ),
+		.wr_en( bf_out2_wr_en ),
+		.din( { $unsigned( bf_out2_wr_real ), $unsigned( bf_out2_wr_imag ) } ),
+		.dout( { $signed( bf_out2_rd_real ), $signed( bf_out2_rd_imag ) } )
+	);
+
+	// fetch stage
+	logic [ SAMPLE_ID_WIDTH-1:0 ]
+		fetch_sample_id_r,      // exposed to mul
+		fetch_next_sample_id_r, fetch_next_sample_id_c; // stage-internal use
+	logic signed [ DWIDTH-1:0 ]
+		fetch_din_real_r, fetch_din_imag_r,
+		fetch_w_real_r, fetch_w_imag_r; // driven by twdl tbl
+	logic fetch_valid_r;
+	logic fetch_is_in2;
+
+	// butterfly in2 * twdl multiply stage
+	// if sample is in1, no multiply, buffer it in BRAM
+	// if sample is in2, clock prods and also assert in1 rd addr
+	logic signed [ DWIDTH-1:0 ]
+		mul_wr_i2r_r, mul_wr_i2i_r, mul_wi_i2i_r, mul_wi_i2r_r;
+	logic [ SAMPLE_ID_WIDTH-1:0 ] mul_sample_id_r;
+	logic mul_valid_r;
+	logic mul_is_in2;
+	logic mul_buf_addr;
+
+	// dequantize stage ( in2 )
+	// also clock loaded in1
+	logic signed [ DWIDTH-1:0 ]
+		dq_wr_i2r_r, dq_wr_i2i_r, dq_wi_i2i_r, dq_wi_i2r_r;
+	logic signed [ DWIDTH-1:0 ]
+		dq_bufout_real_r, dq_bufout_imag_r;
+	logic [ SAMPLE_ID_WIDTH-1:0 ] dq_sample_id_r;
+	logic dq_valid_r;
+	logic dq_is_in2;
+
+	// add stage
+	//
+	logic signed [ DWIDTH-1:0 ]
+		add_out1_real_r, add_out2_imag_r,
+		add_out2_real_r, add_out2_imag_r;
+	logic [ SAMPLE_ID_WIDTH-1:0 ] add_sample_id_r;
+	logic add_valid_r;
+	logic add_is_in2;
+	logic signed [ DWIDTH-1:0 ]
+		add_in1_real, add_in1_imag,
+		add_v_real, add_v_imag;
+
+	logic output_is_in2;
+	logic signed [ DWIDTH-1:0 ]
+		dout_real, dout_imag;
+	
+	always_comb
+	begin
+		// as long as !out_full, out FIFO can be written,
+		// and thus pipe regs can be written without losing samples;
+		// pipe_wr_en doesn't care about in_empty
+		pipe_wr_en = !out_full;
+
+		// if !pipe_wr_en, the input sample can't be clocked, so definitely !in_rd_en;
+		// if pipe_wr_en, need to additionally check that the sample is valid
+		// ( !in_empty )
+		in_rd_en = pipe_wr_en && !in_empty;
+
+		{ dout_real, dout_imag } = '{ default: 'sh0 };
+		// if sample clocked by add stage is garbage ( !add_valid ), don't write out
+		out_wr_en = 1'b0; // !out_full && add_valid; // also not 1st step, which reads garbage out2
+
+		{ bf_in1_rd_addr, bf_in1_wr_addr } = '{ default: 'h0 };
+		{ bf_in1_wr_real, bf_in1_wr_imag } = '{ default: 'sh0 };
+		bf_in1_wr_en = 1'b0;
+ 		{ bf_out2_rd_addr, bf_out2_wr_addr } = '{ default: 'h0 };
+		{ bf_out2_wr_real, bf_out2_wr_imag } = '{ default: 'sh0 };
+		bf_out2_wr_en = 1'b0;
+
+		fetch_next_sample_id_c = fetch_next_sample_id_r;
+		if ( in_rd_en )
+		begin
+			fetch_next_sample_id_c = fetch_next_sample_id_r + 1'h1;
+		end
+		// if current sample is to propagate down pipeline,
+		// read ahead for next sample's matching twiddle
+		w_rd_addr      = ( 0===STAGE ) ? 1'h0 : fetch_next_sample_id_c[ MEM_ADDR_WIDTH-1:0 ];
+		fetch_is_in2   = fetch_next_sample_id_r[ IN2_FLAGBIT_POS ];
+
+		mul_buf_addr = ( 0===STAGE ) ? 1'h0 : fetch_sample_id_r[ MEM_ADDR_WIDTH-1:0 ];
+		mul_is_in2   = fetch_sample_id_r[ IN2_FLAGBIT_POS ];
+		if ( fetch_valid )
+		begin
+			if ( !mul_is_in2 )
+			begin
+				bf_in1_wr_addr = mul_buf_addr;
+				bf_in1_wr_en   = fetch_valid;
+			end
+			else
+			begin
+				bf_in1_rd_addr = mul_buf_addr;
+			end
+		end
+
+		dq_is_in2 = mul_sample_id_r[ IN2_FLAGBIT_POS ];
+		dq_buf_addr = ( 0===STAGE ) ? 1'h0 : mul_sample_id_r[ MEM_ADDR_WIDTH-1:0 ];
+		if ( mul_valid && !dq_is_in2 )
+		begin
+			bf_out2_rd_addr = dq_buf_addr;
+		end
+
+		add_is_in2 = dq_sample_id_r[ IN2_FLAGBIT_POS ];
+		{ add_in1_real, add_in1_imag } = { dq_bufout_real_r, dq_bufout_imag_r };
+		{ add_bufout_real, add_bufout_imag } = { bf_out2_rd_real, bf_out2_rd_imag };
+		if (
+			0===STAGE &&
+			( !add_is_in2 ) &&
+			( add_sample_id_r === dq_sample_id_r + 1'h1 ) &&
+			add_valid_r
+		)
+		begin // forward
+			{ add_bufout_real, add_bufout_imag } = { add_out2_real_r, add_out2_imag_r };
+		end
+		add_v_real = ( dq_wr_i2r_r - dq_wi_i2i_r );
+		add_v_imag = ( dq_wr_i2i_r + dq_wi_i2r_r );
+
+		output_is_in2 = add_sample_id_r[ IN2_FLAGBIT_POS ];
+		if ( !output_is_in2 )
+		begin
+			{ dout_real, dout_imag } = { add_out2_real_r, add_out2_imag_r };
+			out_wr_en = add_valid_r && ( add_sample_id_r > STEP );
+		end
+		else
+		begin
+			{ dout_real, dout_imag } = { add_out1_real_r, add_out1_imag_r };
+
+			bf_out2_wr_addr = ( 0===STAGE ) ? 1'h0 : add_sample_id_r[ MEM_ADDR_WIDTH-1:0 ];
+			{ bf_out2_wr_real, bf_out2_wr_imag } <= { add_out2_real_r, add_out2_imag_r };
+			bf_out2_wr_en = add_valid_r;
+		end
+
+	end
+
+	always_ff @ ( posedge clk )
+	begin
+		if ( rst )
+		begin
+			fetch_next_sample_id_r <= 'h0;
+			fetch_sample_id_r <= 'h0;
+			{ fetch_din_real_r, fetch_din_imag_r } <= '{ default: 'sh0 };
+			{ fetch_w_real_r,   fetch_w_imag_r }   <= '{ default: 'sh0 };
+			fetch_valid_r <= 1'b0;
+
+			{ mul_wr_i2r_r, mul_wr_i2i_r, mul_wi_i2r_r, mul_wi_i2i_r }
+				<= '{ default: 'sh0 };
+			mul_sample_id_r <= 'h0;
+			mul_valid_r <= 1'b0;
+
+			{ dq_wr_i2r_r, dq_wr_i2i_r, dq_wi_i2i_r, dq_wi_i2r_r }
+				<= '{ default: 'sh0 };
+			dq_valid_r <= 1'b0;
+
+		end
+		else if ( pipe_wr_en )
+		begin
+			fetch_sample_id_r       <= fetch_next_sample_id_r;
+			fetch_next_sample_id_r  <= fetch_next_sample_id_c;
+			{ fetch_din_real_r, fetch_din_imag_r } <= { din_real, din_imag };
+			if ( fetch_is_in2 )
+			begin
+				{ fetch_w_real_r, fetch_w_imag_r } <= { w_rd_real, w_rd_imag };
+			end
+			fetch_valid_r <= in_rd_en;
+
+			if ( mul_is_in2 && fetch_valid_r )
+			begin
+				mul_wr_i2r_r <= fetch_w_real_r * fetch_din_real_r;
+				mul_wr_i2i_r <= fetch_w_real_r * fetch_din_imag_r;
+				mul_wi_i2i_r <= fetch_w_imag_r * fetch_din_imag_r;
+				mul_wi_i2r_r <= fetch_w_imag_r * fetch_din_real_r;
+			end
+			mul_sample_id_r <= fetch_sample_id_r;
+			mul_valid_r <= fetch_valid_r;
+
+			if ( dq_is_in2 && mul_valid_r )
+			begin
+				dq_wr_i2r_r <= quant_pkg::DEQUANT( mul_wr_i2r_r );
+				dq_wr_i2i_r <= quant_pkg::DEQUANT( mul_wr_i2i_r );
+				dq_wi_i2i_r <= quant_pkg::DEQUANT( mul_wi_i2i_r );
+				dq_wi_i2r_r <= quant_pkg::DEQUANT( mul_wi_i2r_r );
+				{ dq_bufout_real_r, dq_bufout_imag_r } <= { bf_in1_rd_real, bf_in1_rd_imag };
+			end
+			dq_sample_id_r <= mul_sample_id_r;
+			dq_valid_r <= mul_valid_r;
+
+			if ( dq_valid_r )
+			begin
+				if ( !add_is_in2 )
+				begin
+					{ add_out1_real_r, add_out1_imag_r } <= '{ default: 'h0 };
+					{ add_out2_real_r, add_out2_imag_r } <=
+						{ add_bufout_real, add_bufout_imag };
+				end
+				else
+				begin
+					add_out1_real_r <= add_in1_real + add_v_real;
+					add_out1_imag_r <= add_in1_imag + add_v_imag;
+					add_out2_real_r <= add_in1_real - add_v_real;
+					add_out2_imag_r <= add_in1_imag - add_v_imag;
+				end
+			end
+			add_sample_id_r <= dq_sample_id_r;
+			add_valid_r <= dq_valid_r;
+
+		end
+	end
+
+endmodule: fft_stage
+
