@@ -5,13 +5,9 @@ import globals_pkg :: printtime;
 import twdls_pkg :: TWDLS;
 
 module fft_stage #(
-	parameter int STAGE = 1,
+	parameter int STAGE = 4,
 	parameter int N = globals_pkg::N,
-	parameter int DWIDTH = globals_pkg::DWIDTH,
-
-	parameter logic signed [ 0:(1<<( STAGE-1 ) )-1 ] [ 0:1 ] [ DWIDTH-1:0 ]
-		STAGE_TWDLS =
-		twdls_pkg::TWDLS [ STAGE-1 ] [ 0:( 1<<( STAGE-1 ) )-1 ]
+	parameter int DWIDTH = globals_pkg::DWIDTH
 )
 (
 	input  logic clk,
@@ -26,9 +22,6 @@ module fft_stage #(
 	output logic out_wr_en
 );
 	import quant_pkg::DEQUANT;
-
-	localparam int
-		RE = 0, IM = 1;
 
 	/* 
 	 * width of sample IDs within a frame
@@ -66,7 +59,15 @@ module fft_stage #(
 		bfly_in1_wr_real, bfly_in1_wr_imag, bfly_in1_rd_real, bfly_in1_rd_imag,
 		bfly_out2_wr_real, bfly_out2_wr_imag, bfly_out2_rd_real, bfly_out2_rd_imag;
 
-	// TODO twdl rom
+	stage_twd_rom #(
+		.STAGE( STAGE ),
+		.ADDR_WIDTH( MEM_ADDR_WIDTH ),
+		.STEP( STEP )
+	) bfly_ws (
+		.clk( clk ),
+		.rd_addr( bfly_w_rd_addr ),
+		.dout( { bfly_w_rd_real, bfly_w_rd_imag } )
+	);
 
 	bram #(
 		.BRAM_ADDR_WIDTH( MEM_ADDR_WIDTH ),
@@ -119,6 +120,7 @@ module fft_stage #(
 	logic [ SAMPLE_ID_WIDTH-1:0 ] dq_sample_id_r;
 	logic dq_valid_r;
 	logic dq_is_in2;
+	logic [ MEM_ADDR_WIDTH-1:0 ] dq_buf_addr;
 
 	// add stage
 	//
@@ -130,8 +132,10 @@ module fft_stage #(
 	logic add_is_in2;
 	logic signed [ DWIDTH-1:0 ]
 		add_in1_real, add_in1_imag,
-		add_v_real, add_v_imag;
-
+		add_v_real, add_v_imag,
+		add_out1_real, add_out1_imag,
+		add_out2_real, add_out2_imag;
+	
 	logic out_is_in2;
 	
 	always_comb
@@ -164,7 +168,7 @@ module fft_stage #(
 
 		mul_buf_addr = ( 0===STAGE ) ? 1'h0 : fetch_sample_id_r[ MEM_ADDR_WIDTH-1:0 ];
 		mul_is_in2   = fetch_sample_id_r[ IN2_FLAGBIT_POS ];
-		if ( fetch_valid )
+		if ( fetch_valid_r )
 		begin
 			if ( !mul_is_in2 )
 			begin
@@ -206,10 +210,10 @@ module fft_stage #(
 		begin
 			add_v_real = ( dq_wr_i2r_r - dq_wi_i2i_r );
 			add_v_imag = ( dq_wr_i2i_r + dq_wi_i2r_r );
-			add_out1_real_r = add_in1_real + add_v_real;
-			add_out1_imag_r = add_in1_imag + add_v_imag;
-			add_out2_real_r = add_in1_real - add_v_real;
-			add_out2_imag_r = add_in1_imag - add_v_imag;
+			add_out1_real = add_in1_real + add_v_real;
+			add_out1_imag = add_in1_imag + add_v_imag;
+			add_out2_real = add_in1_real - add_v_real;
+			add_out2_imag = add_in1_imag - add_v_imag;
 		end
 
 		{ dout_real, dout_imag } = '{ default: 'sh0 };
@@ -299,4 +303,3 @@ module fft_stage #(
 	end
 
 endmodule: fft_stage
-
