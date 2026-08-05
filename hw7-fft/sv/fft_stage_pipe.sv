@@ -232,7 +232,6 @@ module fft_stage #(
 		else
 		begin
 			{ dout_real, dout_imag } = { add_out1_real_r, add_out1_imag_r };
-			out_wr_en = add_valid_r;
 
 			bfly_out2_wr_addr = ( 0===STAGE ) ? 1'h0 : add_sample_id_r[ MEM_ADDR_WIDTH-1:0 ];
 			{ bfly_out2_wr_real, bfly_out2_wr_imag } = { add_out2_real_r, add_out2_imag_r };
