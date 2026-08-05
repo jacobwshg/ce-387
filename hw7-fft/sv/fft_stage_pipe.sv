@@ -77,7 +77,7 @@ module fft_stage #(
 		.rd_addr( bfly_in1_rd_addr ), .wr_addr( bfly_in1_wr_addr ),
 		.wr_en( bfly_in1_wr_en ),
 		.din( { $unsigned( bfly_in1_wr_real ), $unsigned( bfly_in1_wr_imag ) } ),
-		.dout( { $signed( bfly_in1_rd_real ), $signed( bfly_in1_rd_imag ) } )
+		.dout( { bfly_in1_rd_real, bfly_in1_rd_imag } )
 	);
 
 	bram #(
@@ -88,7 +88,7 @@ module fft_stage #(
 		.rd_addr( bfly_out2_rd_addr ), .wr_addr( bfly_out2_wr_addr ),
 		.wr_en( bfly_out2_wr_en ),
 		.din( { $unsigned( bfly_out2_wr_real ), $unsigned( bfly_out2_wr_imag ) } ),
-		.dout( { $signed( bfly_out2_rd_real ), $signed( bfly_out2_rd_imag ) } )
+		.dout( { bfly_out2_rd_real, bfly_out2_rd_imag } )
 	);
 
 	// fetch stage
