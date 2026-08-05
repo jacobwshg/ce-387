@@ -5,7 +5,7 @@ import globals_pkg :: printtime;
 import twdls_pkg :: TWDLS;
 
 module fft_stage #(
-	parameter int STAGE = 4,
+	parameter int STAGE = 3,
 	parameter int N = globals_pkg::N,
 	parameter int DWIDTH = globals_pkg::DWIDTH
 )
@@ -42,7 +42,7 @@ module fft_stage #(
 	 * stage 2:2 ( 4 elems )
 	 * stage 3:3 ( 8 elems )
 	 */
-	localparam int MEM_ADDR_WIDTH = ( 0===STAGE ) ? STAGE+1 : STAGE;
+	localparam int MEM_ADDR_WIDTH = ( 0===STAGE ) ? ( STAGE+1 ) : STAGE;
 	localparam int IN2_FLAGBIT_POS = ( 0===STAGE ) ? 0 : MEM_ADDR_WIDTH;
 	localparam int STEPID_WIDTH = SAMPLE_ID_WIDTH - MEM_ADDR_WIDTH - ( ( 0===STAGE ) ? 0 : 1 );
 
@@ -109,7 +109,7 @@ module fft_stage #(
 	logic [ SAMPLE_ID_WIDTH-1:0 ] mul_sample_id_r;
 	logic mul_valid_r;
 	logic mul_is_in2;
-	logic mul_buf_addr;
+	logic [ MEM_ADDR_WIDTH-1:0 ] mul_buf_addr;
 
 	// dequantize stage ( in2 )
 	// also clock loaded in1
@@ -150,10 +150,12 @@ module fft_stage #(
 		// ( !in_empty )
 		in_rd_en = pipe_wr_en && !in_empty;
 
-		{ bfly_in1_rd_addr, bfly_in1_wr_addr } = '{ default: 'h0 };
+		bfly_in1_rd_addr = 'h0;
+		bfly_in1_wr_addr = 'h0;
 		{ bfly_in1_wr_real, bfly_in1_wr_imag } = '{ default: 'sh0 };
 		bfly_in1_wr_en = 1'b0;
- 		{ bfly_out2_rd_addr, bfly_out2_wr_addr } = '{ default: 'h0 };
+ 		bfly_out2_rd_addr = 'h0;
+		bfly_out2_wr_addr = 'h0;
 		{ bfly_out2_wr_real, bfly_out2_wr_imag } = '{ default: 'sh0 };
 		bfly_out2_wr_en = 1'b0;
 
@@ -172,8 +174,11 @@ module fft_stage #(
 		begin
 			if ( !mul_is_in2 )
 			begin
+				{ bfly_in1_wr_real, bfly_in1_wr_imag } =
+					{ fetch_din_real_r, fetch_din_imag_r };
 				bfly_in1_wr_addr = mul_buf_addr;
 				bfly_in1_wr_en   = fetch_valid_r;
+				$strobe( "in1 raw input %h @ addr %h, wr_en=%b", bfly_in1_buf.din, bfly_in1_buf.wr_addr, bfly_in1_wr_en );
 			end
 			else
 			begin
@@ -230,7 +235,7 @@ module fft_stage #(
 			out_wr_en = add_valid_r;
 
 			bfly_out2_wr_addr = ( 0===STAGE ) ? 1'h0 : add_sample_id_r[ MEM_ADDR_WIDTH-1:0 ];
-			{ bfly_out2_wr_real, bfly_out2_wr_imag } <= { add_out2_real_r, add_out2_imag_r };
+			{ bfly_out2_wr_real, bfly_out2_wr_imag } = { add_out2_real_r, add_out2_imag_r };
 			bfly_out2_wr_en = add_valid_r;
 
 		end
@@ -264,8 +269,13 @@ module fft_stage #(
 			fetch_sample_id_r       <= fetch_next_sample_id_r;
 			fetch_next_sample_id_r  <= fetch_next_sample_id_c;
 			{ fetch_din_real_r, fetch_din_imag_r } <= { din_real, din_imag };
+
+			globals_pkg::printtime();
+			$strobe( "fetch_din_real : %h + %hj", fetch_din_real_r, fetch_din_imag_r );
+
 			if ( fetch_is_in2 )
 			begin
+				$strobe( "in2 matching w : %h + %hj", bfly_w_rd_real, bfly_w_rd_imag );
 				{ fetch_w_real_r, fetch_w_imag_r } <= { bfly_w_rd_real, bfly_w_rd_imag };
 			end
 			fetch_valid_r <= in_rd_en;
@@ -276,6 +286,7 @@ module fft_stage #(
 				mul_wr_i2i_r <= fetch_w_real_r * fetch_din_imag_r;
 				mul_wi_i2i_r <= fetch_w_imag_r * fetch_din_imag_r;
 				mul_wi_i2r_r <= fetch_w_imag_r * fetch_din_real_r;
+				$strobe( "in2 reading in1 addr %h / %h", mul_buf_addr, bfly_in1_buf.rd_addr );
 			end
 			mul_sample_id_r <= fetch_sample_id_r;
 			mul_valid_r <= fetch_valid_r;
@@ -287,6 +298,7 @@ module fft_stage #(
 				dq_wi_i2i_r <= quant_pkg::DEQUANT( mul_wi_i2i_r );
 				dq_wi_i2r_r <= quant_pkg::DEQUANT( mul_wi_i2r_r );
 				{ dq_bufout_real_r, dq_bufout_imag_r } <= { bfly_in1_rd_real, bfly_in1_rd_imag };
+				$strobe( "in2 matching in1: %h + %hj", bfly_in1_rd_real, bfly_in1_rd_imag );
 			end
 			dq_sample_id_r <= mul_sample_id_r;
 			dq_valid_r <= mul_valid_r;
