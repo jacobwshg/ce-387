@@ -1,8 +1,8 @@
 
 module fifo #(
 	parameter FIFO_DATA_WIDTH = 32,
-	parameter FIFO_BUFFER_SIZE = 64
-) 
+	parameter FIFO_BUFFER_SIZE = 256
+)
 (
 	input  logic reset,
 	input  logic wr_clk,
@@ -15,66 +15,56 @@ module fifo #(
 	output logic empty
 );
 
-	function automatic logic [ FIFO_DATA_WIDTH-1:0 ]
-		to01( input logic [ FIFO_DATA_WIDTH-1:0 ] data
+	function automatic logic [ FIFO_DATA_WIDTH-1:0 ] to01(
+		input logic [ FIFO_DATA_WIDTH-1:0 ] data
 	);
 		logic [ FIFO_DATA_WIDTH-1:0 ] result;
-		for ( int i=0; i<FIFO_DATA_WIDTH; ++i )
+		for ( int i=0; i < FIFO_DATA_WIDTH; ++i )
 		begin
-			result[ i ] = ( data[ i ]===1'b1 ) ? 1'b1 : 1'b0;
+			result[ i ] = ( data[ i ] === 1'b1 ) ? 1'b1 : 1'b0;
 		end;
 		return result;
 	endfunction
 
 	localparam FIFO_ADDR_WIDTH = $clog2( FIFO_BUFFER_SIZE );
 	logic [ FIFO_DATA_WIDTH-1:0 ] fifo_buf [ FIFO_BUFFER_SIZE-1:0 ];
-	logic [ FIFO_ADDR_WIDTH:0 ] wr_addr, wr_addr_c;
-	logic [ FIFO_ADDR_WIDTH:0 ] rd_addr, rd_addr_c;
-	logic full_c, empty_c;
 
-	assign empty_c = 1'( wr_addr === rd_addr );
-	assign full_c = 1'( wr_addr === { ~rd_addr[ FIFO_ADDR_WIDTH ], rd_addr[ FIFO_ADDR_WIDTH-1:0 ] } );
-	assign full = full_c;
+	logic [ FIFO_ADDR_WIDTH:0 ] wr_addr_r;
+	logic [ FIFO_ADDR_WIDTH:0 ] rd_addr_r;
 
-	assign rd_addr_c = rd_addr + 1'( rd_en && !empty_c );
-	assign wr_addr_c = wr_addr + 1'( wr_en && !full_c );
+	logic addr_eq, wrap_eq;
 
-	always_ff @ ( posedge wr_clk )
-	begin: write
-		if ( wr_en && !full_c )
-		begin
-			fifo_buf[ wr_addr[ FIFO_ADDR_WIDTH-1:0 ] ] <= din;
-		end
-	end: write
+	assign addr_eq = wr_addr_r[ FIFO_ADDR_WIDTH-1:0 ] === rd_addr_r[ FIFO_ADDR_WIDTH-1:0 ];
+	assign wrap_eq = wr_addr_r[ FIFO_ADDR_WIDTH ] === rd_addr_r[ FIFO_ADDR_WIDTH ];
+	assign full  = addr_eq && !wrap_eq;
+	assign empty = ( addr_eq && wrap_eq ); 
 
-	always_ff @ ( posedge wr_clk, posedge reset ) 
-	begin: update_wr_addr
-		if ( reset ) 
-			wr_addr <= 'h0;
-		else
-			wr_addr <= wr_addr_c;
-	end: update_wr_addr
-
-	always_ff @ ( posedge rd_clk ) 
-	begin: read
-		dout <= to01( fifo_buf[ rd_addr_c[ FIFO_ADDR_WIDTH-1:0 ] ] );
-	end: read
-
-	always_ff @ ( posedge rd_clk, posedge reset )
-	begin: update_rd_addr
-		if ( reset ) 
-			rd_addr <= 'h0;
-		else
-			rd_addr <= rd_addr_c;
-	end: update_rd_addr
-
-	always_ff @ ( posedge rd_clk, posedge reset )
-	begin: update_empty
+	always_ff @ ( posedge wr_clk, posedge reset )
+	begin
 		if ( reset )
-			empty <= 1'b1;
-		else
-			empty <= 1'( wr_addr == rd_addr_c );
-	end: update_empty
+		begin
+			wr_addr_r <= 'h0;
+		end
+		else if ( wr_en && !full )
+		begin
+			fifo_buf[ wr_addr_r[ FIFO_ADDR_WIDTH-1:0 ] ] <= din;
+			wr_addr_r <= wr_addr_r + 1'h1;
+		end
+	end
 
-endmodule: fifo
+	always_ff @ ( posedge rd_clk, posedge reset )
+	begin
+		if ( reset )
+		begin
+			rd_addr_r <= 1'h0;
+		end
+		else if ( !empty && rd_en )
+		begin
+			rd_addr_r <= rd_addr_r + 1'h1;
+		end
+	end
+
+	assign dout = fifo_buf[ rd_addr_r[ FIFO_ADDR_WIDTH-1:0 ] ];
+
+endmodule
 
