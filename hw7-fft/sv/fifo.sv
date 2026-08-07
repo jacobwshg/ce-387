@@ -39,7 +39,7 @@ module fifo #(
 	assign full  = addr_eq && !wrap_eq;
 	assign empty = ( addr_eq && wrap_eq ); 
 
-	always_ff @ ( posedge wr_clk, posedge reset )
+	always_ff @ ( posedge wr_clk )
 	begin
 		if ( reset )
 		begin
@@ -52,7 +52,7 @@ module fifo #(
 		end
 	end
 
-	always_ff @ ( posedge rd_clk, posedge reset )
+	always_ff @ ( posedge rd_clk )
 	begin
 		if ( reset )
 		begin
