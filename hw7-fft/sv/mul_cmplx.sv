@@ -13,7 +13,7 @@ module mul_cmplx
 	parameter int DWIDTH = 32
 )
 (
-	input  logic clk, rst,
+	input  logic clk, rst, wr_en,
 	input  logic signed [ DWIDTH-1:0 ]
 		a, b, c, d,
 	output logic signed [ DWIDTH-1:0 ]
@@ -27,6 +27,7 @@ module mul_cmplx
 		p1_r, p2_r, p3_r;
 
 	always_ff @ ( posedge clk )
+	if ( wr_en )
 	begin
 		a_r <= a;
 		b_r <= b;
@@ -35,6 +36,7 @@ module mul_cmplx
 	end
 
 	always_ff @ ( posedge clk )
+	if ( wr_en ) // maintain Fmax on Xilinx ( don't check retiming )
 	begin
 		p1_r[ 0 ] <= ( a_r + b_r ) * d_r;
 		p2_r[ 0 ] <= ( c_r + d_r ) * a_r;
@@ -45,6 +47,7 @@ module mul_cmplx
 		if ( STAGES > 1 )
 		begin
 			always_ff @ ( posedge clk )
+			if ( wr_en ) // avoid data loss
 			begin
 				p1_r[ 1:STAGES-1 ] <= p1_r[ 0:STAGES-2 ];
 				p2_r[ 1:STAGES-1 ] <= p2_r[ 0:STAGES-2 ];
