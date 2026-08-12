@@ -182,6 +182,8 @@ module fft_stage #(
 	 * The ID that is in sync with a given in1 clocked in fetch_din_*_r is
 	 * the ID clocked in fetch_sample_id_r
 	 */
+	assign bfly_in1_wr_real = fetch_din_real_r;
+	assign bfly_in1_wr_imag = fetch_din_imag_r;
 	generate
 		if ( STAGE === 0 )
 			assign bfly_in1_wr_addr = 'h0;
@@ -316,7 +318,12 @@ module fft_stage #(
 			assign bfly_out2_wr_addr = out_mem_addr;
 		end
 	endgenerate
+	assign bfly_out2_wr_real = add2_out2_real_r;
+	assign bfly_out2_wr_imag = add2_out2_imag_r;
 	assign bfly_out2_wr_en = add2_valid_r && add2_sample_id_r[ IN2_FLAGBIT_POS ];
+
+	assign dout_real = add2_sample_id_r[ IN2_FLAGBIT_POS ] ? add2_out1_real_r : add2_out2_real_r;
+	assign dout_imag = add2_sample_id_r[ IN2_FLAGBIT_POS ] ? add2_out1_imag_r : add2_out2_imag_r;
 
 	always_ff @ ( posedge clk )
 	begin
