@@ -5,7 +5,7 @@ import globals_pkg :: printtime;
 import twdls_pkg :: TWDLS;
 
 module fft_stage #(
-	parameter int STAGE = 3,
+	parameter int STAGE = 2,
 	parameter int N = globals_pkg::N,
 	parameter int DWIDTH = globals_pkg::DWIDTH
 )
@@ -49,18 +49,34 @@ module fft_stage #(
 	// # stages in mul_cmplx retimed regs ( excluding input reg )
 	localparam int MUL_STAGES = 5;
 
+	// in1 can be buffered after FETCH and read back in ADD1 to avoid
+	// sidebanding. To make this possible, the buffer must be deeper than
+	// the middle section of the pipeline to avoid in1 across different
+	// strides overwriting the same address.
+	localparam int IN1_SAFE_ADDR_WIDTH = $clog2( MUL_STAGES + 3 );
+	localparam int IN1_MEM_ADDR_WIDTH =
+		( MEM_ADDR_WIDTH>IN1_SAFE_ADDR_WIDTH ) ? MEM_ADDR_WIDTH : IN1_SAFE_ADDR_WIDTH;
+
 	logic pipe_wr_en;
 
 	// butterfly operands memory
-	logic bfly_in1_wr_en, bfly_out2_wr_en;
-	logic [ MEM_ADDR_WIDTH-1:0 ]
-		bfly_w_rd_addr, 
-		bfly_in1_wr_addr, bfly_in1_rd_addr,
-		bfly_out2_wr_addr, bfly_out2_rd_addr;
-	logic signed [ DWIDTH-1:0 ]
-		bfly_w_rd_real, bfly_w_rd_imag,
-		bfly_in1_wr_real, bfly_in1_wr_imag, bfly_in1_rd_real, bfly_in1_rd_imag,
-		bfly_out2_wr_real, bfly_out2_wr_imag, bfly_out2_rd_real, bfly_out2_rd_imag;
+	logic [ MEM_ADDR_WIDTH-1:0 ] bfly_w_rd_addr;
+	logic signed [ DWIDTH-1:0 ]  bfly_w_rd_real, bfly_w_rd_imag;
+
+	logic bfly_out2_wr_en;
+	logic [ MEM_ADDR_WIDTH-1:0 ] bfly_out2_wr_addr;
+	logic signed [ DWIDTH-1:0 ]  bfly_out2_wr_real, bfly_out2_wr_imag;
+	logic [ MEM_ADDR_WIDTH-1:0 ] bfly_out2_rd_addr;
+	logic signed [ DWIDTH-1:0 ]  bfly_out2_rd_real, bfly_out2_rd_imag;
+
+	logic bfly_in1_wr_en;
+	//logic [ IN1_MEM_ADDR_WIDTH-1:0 ] bfly_in1_rd_addr;
+	logic [ MEM_ADDR_WIDTH-1:0 ] bfly_in1_wr_addr;
+	logic signed [ DWIDTH-1:0 ]      bfly_in1_wr_real, bfly_in1_wr_imag;
+	//logic [ IN1_MEM_ADDR_WIDTH-1:0 ] bfly_in1_rd_addr;
+	logic [ MEM_ADDR_WIDTH-1:0 ] bfly_in1_rd_addr;
+	logic signed [ DWIDTH-1:0 ]      bfly_in1_rd_real, bfly_in1_rd_imag;
+
 
 	// fetch stage
 	// sample ID exposed to mul
@@ -88,7 +104,7 @@ module fft_stage #(
 		dq_p1,   dq_p2,   dq_p3;
 	logic [ SAMPLE_ID_WIDTH-1:0 ] dq_sample_id_r;
 	logic dq_valid_r;
-	logic [ MEM_ADDR_WIDTH-1:0 ] dq_mem_addr; 
+	logic [ SAMPLE_ID_WIDTH-1:0 ] dq_sample_id; 
 
 	// add1 stage ( derive v_real and v_imag from p1, p2, p3; clock in1 )
 	logic signed [ DWIDTH-1:0 ] add1_v_real_r, add1_v_imag_r, add1_in1_real_r, add1_in1_imag_r;
@@ -102,6 +118,7 @@ module fft_stage #(
 	logic [ SAMPLE_ID_WIDTH-1:0 ] add2_sample_id_r;
 	logic add2_valid_r;
 	logic signed [ DWIDTH-1:0 ] add2_out1_real, add2_out1_imag, add2_out2_real, add2_out2_imag;
+	logic add2_is_in2;
 
 	// output stage
 	// out_valid(_r) indicates whether the sample is past the initial group of
@@ -121,6 +138,7 @@ module fft_stage #(
 	);
 
 	bram #(
+		//.BRAM_ADDR_WIDTH( IN1_MEM_ADDR_WIDTH ),
 		.BRAM_ADDR_WIDTH( MEM_ADDR_WIDTH ),
 		.BRAM_DATA_WIDTH( DWIDTH * 2 )
 	) bfly_in1_buf (
@@ -186,10 +204,10 @@ module fft_stage #(
 	assign bfly_in1_wr_real = fetch_din_real_r;
 	assign bfly_in1_wr_imag = fetch_din_imag_r;
 	generate
-		if ( STAGE === 0 )
-			assign bfly_in1_wr_addr = 'h0;
+		if ( SAMPLE_ID_WIDTH < IN1_MEM_ADDR_WIDTH )
+			assign bfly_in1_wr_addr = 'h0 | fetch_sample_id_r[ SAMPLE_ID_WIDTH-1:0 ];
 		else
-			assign bfly_in1_wr_addr = fetch_sample_id_r[ MEM_ADDR_WIDTH-1:0 ];
+			assign bfly_in1_wr_addr = fetch_sample_id_r[ IN1_MEM_ADDR_WIDTH-1:0 ];
 	endgenerate	
 	assign bfly_in1_wr_en = fetch_valid_r && !fetch_sample_id_r[ IN2_FLAGBIT_POS ];
 
@@ -219,16 +237,15 @@ module fft_stage #(
 	assign dq_p1 = quant_pkg::DEQUANT( mul_out_p1 );
 	assign dq_p2 = quant_pkg::DEQUANT( mul_out_p2 );
 	assign dq_p3 = quant_pkg::DEQUANT( mul_out_p3 );
+	assign dq_sample_id = mul_sample_id_r[ MUL_STAGES ];
 	generate
-		if ( STAGE === 0 )
+		if ( SAMPLE_ID_WIDTH < IN1_MEM_ADDR_WIDTH )
 		begin
-			assign dq_mem_addr = 'h0;
-			assign bfly_in1_rd_addr = 'h0;
+			assign bfly_in1_rd_addr = 'h0 | dq_sample_id[ SAMPLE_ID_WIDTH-1:0 ];
 		end
 		else
 		begin
-			assign dq_mem_addr = mul_sample_id_r[ MUL_STAGES ][ MEM_ADDR_WIDTH-1:0 ];
-			assign bfly_in1_rd_addr = dq_mem_addr;
+			assign bfly_in1_rd_addr = dq_sample_id[ IN1_MEM_ADDR_WIDTH-1:0 ];
 		end
 	endgenerate
 
@@ -240,11 +257,11 @@ module fft_stage #(
 	 * requires it be derived from dq_sample_id_r and be asserted over the
 	 * add1 cycle.
 	 *
-	 * For STAGE >= 1, when an out2 sample is in "out" stage, the incoming in1 
+	 * For STAGE >= 1, when an out2 sample is in OUT stage, the incoming in1 
 	 * that outputs this out2 can only be as deep as add1. During the next
 	 * cycle, the out2 sample has written to out2 buf and retired, and the in1
 	 * can decode from the same address. But for STAGE = 0, when the out2 is in 
-	 * "out", the in1 that uses it is already in add1; the out2 read by
+	 * OUT, the in1 that uses it is already in ADD1; the out2 read by
 	 * this in1 is stale, and the true out2 must be forwarded from
 	 * add2_out2_*_r.
 	 *
@@ -266,6 +283,7 @@ module fft_stage #(
 		end
 	endgenerate
 
+	assign add2_is_in2 = add1_sample_id_r[ IN2_FLAGBIT_POS ];
 	assign add2_out1_real = add1_in1_real_r + add1_v_real_r;
 	assign add2_out1_imag = add1_in1_imag_r + add1_v_imag_r;
 	generate
@@ -291,15 +309,13 @@ module fft_stage #(
 		else
 		always_comb
 		begin
-			if ( add1_sample_id_r[ IN2_FLAGBIT_POS ] )
+			add2_out2_real = bfly_out2_rd_real;
+			add2_out2_imag = bfly_out2_rd_imag;
+
+			if ( add2_is_in2 )
 			begin
 				add2_out2_real = add1_in1_real_r - add1_v_real_r;
 				add2_out2_imag = add1_in1_imag_r - add1_v_imag_r;
-			end
-			else
-			begin
-				add2_out2_real = bfly_out2_rd_real;
-				add2_out2_imag = bfly_out2_rd_imag;
 			end
 		end
 	endgenerate
@@ -343,6 +359,7 @@ module fft_stage #(
 			dq_valid_r <= 1'b0;
 			add1_valid_r <= 1'b0;
 			add2_valid_r <= 1'b0;
+			out_valid_r <= 1'b0;
 
 		end
 		else if ( pipe_wr_en )
