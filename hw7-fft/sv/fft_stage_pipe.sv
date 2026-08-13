@@ -26,10 +26,10 @@ module fft_stage #(
 	/* 
 	 * width of sample IDs within a frame
 	 * add an overflow bit above MSB to facilitate pipeline flush
-	 * 8-point:  3+1
-	 * 16-point: 4+1
+	 * 8-point:  1+3
+	 * 16-point: 1+4
 	 */
-	localparam int SAMPLE_ID_WIDTH = $clog2( N ) + 1;
+	localparam int SAMPLE_ID_WIDTH = 1 + $clog2( N );
 	/* 
 	 * distance ( sample ID diff ) between a butterfly's sample pair
 	 * stage 0:1; stage 1:2; stage 2:4; stage 3:8
@@ -46,7 +46,7 @@ module fft_stage #(
 	localparam int IN2_FLAGBIT_POS = ( STAGE===0 ) ? 0 : MEM_ADDR_WIDTH;
 	localparam int STEPID_WIDTH = SAMPLE_ID_WIDTH - MEM_ADDR_WIDTH - ( ( 0===STAGE ) ? 0 : 1 );
 
-	// # stages in mul_cmplx retimed shift regs ( excluding input regs )
+	// # stages in mul_cmplx retimed regs ( excluding input reg )
 	localparam int MUL_STAGES = 5;
 
 	logic pipe_wr_en;
@@ -54,7 +54,7 @@ module fft_stage #(
 	// butterfly operands memory
 	logic bfly_in1_wr_en, bfly_out2_wr_en;
 	logic [ MEM_ADDR_WIDTH-1:0 ]
-		bfly_w_rd_addr, // assume clocked by ROM controller
+		bfly_w_rd_addr, 
 		bfly_in1_wr_addr, bfly_in1_rd_addr,
 		bfly_out2_wr_addr, bfly_out2_rd_addr;
 	logic signed [ DWIDTH-1:0 ]
@@ -63,25 +63,24 @@ module fft_stage #(
 		bfly_out2_wr_real, bfly_out2_wr_imag, bfly_out2_rd_real, bfly_out2_rd_imag;
 
 	// fetch stage
-	logic [ SAMPLE_ID_WIDTH-1:0 ]
-		fetch_sample_id_r,      // exposed to mul
-		fetch_next_sample_id_r, fetch_next_sample_id; // stage-internal use
-	logic signed [ DWIDTH-1:0 ]
-		fetch_din_real_r, fetch_din_imag_r;
+	// sample ID exposed to mul
+	logic [ SAMPLE_ID_WIDTH-1:0 ] fetch_sample_id_r;
+	// sample ID tracked stage-internally
+	logic [ SAMPLE_ID_WIDTH-1:0 ] fetch_next_sample_id_r, fetch_next_sample_id;
+	// clocked from input FIFO
+	logic signed [ DWIDTH-1:0 ] fetch_din_real_r, fetch_din_imag_r; 
 	logic fetch_valid_r;
-	logic [ MEM_ADDR_WIDTH-1:0 ] fetch_mem_addr; // send to in1 mem
+	logic [ MEM_ADDR_WIDTH-1:0 ] fetch_mem_addr;
 
 	// butterfly in2 * twdl multiply stage
-	// sideband
+	// sideband sample ID and valid flag; depth matches mul_cmplx
+	// input reg + pipeline regs
 	logic [ SAMPLE_ID_WIDTH-1:0 ] mul_sample_id_r [ 0:MUL_STAGES ];
-	logic mul_valid_r [ 0:MUL_STAGES ];
-	// clocked into mul_cmplx input regs
-	logic signed [ DWIDTH-1:0 ]
-		mul_in2_real, mul_in2_imag,
-		mul_w_real, mul_w_imag;
-	// mul_cmplx outputs
-	logic signed [ DWIDTH-1:0 ]
-		mul_p1, mul_p2, mul_p3;
+	logic mul_valid_r [ 0:MUL_STAGES ]; 
+	// clocked into mul_cmplx input reg
+	logic signed [ DWIDTH-1:0 ] mul_in_a, mul_in_b, mul_in_c, mul_in_d;
+	// driven by mul_cmplx final output reg
+	logic signed [ DWIDTH-1:0 ] mul_out_p1, mul_out_p2, mul_out_p3; 
 
 	// dequantize stage ( in2 )
 	logic signed [ DWIDTH-1:0 ]
@@ -89,7 +88,7 @@ module fft_stage #(
 		dq_p1,   dq_p2,   dq_p3;
 	logic [ SAMPLE_ID_WIDTH-1:0 ] dq_sample_id_r;
 	logic dq_valid_r;
-	logic [ MEM_ADDR_WIDTH-1:0 ] dq_mem_addr; // send to in1 buf
+	logic [ MEM_ADDR_WIDTH-1:0 ] dq_mem_addr; 
 
 	// add1 stage ( derive v_real and v_imag from p1, p2, p3; clock in1 )
 	logic signed [ DWIDTH-1:0 ] add1_v_real_r, add1_v_imag_r, add1_in1_real_r, add1_in1_imag_r;
@@ -148,9 +147,8 @@ module fft_stage #(
 		.DWIDTH( DWIDTH )
 	) mul_cmplx_pipe (
 		.clk( clk ), .rst( rst ), .wr_en( pipe_wr_en ),
-		.a( mul_w_real ), .  b( mul_w_imag ), 
-		.c( mul_in2_real ), .d( mul_in2_imag ), 
-		.p1( mul_p1 ), .p2( mul_p2 ), .p3( mul_p3 )
+		.a( mul_in_a ), .b( mul_in_b ), .c( mul_in_c ), .d( mul_in_d ), 
+		.p1( mul_out_p1 ), .p2( mul_out_p2 ), .p3( mul_out_p3 )
 	);
 
 	assign pipe_wr_en = !out_full && !in_empty;
@@ -198,10 +196,10 @@ module fft_stage #(
 	/*
 	 * mul_cmplx input reg inputs
 	 */
-	assign mul_w_real = bfly_w_rd_real;
-	assign mul_w_imag = bfly_w_rd_imag;
-	assign mul_in2_real = fetch_din_real_r;
-	assign mul_in2_imag = fetch_din_imag_r;
+	assign mul_in_a = bfly_w_rd_real;
+	assign mul_in_b = bfly_w_rd_imag;
+	assign mul_in_c = fetch_din_real_r;
+	assign mul_in_d = fetch_din_imag_r;
 
 	/*
 	 * On clk edge c, partial products are clocked into mul_cmplx final 
@@ -218,9 +216,9 @@ module fft_stage #(
 	 * synced and ready for add2.
 	 *
 	 */
-	assign dq_p1 = quant_pkg::DEQUANT( mul_p1 );
-	assign dq_p2 = quant_pkg::DEQUANT( mul_p2 );
-	assign dq_p3 = quant_pkg::DEQUANT( mul_p3 );
+	assign dq_p1 = quant_pkg::DEQUANT( mul_out_p1 );
+	assign dq_p2 = quant_pkg::DEQUANT( mul_out_p2 );
+	assign dq_p3 = quant_pkg::DEQUANT( mul_out_p3 );
 	generate
 		if ( STAGE === 0 )
 		begin
