@@ -76,7 +76,7 @@ module fft_stage #(
 	// sample ID exposed to mul
 	logic [ SAMPLE_ID_WIDTH-1:0 ] fetch_sample_id_r;
 	// sample ID tracked stage-internally
-	logic [ SAMPLE_ID_WIDTH-1:0 ] fetch_next_sample_id_r, fetch_next_sample_id;
+	logic [ SAMPLE_ID_WIDTH-1:0 ]  fetch_next_sample_id, fetch_next_sample_id_r;
 	// clocked from input FIFO
 	logic signed [ DWIDTH-1:0 ] fetch_din_real_r, fetch_din_imag_r; 
 	logic fetch_valid_r;
@@ -94,32 +94,33 @@ module fft_stage #(
 
 	// dequantize stage ( in2 )
 	logic signed [ DWIDTH-1:0 ]
-		dq_p1_r, dq_p2_r, dq_p3_r,
-		dq_p1,   dq_p2,   dq_p3;
+		dq_p1,   dq_p2,   dq_p3,
+		dq_p1_r, dq_p2_r, dq_p3_r;
+	logic [ SAMPLE_ID_WIDTH-1:0 ] dq_sample_id; 
 	logic [ SAMPLE_ID_WIDTH-1:0 ] dq_sample_id_r;
 	logic dq_valid_r;
-	logic [ SAMPLE_ID_WIDTH-1:0 ] dq_sample_id; 
 
 	// add1 stage ( derive v_real and v_imag from p1, p2, p3; clock in1 )
+	logic signed [ DWIDTH-1:0 ] add1_v_real, add1_v_imag, add1_in1_real, add1_in1_imag;
+	logic [ MEM_ADDR_WIDTH-1:0 ] add1_mem_addr;
 	logic signed [ DWIDTH-1:0 ] add1_v_real_r, add1_v_imag_r, add1_in1_real_r, add1_in1_imag_r;
 	logic [ SAMPLE_ID_WIDTH-1:0 ] add1_sample_id_r;
 	logic add1_valid_r;
-	logic signed [ DWIDTH-1:0 ] add1_v_real, add1_v_imag, add1_in1_real, add1_in1_imag;
-	logic [ MEM_ADDR_WIDTH-1:0 ] add1_mem_addr;
 
 	// add2 stage ( derive out1 and out2 from v and in1 )
+	logic add2_is_in2;
+	logic signed [ DWIDTH-1:0 ] add2_out1_real, add2_out1_imag, add2_out2_real, add2_out2_imag;
 	logic signed [ DWIDTH-1:0 ] add2_out1_real_r, add2_out1_imag_r, add2_out2_real_r, add2_out2_imag_r;	
 	logic [ SAMPLE_ID_WIDTH-1:0 ] add2_sample_id_r;
 	logic add2_valid_r;
-	logic signed [ DWIDTH-1:0 ] add2_out1_real, add2_out1_imag, add2_out2_real, add2_out2_imag;
-	logic add2_is_in2;
+
 
 	// output stage
+	logic [ MEM_ADDR_WIDTH-1:0 ] out_mem_addr;
 	// out_valid(_r) indicates whether the sample is past the initial group of
 	// in1 samples, which read garbage out2s from buf; the validity of the
 	// sample itself is reflected by add2_valid_r.
-	logic out_valid_r, out_valid;
-	logic [ MEM_ADDR_WIDTH-1:0 ] out_mem_addr;
+	logic out_valid, out_valid_r;
 
 	stage_twd_rom #(
 		.STAGE( STAGE ),
@@ -162,8 +163,8 @@ module fft_stage #(
 		.p1( mul_out_p1 ), .p2( mul_out_p2 ), .p3( mul_out_p3 )
 	);
 
-	assign pipe_wr_en = !out_full && !in_empty;
-	assign in_rd_en = pipe_wr_en;
+	assign pipe_wr_en = ( !add2_valid_r ) || ( !out_full );
+	assign in_rd_en = pipe_wr_en && !in_empty;
 
 	/*
 	 * Let in2 sample i be clocked into fetch_din_*_r 
@@ -290,7 +291,7 @@ module fft_stage #(
 		if ( STAGE === 0 )
 		always_comb
 		begin
-			if ( add1_sample_id_r[ IN2_FLAGBIT_POS ] )
+			if ( add2_is_in2 )
 			begin
 				add2_out2_real = add1_in1_real_r - add1_v_real_r;
 				add2_out2_imag = add1_in1_imag_r - add1_v_imag_r;
