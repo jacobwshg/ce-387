@@ -31,11 +31,6 @@ module fft_stage #(
 	 */
 	localparam int SAMPLE_ID_WIDTH = 1 + $clog2( N );
 	/* 
-	 * distance ( sample ID diff ) between a butterfly's sample pair
-	 * stage 0:1; stage 1:2; stage 2:4; stage 3:8
-	 */
-	localparam int STEP = 2 ** STAGE; 
-	/* 
  	 * addr width of twdl table / in1 buf / out2 buf
 	 * stage 0:1 ( 1 elem; addr 0 only )
 	 * stage 1:1 ( 2 elems )
@@ -44,7 +39,6 @@ module fft_stage #(
 	 */
 	localparam int MEM_ADDR_WIDTH = ( STAGE===0 ) ? ( STAGE+1 ) : STAGE;
 	localparam int IN2_FLAGBIT_POS = ( STAGE===0 ) ? 0 : MEM_ADDR_WIDTH;
-	localparam int STEPID_WIDTH = SAMPLE_ID_WIDTH - MEM_ADDR_WIDTH - ( ( 0===STAGE ) ? 0 : 1 );
 
 	// # stages in mul_cmplx retimed regs ( excluding input reg )
 	localparam int MUL_STAGES = 5;
@@ -129,8 +123,7 @@ module fft_stage #(
 
 	stage_twd_rom #(
 		.STAGE( STAGE ),
-		.ADDR_WIDTH( MEM_ADDR_WIDTH ),
-		.STEP( STEP )
+		.ADDR_WIDTH( MEM_ADDR_WIDTH )
 	) bfly_ws (
 		.clk( clk ),
 		.rd_addr( bfly_w_rd_addr ),
