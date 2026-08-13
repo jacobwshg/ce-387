@@ -53,7 +53,7 @@ module fft_stage #(
 	// sidebanding. To make this possible, the buffer must be deeper than
 	// the middle section of the pipeline to avoid in1 across different
 	// strides overwriting the same address.
-	localparam int IN1_SAFE_ADDR_WIDTH = $clog2( MUL_STAGES + 3 );
+	localparam int IN1_SAFE_ADDR_WIDTH = $clog2( MUL_STAGES + 4 );
 	localparam int IN1_MEM_ADDR_WIDTH =
 		( MEM_ADDR_WIDTH>IN1_SAFE_ADDR_WIDTH ) ? MEM_ADDR_WIDTH : IN1_SAFE_ADDR_WIDTH;
 
@@ -70,11 +70,11 @@ module fft_stage #(
 	logic signed [ DWIDTH-1:0 ]  bfly_out2_rd_real, bfly_out2_rd_imag;
 
 	logic bfly_in1_wr_en;
-	//logic [ IN1_MEM_ADDR_WIDTH-1:0 ] bfly_in1_rd_addr;
-	logic [ MEM_ADDR_WIDTH-1:0 ] bfly_in1_wr_addr;
+	logic [ IN1_MEM_ADDR_WIDTH-1:0 ] bfly_in1_wr_addr;
+	//logic [ MEM_ADDR_WIDTH-1:0 ] bfly_in1_wr_addr;
 	logic signed [ DWIDTH-1:0 ]      bfly_in1_wr_real, bfly_in1_wr_imag;
-	//logic [ IN1_MEM_ADDR_WIDTH-1:0 ] bfly_in1_rd_addr;
-	logic [ MEM_ADDR_WIDTH-1:0 ] bfly_in1_rd_addr;
+	logic [ IN1_MEM_ADDR_WIDTH-1:0 ] bfly_in1_rd_addr;
+	//logic [ MEM_ADDR_WIDTH-1:0 ] bfly_in1_rd_addr;
 	logic signed [ DWIDTH-1:0 ]      bfly_in1_rd_real, bfly_in1_rd_imag;
 
 
@@ -138,8 +138,8 @@ module fft_stage #(
 	);
 
 	bram #(
-		//.BRAM_ADDR_WIDTH( IN1_MEM_ADDR_WIDTH ),
-		.BRAM_ADDR_WIDTH( MEM_ADDR_WIDTH ),
+		.BRAM_ADDR_WIDTH( IN1_MEM_ADDR_WIDTH ),
+		//.BRAM_ADDR_WIDTH( MEM_ADDR_WIDTH ),
 		.BRAM_DATA_WIDTH( DWIDTH * 2 )
 	) bfly_in1_buf (
 		.clock( clk ),
@@ -238,14 +238,21 @@ module fft_stage #(
 	assign dq_p2 = quant_pkg::DEQUANT( mul_out_p2 );
 	assign dq_p3 = quant_pkg::DEQUANT( mul_out_p3 );
 	assign dq_sample_id = mul_sample_id_r[ MUL_STAGES ];
+	// We only care about bfly_in1_rd_addr when the sample in DQ is in2;
+	// it differs from the matching in1 only by having the flag bit as
+	// 1 instead of 0.
 	generate
 		if ( SAMPLE_ID_WIDTH < IN1_MEM_ADDR_WIDTH )
+		always_comb
 		begin
-			assign bfly_in1_rd_addr = 'h0 | dq_sample_id[ SAMPLE_ID_WIDTH-1:0 ];
+			bfly_in1_rd_addr = ( 'h0 | dq_sample_id[ SAMPLE_ID_WIDTH-1:0 ] );
+			bfly_in1_rd_addr[ IN2_FLAGBIT_POS ] = 1'b0;
 		end
 		else
+		always_comb
 		begin
-			assign bfly_in1_rd_addr = dq_sample_id[ IN1_MEM_ADDR_WIDTH-1:0 ];
+			bfly_in1_rd_addr = dq_sample_id[ IN1_MEM_ADDR_WIDTH-1:0 ];
+			bfly_in1_rd_addr[ IN2_FLAGBIT_POS ] = 1'b0;
 		end
 	endgenerate
 

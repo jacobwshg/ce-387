@@ -5,7 +5,7 @@ import globals_pkg :: printtime;
 import twdls_pkg :: TWDLS;
 
 module fft_stage #(
-	parameter int STAGE = 4,
+	parameter int STAGE = 2,
 	parameter int N = globals_pkg::N,
 	parameter int DWIDTH = globals_pkg::DWIDTH,
 
@@ -313,4 +313,3 @@ module fft_stage #(
 	end
 
 endmodule: fft_stage
-

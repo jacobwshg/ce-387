@@ -36,7 +36,7 @@ module mul_cmplx
 	end
 
 	always_ff @ ( posedge clk )
-	if ( wr_en ) // maintain Fmax on Xilinx ( don't check retiming )
+	if ( wr_en ) // maintain Fmax on Xilinx targets ( don't check retiming option )
 	begin
 		p1_r[ 0 ] <= ( a_r + b_r ) * d_r;
 		p2_r[ 0 ] <= ( c_r + d_r ) * a_r;
