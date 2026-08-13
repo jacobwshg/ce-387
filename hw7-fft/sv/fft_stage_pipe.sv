@@ -105,6 +105,9 @@ module fft_stage #(
 	logic signed [ DWIDTH-1:0 ] add2_out1_real, add2_out1_imag, add2_out2_real, add2_out2_imag;
 
 	// output stage
+	// out_valid(_r) indicates whether the sample is past the initial group of
+	// in1 samples, which read garbage out2s from buf; the validity of the
+	// sample itself is reflected by add2_valid_r.
 	logic out_valid_r, out_valid;
 	logic [ MEM_ADDR_WIDTH-1:0 ] out_mem_addr;
 
@@ -303,9 +306,18 @@ module fft_stage #(
 		end
 	endgenerate
 
-	// TODO messy
+	assign dout_real = add2_sample_id_r[ IN2_FLAGBIT_POS ] ? add2_out1_real_r : add2_out2_real_r;
+	assign dout_imag = add2_sample_id_r[ IN2_FLAGBIT_POS ] ? add2_out1_imag_r : add2_out2_imag_r;
+
+	/*
+	 * A tiny state machine: if prev samples are all in the initial group of
+	 * in1, out_valid is first asserted when add2_sample_id_r's in2 flag bit
+	 * turns high, indicating the earliest in2 sample. Then it is clocked into
+	 * out_valid_r and stays high.
+	 */
 	assign out_valid = out_valid_r || ( add2_valid_r && add2_sample_id_r[ IN2_FLAGBIT_POS ] );
-	assign out_wr_en = out_valid;
+	assign out_wr_en = ( !out_full ) && out_valid && add2_valid_r;
+
 	generate
 		if ( STAGE === 0 )
 		begin
@@ -322,17 +334,12 @@ module fft_stage #(
 	assign bfly_out2_wr_imag = add2_out2_imag_r;
 	assign bfly_out2_wr_en = add2_valid_r && add2_sample_id_r[ IN2_FLAGBIT_POS ];
 
-	assign dout_real = add2_sample_id_r[ IN2_FLAGBIT_POS ] ? add2_out1_real_r : add2_out2_real_r;
-	assign dout_imag = add2_sample_id_r[ IN2_FLAGBIT_POS ] ? add2_out1_imag_r : add2_out2_imag_r;
-
 	always_ff @ ( posedge clk )
 	begin
 		if ( rst )
 		begin
 			fetch_next_sample_id_r <= 'h0;
 			fetch_sample_id_r <= 'h0;
-			///{ fetch_din_real_r, fetch_din_imag_r } <= '{ default: 'sh0 };
-			///{ fetch_w_real_r,   fetch_w_imag_r }   <= '{ default: 'sh0 };
 			fetch_valid_r <= 1'b0;
 			mul_valid_r[ 0:MUL_STAGES ] <= '{ default: 1'b0 };
 			dq_valid_r <= 1'b0;
