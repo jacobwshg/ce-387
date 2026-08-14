@@ -121,6 +121,10 @@ module fft_stage #(
 	// in1 samples, which read garbage out2s from buf; the validity of the
 	// sample itself is reflected by add2_valid_r.
 	logic out_valid, out_valid_r;
+	// prevent duplicate writes to output FIFO
+	logic out_dup;
+	logic [ SAMPLE_ID_WIDTH-1:0 ] out_prev_sample_id_r;
+	logic out_prev_wr_en_r;
 
 	stage_twd_rom #(
 		.STAGE( STAGE ),
@@ -324,6 +328,9 @@ module fft_stage #(
 	assign dout_real = add2_sample_id_r[ IN2_FLAGBIT_POS ] ? add2_out1_real_r : add2_out2_real_r;
 	assign dout_imag = add2_sample_id_r[ IN2_FLAGBIT_POS ] ? add2_out1_imag_r : add2_out2_imag_r;
 
+	assign out_dup =
+		( add2_sample_id_r===out_prev_sample_id_r ) && out_prev_wr_en_r;
+
 	/*
 	 * A tiny state machine: if prev samples are all in the initial group of
 	 * in1, out_valid is first asserted when add2_sample_id_r's in2 flag bit
@@ -331,7 +338,7 @@ module fft_stage #(
 	 * out_valid_r and stays high.
 	 */
 	assign out_valid = out_valid_r || ( add2_valid_r && add2_sample_id_r[ IN2_FLAGBIT_POS ] );
-	assign out_wr_en = ( !out_full ) && out_valid && add2_valid_r;
+	assign out_wr_en = pipe_wr_en && out_valid && !out_dup;
 
 	generate
 		if ( STAGE === 0 )
@@ -361,7 +368,7 @@ module fft_stage #(
 			add1_valid_r <= 1'b0;
 			add2_valid_r <= 1'b0;
 			out_valid_r <= 1'b0;
-
+			out_prev_wr_en_r <= 1'b0;
 		end
 		else if ( pipe_wr_en )
 		begin
@@ -400,6 +407,8 @@ module fft_stage #(
 			add2_valid_r <= add1_valid_r;
 
 			out_valid_r <= out_valid;
+			out_prev_sample_id_r <= add2_sample_id_r;
+			out_prev_wr_en_r <= out_wr_en;
 		end
 	end
 
