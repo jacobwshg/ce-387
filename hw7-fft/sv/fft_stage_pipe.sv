@@ -5,7 +5,7 @@ import globals_pkg :: printtime;
 import twdls_pkg :: TWDLS;
 
 module fft_stage #(
-	parameter int STAGE = 2,
+	parameter int STAGE = 4,
 	parameter int N = globals_pkg::N,
 	parameter int DWIDTH = globals_pkg::DWIDTH
 )
@@ -300,8 +300,18 @@ module fft_stage #(
 				add2_out2_real = add1_in1_real_r - add1_v_real_r;
 				add2_out2_imag = add1_in1_imag_r - add1_v_imag_r;
 			end
-			else if ( add2_valid_r && ( add2_sample_id_r === add1_sample_id_r + 1'h1 ) )
-			begin // forward
+			else if (
+				//add2_valid_r && 
+				( ( add2_sample_id_r + 1'h1 ) === add1_sample_id_r )
+			)
+			begin
+				/*
+				 * FFT stage 0 forwarding case: the sample in ADD2 stage is in1,
+				 * and the sample in OUT stage has an ID that is 1 less
+				 * ( meaning it is the previous butterfly's in2 ), and it had
+				 * buffered the previous out2 in add2_out2_*_r.
+				 *
+				 */
 				add2_out2_real = add2_out2_real_r;
 				add2_out2_imag = add2_out2_imag_r;
 			end
@@ -374,43 +384,55 @@ module fft_stage #(
 		begin
 			fetch_sample_id_r       <= fetch_next_sample_id_r;
 			fetch_next_sample_id_r  <= fetch_next_sample_id;
-			{ fetch_din_real_r, fetch_din_imag_r } <= { din_real, din_imag };
+			fetch_valid_r           <= in_rd_en;
 
-			globals_pkg::printtime();
-			$strobe( "fetch_din_real : %h + %hj", fetch_din_real_r, fetch_din_imag_r );
-
-			fetch_valid_r <= in_rd_en;
-
-			mul_sample_id_r[ 0 ] <= fetch_sample_id_r;
-			mul_sample_id_r[ 1:MUL_STAGES ] <= mul_sample_id_r[ 0:MUL_STAGES-1 ];
 			mul_valid_r[ 0 ] <= fetch_valid_r;
 			mul_valid_r[ 1:MUL_STAGES ] <= mul_valid_r[ 0:MUL_STAGES-1 ];
 
+			dq_valid_r <= mul_valid_r[ MUL_STAGES ];
+
+			add1_valid_r <= dq_valid_r;
+
+			add2_valid_r <= add1_valid_r;
+
+			out_valid_r <= out_valid;
+			out_prev_wr_en_r <= out_wr_en;
+		end
+	end
+
+	always_ff @ ( posedge clk )
+	begin
+		if ( pipe_wr_en )
+		begin
+			{ fetch_din_real_r, fetch_din_imag_r } <= { din_real, din_imag };
+
+			//globals_pkg::printtime();
+			//$strobe( "fetch_din_real : %h + %hj", fetch_din_real_r, fetch_din_imag_r );
+
+			mul_sample_id_r[ 0 ] <= fetch_sample_id_r;
+			mul_sample_id_r[ 1:MUL_STAGES ] <= mul_sample_id_r[ 0:MUL_STAGES-1 ];
+	
 			dq_p1_r <= dq_p1;
 			dq_p2_r <= dq_p2;
 			dq_p3_r <= dq_p3;
 			dq_sample_id_r <= mul_sample_id_r[ MUL_STAGES ];
-			dq_valid_r <= mul_valid_r[ MUL_STAGES ];
-
+	
 			add1_v_real_r <= add1_v_real;
 			add1_v_imag_r <= add1_v_imag;
 			add1_in1_real_r <= add1_in1_real;
 			add1_in1_imag_r <= add1_in1_imag;
 			add1_sample_id_r <= dq_sample_id_r;
-			add1_valid_r <= dq_valid_r;
 
 			add2_out1_real_r <= add2_out1_real;
 			add2_out1_imag_r <= add2_out1_imag;
 			add2_out2_real_r <= add2_out2_real;
 			add2_out2_imag_r <= add2_out2_imag;
 			add2_sample_id_r <= add1_sample_id_r;
-			add2_valid_r <= add1_valid_r;
-
-			out_valid_r <= out_valid;
+	
 			out_prev_sample_id_r <= add2_sample_id_r;
-			out_prev_wr_en_r <= out_wr_en;
+
 		end
-	end
+	end	
 
 endmodule: fft_stage
 
