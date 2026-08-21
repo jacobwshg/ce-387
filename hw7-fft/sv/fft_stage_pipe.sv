@@ -7,7 +7,10 @@ import twdls_pkg :: TWDLS;
 module fft_stage #(
 	parameter int STAGE = 1,
 	parameter int N = globals_pkg::N,
-	parameter int DWIDTH = globals_pkg::DWIDTH
+	parameter int DWIDTH = globals_pkg::DWIDTH,
+
+	// # stages in mul_cmplx retimed regs ( excluding input reg )
+	parameter int MUL_STAGES = 4
 )
 (
 	input  logic clk,
@@ -39,10 +42,6 @@ module fft_stage #(
 	 */
 	localparam int MEM_ADDR_WIDTH = ( STAGE===0 ) ? ( STAGE+1 ) : STAGE;
 	localparam int IN2_FLAGBIT_POS = ( STAGE===0 ) ? 0 : MEM_ADDR_WIDTH;
-
-	// # stages in mul_cmplx retimed regs ( excluding input reg )
-	// on Cyclone V use 6 for STAGE >= 2
-	localparam int MUL_STAGES = 6;
 
 	// in1 can be buffered after FETCH and read back in ADD1 to avoid
 	// sidebanding. To make this possible, the buffer must be deeper than
