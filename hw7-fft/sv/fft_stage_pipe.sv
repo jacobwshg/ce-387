@@ -26,6 +26,9 @@ module fft_stage #(
 );
 	import quant_pkg::DEQUANT;
 
+	/* mul_cmplx sideband depth ( 1 for input regs ) */
+	localparam int MUL_SBD_STAGES = 1 + MUL_STAGES;
+
 	/* 
 	 * width of sample IDs within a frame
 	 * add an overflow bit above MSB to facilitate pipeline flush
@@ -43,17 +46,18 @@ module fft_stage #(
 	localparam int MEM_ADDR_WIDTH = ( STAGE===0 ) ? ( STAGE+1 ) : STAGE;
 	localparam int IN2_FLAGBIT_POS = ( STAGE===0 ) ? 0 : MEM_ADDR_WIDTH;
 
-	// in1 can be buffered after FETCH and read back in ADD1 to avoid
-	// sidebanding. To make this possible, the buffer must be deeper than
-	// the middle section of the pipeline to avoid in1 across different
-	// strides overwriting the same address.
-	localparam int IN1_SAFE_ADDR_WIDTH = $clog2( MUL_STAGES + 4 );
+	/* in1 can be buffered after FETCH and read back in ADD1 to avoid
+	 * sidebanding. To make this possible, the buffer must be deeper than
+	 * the middle section of the pipeline to avoid in1 across different
+	 * strides overwriting the same address.
+	 */
+	localparam int IN1_SAFE_ADDR_WIDTH = $clog2( MUL_SBD_STAGES + 3 );
 	localparam int IN1_MEM_ADDR_WIDTH =
 		( MEM_ADDR_WIDTH>IN1_SAFE_ADDR_WIDTH ) ? MEM_ADDR_WIDTH : IN1_SAFE_ADDR_WIDTH;
 
 	logic pipe_wr_en;
 
-	// butterfly operands memory
+	/* butterfly operands memory */
 	logic [ MEM_ADDR_WIDTH-1:0 ] bfly_w_rd_addr;
 	logic signed [ DWIDTH-1:0 ]  bfly_w_rd_real, bfly_w_rd_imag;
 
@@ -85,8 +89,8 @@ module fft_stage #(
 	// butterfly in2 * twdl multiply stage
 	// sideband sample ID and valid flag; depth matches mul_cmplx
 	// input reg + pipeline regs
-	logic [ SAMPLE_ID_WIDTH-1:0 ] mul_sample_id_r [ 0:MUL_STAGES ];
-	logic mul_valid_r [ 0:MUL_STAGES ]; 
+	logic [ SAMPLE_ID_WIDTH-1:0 ] mul_sample_id_r [ 0:MUL_SBD_STAGES-1 ];
+	logic mul_valid_r [ 0:MUL_SBD_STAGES-1 ]; 
 	// clocked into mul_cmplx input reg
 	logic signed [ DWIDTH-1:0 ] mul_in_a, mul_in_b, mul_in_c, mul_in_d;
 	// driven by mul_cmplx final output reg
@@ -239,7 +243,7 @@ module fft_stage #(
 	assign dq_p1 = quant_pkg::DEQUANT( mul_out_p1 );
 	assign dq_p2 = quant_pkg::DEQUANT( mul_out_p2 );
 	assign dq_p3 = quant_pkg::DEQUANT( mul_out_p3 );
-	assign dq_sample_id = mul_sample_id_r[ MUL_STAGES ];
+	assign dq_sample_id = mul_sample_id_r[ MUL_SBD_STAGES-1 ];
 	// We only care about bfly_in1_rd_addr when the sample in DQ is in2;
 	// it differs from the matching in1 only by having the flag bit as
 	// 1 instead of 0.
@@ -377,7 +381,7 @@ module fft_stage #(
 			fetch_next_sample_id_r <= 'h0;
 			fetch_sample_id_r <= 'h0;
 			fetch_valid_r <= 1'b0;
-			mul_valid_r[ 0:MUL_STAGES ] <= '{ default: 1'b0 };
+			mul_valid_r[ 0:MUL_SBD_STAGES-1 ] <= '{ default: 1'b0 };
 			dq_valid_r <= 1'b0;
 			add1_valid_r <= 1'b0;
 			add2_valid_r <= 1'b0;
@@ -391,9 +395,10 @@ module fft_stage #(
 			fetch_valid_r           <= in_rd_en;
 
 			mul_valid_r[ 0 ] <= fetch_valid_r;
-			mul_valid_r[ 1:MUL_STAGES ] <= mul_valid_r[ 0:MUL_STAGES-1 ];
+			mul_valid_r[ 1:MUL_SBD_STAGES-1 ] <=
+				mul_valid_r[ 0:MUL_SBD_STAGES-2 ];
 
-			dq_valid_r <= mul_valid_r[ MUL_STAGES ];
+			dq_valid_r <= mul_valid_r[ MUL_SBD_STAGES-1 ];
 
 			add1_valid_r <= dq_valid_r;
 
@@ -414,12 +419,12 @@ module fft_stage #(
 			//$strobe( "fetch_din_real : %h + %hj", fetch_din_real_r, fetch_din_imag_r );
 
 			mul_sample_id_r[ 0 ] <= fetch_sample_id_r;
-			mul_sample_id_r[ 1:MUL_STAGES ] <= mul_sample_id_r[ 0:MUL_STAGES-1 ];
+			mul_sample_id_r[ 1:MUL_SBD_STAGES-1 ] <= mul_sample_id_r[ 0:MUL_SBD_STAGES-2 ];
 	
 			dq_p1_r <= dq_p1;
 			dq_p2_r <= dq_p2;
 			dq_p3_r <= dq_p3;
-			dq_sample_id_r <= mul_sample_id_r[ MUL_STAGES ];
+			dq_sample_id_r <= mul_sample_id_r[ MUL_SBD_STAGES-1 ];
 	
 			add1_v_real_r <= add1_v_real;
 			add1_v_imag_r <= add1_v_imag;
