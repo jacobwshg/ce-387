@@ -10,7 +10,7 @@ module fft_stage #(
 	parameter int DWIDTH = globals_pkg::DWIDTH,
 
 	// # stages in mul_cmplx retimed regs ( excluding input reg )
-	parameter int MUL_STAGES = 4
+	parameter int MUL_STAGES = 1
 )
 (
 	input  logic clk,
@@ -136,24 +136,27 @@ module fft_stage #(
 	);
 
 	bram #(
-		.BRAM_ADDR_WIDTH( IN1_MEM_ADDR_WIDTH ),
-		//.BRAM_ADDR_WIDTH( MEM_ADDR_WIDTH ),
-		.BRAM_DATA_WIDTH( DWIDTH * 2 )
+		.DWIDTH( DWIDTH * 2 ),
+		.ADDR_WIDTH( IN1_MEM_ADDR_WIDTH )
 	) bfly_in1_buf (
-		.clock( clk ),
-		.rd_addr( bfly_in1_rd_addr ), .wr_addr( bfly_in1_wr_addr ),
+		.clk( clk ),
+		.wr_addr( bfly_in1_wr_addr ),
+		.rd_addr( bfly_in1_rd_addr ),
 		.wr_en( bfly_in1_wr_en ),
+		.rd_en( pipe_wr_en ),
 		.din( { $unsigned( bfly_in1_wr_real ), $unsigned( bfly_in1_wr_imag ) } ),
 		.dout( { bfly_in1_rd_real, bfly_in1_rd_imag } )
 	);
 
 	bram #(
-		.BRAM_ADDR_WIDTH( MEM_ADDR_WIDTH ),
-		.BRAM_DATA_WIDTH( DWIDTH * 2 )
+		.DWIDTH( DWIDTH * 2 ),
+		.ADDR_WIDTH( MEM_ADDR_WIDTH )
 	) bfly_out2_buf (
-		.clock( clk ),
-		.rd_addr( bfly_out2_rd_addr ), .wr_addr( bfly_out2_wr_addr ),
+		.clk( clk ),
+		.wr_addr( bfly_out2_wr_addr ),
+		.rd_addr( bfly_out2_rd_addr ),
 		.wr_en( bfly_out2_wr_en ),
+		.rd_en( pipe_wr_en ), 
 		.din( { $unsigned( bfly_out2_wr_real ), $unsigned( bfly_out2_wr_imag ) } ),
 		.dout( { bfly_out2_rd_real, bfly_out2_rd_imag } )
 	);
@@ -167,7 +170,7 @@ module fft_stage #(
 		.p1( mul_out_p1 ), .p2( mul_out_p2 ), .p3( mul_out_p3 )
 	);
 
-	assign pipe_wr_en = ( !add2_valid_r ) || ( !out_full );
+	assign pipe_wr_en = ( !out_full );
 	assign in_rd_en = pipe_wr_en && !in_empty;
 
 	/*
