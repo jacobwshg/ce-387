@@ -132,6 +132,7 @@ module fft_stage #(
 	) bfly_ws (
 		.clk( clk ),
 		.rd_addr( bfly_w_rd_addr ),
+		.rd_en( pipe_wr_en ),
 		.dout( { bfly_w_rd_real, bfly_w_rd_imag } )
 	);
 
@@ -170,7 +171,7 @@ module fft_stage #(
 		.p1( mul_out_p1 ), .p2( mul_out_p2 ), .p3( mul_out_p3 )
 	);
 
-	assign pipe_wr_en = ( !out_full );
+	assign pipe_wr_en = ( !out_full ) /*|| !add2_valid_r*/;
 	assign in_rd_en = pipe_wr_en && !in_empty;
 
 	/*
