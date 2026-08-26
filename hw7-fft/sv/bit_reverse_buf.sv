@@ -103,7 +103,7 @@ module bit_reverse_buf #(
 		if ( rst )
 		begin
 			wr_sample_id_r <= 'h0;
-			wr_banksel_r = 1'h0;
+			wr_banksel_r <= 1'h0;
 			wr_frame_parity_r <= 1'b0;
 		end
 		else if ( wr_pipe_en )
