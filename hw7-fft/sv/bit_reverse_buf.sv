@@ -104,11 +104,13 @@ module bit_reverse_buf #(
 		begin
 			wr_sample_id_r <= 'h0;
 			wr_banksel_r = 1'h0;
+			wr_frame_parity_r <= 1'b0;
 		end
 		else if ( wr_pipe_en )
 		begin
 			wr_sample_id_r <= wr_sample_id_next;
 			wr_banksel_r <= wr_banksel;
+			wr_frame_parity_r <= wr_frame_parity;
 		end
 
 		if ( wr_pipe_en )
@@ -120,7 +122,6 @@ module bit_reverse_buf #(
 			din_r <= { $unsigned( din_real ), $unsigned( din_imag ) };
 			wr_valid_r <= wr_valid;
 			wr_addr_r <= wr_addr;
-			wr_frame_parity_r <= wr_frame_parity;
 		end
 
 	end: wr_reg
@@ -209,22 +210,23 @@ module bit_reverse_buf #(
 		if ( rst )
 		begin
 			rd_addr_r <= 'h0;
-			rd_banksel_r <= 1'h0;
 
+			rd_frame_parity_r <= 1'b0;
+			rd_banksel_r <= 1'h0;
 			rd_valid_r <= 1'b0;
+
 		end
 		else if ( rd_pipe_en )
 		begin
 			rd_addr_r <= rd_addr_r + 1'h1;
-			rd_banksel_r <= rd_banksel;
 
+			rd_frame_parity_r <= rd_frame_parity;
+			rd_banksel_r <= rd_banksel;
 			rd_valid_r <= 1'b1;
 		end
 
 		if ( rd_pipe_en )
 		begin
-			rd_frame_parity_r <= rd_frame_parity;
-
 			banks_dout_r[ 0:1 ] <= buf_banks_dout[ 0:1 ];
 			rd_banksel_dly_r <= rd_banksel_r;
 		end
