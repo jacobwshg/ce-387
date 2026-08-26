@@ -204,15 +204,15 @@ module bit_reverse_buf #(
 	always_ff @( posedge clk )
 	begin: rd_reg
 
-		if ( rst ) rd_frame_state_r <= S_FRAME_DONE;
+		if ( rst ) rd_frame_state_r <= S_FRAME_RUN;
 		else       rd_frame_state_r <= rd_frame_state_next;
 
 		if ( rst )
 		begin
 			rd_addr_r <= 'h0;
 
-			rd_frame_parity_r <= 1'b0;
-			rd_banksel_r <= 1'h0;
+			rd_frame_parity_r <= 1'b1;
+			rd_banksel_r <= 1'h1;
 			rd_valid_r <= 1'b0;
 
 		end
@@ -283,10 +283,16 @@ module bit_reverse_buf #(
 				 * this sample is being decoded over the current cycle and
 				 * will clock into banks_dout_r ( along with garbage in the
 				 * alternate bank ) on the upcoming edge; thus state should
-				 * change to DONE on the upcoming edge too
+				 * change to DONE on the upcoming edge too.
+				 *
+				 * This transition in particular is gated by rd_pipe_en,
+				 * else in case out_full=0, the state would change without
+				 * rd_frame_parity being clocked into rd_frame_parity_r. When
+				 * reader returns to RUN state, it will see the preserved parity 
+				 * flip again and switch undesirably to DONE state again.
 				 *
 				 */
-				if ( rd_frame_parity !== rd_frame_parity_r )
+				if ( rd_pipe_en && ( rd_frame_parity !== rd_frame_parity_r ) )
 				begin
 					rd_frame_state_next = S_FRAME_DONE;
 				end
