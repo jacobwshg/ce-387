@@ -33,10 +33,10 @@ module bit_reverse_buf #(
 	endfunction
 
 	logic [ SAMPLE_ID_WIDTH-1:0 ] buf_wr_addr, buf_rd_addr;
-	logic buf_wr_en [ 0:1 ];
-	logic buf_rd_en;
+	logic [ 0:1 ] buf_banks_wr_en;
 	logic [ 2*DWIDTH-1:0 ] buf_din;
-	logic [ 2*DWIDTH-1:0 ] buf_banks_dout [ 0:1 ];
+	logic buf_rd_en;
+	logic [ 0:1 ] [ 2*DWIDTH-1:0 ] buf_banks_dout;
 	generate
 		genvar i;
 		for ( i=0; i<2; ++i )
@@ -48,7 +48,7 @@ module bit_reverse_buf #(
 				.clk( clk ),
 				.wr_addr( buf_wr_addr ),
 				.rd_addr( buf_rd_addr ),
-				.wr_en( buf_wr_en[ i ] ),
+				.wr_en( buf_banks_wr_en[ i ] ),
 				.rd_en( buf_rd_en ),
 				.din ( buf_din ),
 				.dout( buf_banks_dout[ i ] )
@@ -148,10 +148,10 @@ module bit_reverse_buf #(
 
 		buf_din = din_r;
 		buf_wr_addr = wr_addr_r;
-		buf_wr_en[ 0:1 ] = { 1'b0, 1'b0 };
+		buf_banks_wr_en[ 0:1 ] = { 1'b0, 1'b0 };
 		if ( wr_valid_r && wr_pipe_en )
 		begin
-			buf_wr_en[ wr_banksel_r ] = 1'b1;
+			buf_banks_wr_en[ wr_banksel_r ] = 1'b1;
 		end
 
 		wr_frame_state_next = wr_frame_state_r;
@@ -178,7 +178,7 @@ module bit_reverse_buf #(
 	logic rd_pipe_en;
 
 	/* Match sample i+1 ( idx in written bank, not order of input arrival ) */
-	logic [ SAMPLE_ID_WIDTH:0 ] rd_addr_next;
+	//logic [ SAMPLE_ID_WIDTH:0 ] rd_addr_next;
 
 	/* Match sample i */
 	logic [ SAMPLE_ID_WIDTH:0 ] rd_addr_r;
@@ -192,7 +192,7 @@ module bit_reverse_buf #(
 	logic rd_valid_r;
 
 	/* Match sample i-2 */
-	logic [ 2*DWIDTH-1:0 ] banks_dout_r [ 0:1 ];
+	logic [ 0:1 ] [ 2*DWIDTH-1:0 ] banks_dout_r;
 	logic rd_banksel_dly_r;
 	logic rd_valid_dly_r;
 
