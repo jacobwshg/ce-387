@@ -143,7 +143,7 @@ void fft( Complex *in, Complex *out, const unsigned int N )
 		x[ i ] = ( Complex * ) malloc( N * sizeof( Complex ) );
 		if ( !x[ i ] )
 		{
-			printf( "failed to allocate results cache\n" );
+			fprintf( stderr, "Failed to allocate results cache\n" );
 			fft_cleanup( x, ctable, STAGES );
 		}
 	}
@@ -155,7 +155,7 @@ void fft( Complex *in, Complex *out, const unsigned int N )
 		ctable[ stage ] = ( Complex * ) malloc( stg_twdl_cnt * sizeof( Complex ) );
 		if ( !ctable[ stage ] )
 		{
-			printf( "failed to allocate twiddle cache" );
+			fprintf( stderr, "Failed to allocate twiddle cache" );
 			fft_cleanup( x, ctable, STAGES );
 		}
 	}
@@ -289,36 +289,52 @@ static inline void print_twiddles(
 	const unsigned int N
 )
 {
+
+	char pathbuf[ 64 ];
+	snprintf( pathbuf, sizeof pathbuf, "twiddles_pkg_%d.sv", N );
+	FILE *f = fopen( pathbuf, "w" );
+	if ( !f )
+	{
+		fprintf( stderr, "Failed to open twiddle file for writing\n" );
+		return;
+	}
+	
+
 	const unsigned int stages = ( unsigned int ) log2( N );
-	printf( "package twiddles_pkg;\n\n" );
-	printf( "\tlocalparam int N     = %d;\n", N );
-	printf( "\tlocalparam int STAGES = $clog2( N );\n\n" );
-	printf(
-		"\tlocalparam logic signed [ 0:STAGES-1 ] [ 0:( N/2-1 ) ] [ 0:1 ] [ 31:0 ]\n"
-		"\t\tTWIDDLES=\n"
+	fprintf( f, "package twiddles_pkg;\n\n" );
+	fprintf( f, "\tlocalparam int N = %d;\n", N );
+	fprintf( f, "\tlocalparam int STAGES = $clog2( N );\n\n" );
+	fprintf(
+		f,
+		"\tlocalparam logic signed [ 0:( N/2-1 ) ] [ 0:1 ] [ 31:0 ]\n"
+		"\t\tTWIDDLES [ 0:STAGES-1 ] = \n"
 		"\t'{\n"
 	);
 	unsigned int half_step = 1;
 	for ( unsigned int stage = 0; stage < stages; ++stage )
 	{
-		printf( "\t\t'{" );
+		fprintf( f,"\t\t'{" );
 		if ( stage > 0 ) { half_step *= 2; }
 		for ( unsigned int id = 0; id < half_step; ++id ) 
 		{
 			const char *sep = ( id==0 ? "" : "," );
 			const char *rowtab = ( id%4==0 ? "\n\t\t\t" : "" );
-			printf(
+			fprintf(
+				f,
 				"%s%s%d:'{32'sh%08x,32'sh%08x}",
 				sep, rowtab, id, ctable[ stage ][ id ].real, ctable[ stage ][ id ].imag
 			);
 		}
-		printf( ",\n\t\t\tdefault:'{32'sh00000000,32'sh00000000}" );
-		printf( "\n\t\t}%s\n", ( stage==stages-1 ) ? "" : "," );
+		fprintf( f,",\n\t\t\tdefault:'{32'sh00000000,32'sh00000000}" );
+		fprintf( f,"\n\t\t}%s\n", ( stage==stages-1 ) ? "" : "," );
 	}
-	printf(
+	fprintf(
+		f,
 		"\t};\n\n"
 		"endpackage: twiddles_pkg\n\n"
 	);
+
+	fclose( f );
 
 }
 
