@@ -136,7 +136,7 @@ main( int argc, char *argv[] )
 
 	std::printf(
 		"out1: %x + %xj\n"
-		"out2: %x + %xj\n",
+		"out2: %x + %xj\n\n",
 		out1.real, out1.imag, out2.real, out2.imag
 	);
 
