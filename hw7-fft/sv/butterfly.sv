@@ -5,47 +5,67 @@ module butterfly
 	parameter int FRAC_WIDTH = 14
 )
 (
-	input  logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] w, in1, in2,
-	output logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] out1, out2
+	input  logic clk,
+	input  logic signed [ DATA_WIDTH-1:0 ]
+		in1_real, in1_imag,
+		in2_real, in2_imag,
+		w_real, w_imag,
+	output logic signed [ DATA_WIDTH-1:0 ]
+		out1_real, out1_imag,
+		out2_real, out2_imag
 );
 	import quant_pkg::DEQUANT;
 
-	localparam logic signed [ DATA_WIDTH-1:0 ] Q_STEP = 1 << FRAC_WIDTH;
+	logic signed [ DATA_WIDTH-1:0 ]
+		in1_real_r, in1_imag_r,
+		in2_real_r, in2_imag_r,
+		w_real_r,   w_imag_r;
 
-	localparam logic [ 0:0 ]
-		RE = 0,
-		IM = 1;
+	logic signed [ DATA_WIDTH-1:0 ] v_real, v_imag;
 
-	logic signed [ 0:1 ] [ DATA_WIDTH-1:0 ] v;
+	logic signed [ DATA_WIDTH-1:0 ] p1, p2, p3, p4; 
 
-	logic signed [ DATA_WIDTH-1:0 ] rw_r2, iw_i2, rw_i2, iw_r2;
+	logic signed [ DATA_WIDTH-1:0 ]
+		out1_real_c, out1_imag_c,
+		out2_real_c, out2_imag_c;
+
+	logic signed [ DATA_WIDTH-1:0 ]
+		out1_real_r, out1_imag_r,
+		out2_real_r, out2_imag_r;
+
+
+	always_ff @( posedge clk )
+	begin
+		in1_real_r <= in1_real; in1_imag_r <= in1_imag;
+		in2_real_r <= in2_real; in2_imag_r <= in2_imag;
+		w_real_r   <= w_real;   w_imag_r   <= w_imag;
+
+		out1_real_r <= out1_real_c; out1_imag_r <= out1_imag_c;
+		out2_real_r <= out2_real_c; out2_imag_r <= out2_imag_c;
+	end
 
 	always_comb
 	begin
 		// w * in2
-		rw_r2 = quant_pkg::DEQUANT( w[RE] * in2[RE] );
-		iw_i2 = quant_pkg::DEQUANT( w[IM] * in2[IM] );
-		rw_i2 = quant_pkg::DEQUANT( w[RE] * in2[IM] );
-		iw_r2 = quant_pkg::DEQUANT( w[IM] * in2[RE] );
-		v[RE] = rw_r2 - iw_i2;
-		v[IM] = rw_i2 + iw_r2;
+		p1 = quant_pkg::DEQUANT( in2_real_r * w_real_r );
+		p2 = quant_pkg::DEQUANT( in2_imag_r * w_imag_r );
+		p3 = quant_pkg::DEQUANT( in2_real_r * w_imag_r );
+		p4 = quant_pkg::DEQUANT( in2_imag_r * w_real_r );
 
-		out1[RE] = in1[RE] + v[RE];
-		out1[IM] = in1[IM] + v[IM];
+		v_real = p1 - p2;
+		v_imag = p3 + p4;
 
-		out2[RE] = in1[RE] - v[RE];
-		out2[IM] = in1[IM] - v[IM];
-
-		/*
-		$display( "\nButterfly:" );	
-		$display( "\tw: %08h+%08hj, in1: %08h+%08hj, in2: %08h+%08hj", w[RE], w[IM], in1[RE], in1[IM], in2[RE], in2[IM] );
-		$display( "\tv[RE] = %08h = %08h - %08h ", v[RE], rw_r2, iw_i2 );
-		$display( "\tv[IM] = %08h = %08h - %08h ", v[IM], rw_i2, iw_r2 );
-		$display( "\tout1: %08h+%08hj, out2: %08h+%08hj", out1[RE], out1[IM], out2[RE], out2[IM] );
-		$display( "" );
-		*/
+		out1_real_c = in1_real_r + v_real;
+		out1_imag_c = in1_imag_r + v_imag;
+		out2_real_c = in1_real_r - v_real;
+		out2_imag_c = in1_imag_r - v_imag;
 
 	end
+
+	assign out1_real = out1_real_r;
+	assign out1_imag = out1_imag_r;
+	assign out2_real = out2_real_r;
+	assign out2_imag = out2_imag_r;
 
 endmodule: butterfly
 
