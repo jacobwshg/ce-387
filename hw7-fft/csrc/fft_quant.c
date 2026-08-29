@@ -168,7 +168,7 @@ void fft( Complex *in, Complex *out, const unsigned int N )
 	{
 		printf(
 			"\t%08x+%08xj\n", 
-			i, x[ 0 ][ i ].real, x[ 0 ][ i ].imag
+			 x[ 0 ][ i ].real, x[ 0 ][ i ].imag
 		);
 	}
 
