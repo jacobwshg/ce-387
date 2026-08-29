@@ -1,27 +1,24 @@
 
-import globals_pkg :: N;
-import globals_pkg :: DWIDTH;
-import globals_pkg :: printtime;
-import twdls_pkg :: TWDLS;
-
 module fft_stage #(
-	parameter int STAGE = 1,
-	parameter int N = globals_pkg::N,
-	parameter int DWIDTH = globals_pkg::DWIDTH,
+	parameter int DWIDTH = 32,
+	parameter int N = 16,
+	parameter int STAGE = 2,
 
 	// # stages in mul_cmplx retimed regs ( excluding input reg )
-	parameter int MUL_STAGES = 1
+	parameter int MUL_STAGES = 2
 )
 (
 	input  logic clk,
 	input  logic rst,
 
-	input  logic signed [ DWIDTH-1:0 ] din_real, din_imag,
 	input  logic in_empty,
+	input  logic signed [ DWIDTH-1:0 ] din_real,
+	input  logic signed [ DWIDTH-1:0 ] din_imag,
 	output logic in_rd_en,
 
 	input  logic out_full,
-	output logic signed [ DWIDTH-1:0 ] dout_real, dout_imag,
+	output logic signed [ DWIDTH-1:0 ] dout_real,
+	output logic signed [ DWIDTH-1:0 ] dout_imag,
 	output logic out_wr_en
 );
 	import quant_pkg::DEQUANT;
@@ -414,9 +411,6 @@ module fft_stage #(
 		if ( pipe_wr_en )
 		begin
 			{ fetch_din_real_r, fetch_din_imag_r } <= { din_real, din_imag };
-
-			//globals_pkg::printtime();
-			//$strobe( "fetch_din_real : %h + %hj", fetch_din_real_r, fetch_din_imag_r );
 
 			mul_sample_id_r[ 0 ] <= fetch_sample_id_r;
 			mul_sample_id_r[ 1:MUL_SBD_STAGES-1 ] <= mul_sample_id_r[ 0:MUL_SBD_STAGES-2 ];

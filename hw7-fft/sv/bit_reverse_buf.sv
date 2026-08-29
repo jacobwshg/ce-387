@@ -1,7 +1,7 @@
 
 module bit_reverse_buf #(
-	parameter int N = 1024,
-	parameter int DWIDTH = 32
+	parameter int DWIDTH = 32,
+	parameter int N = 1024
 )
 (
 	input logic clk,
