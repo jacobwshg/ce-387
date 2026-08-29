@@ -19,7 +19,7 @@
 
 #define PI 3.14159265358979323846
 
-inline int
+static inline int
 DEQUANTIZE_I( const int i )
 {
 	int dq = i >> BITS;
@@ -42,7 +42,7 @@ typedef struct
 
 
 // Bit reversal
-void bit_reversal( Complex *in, Complex *out, int N ) 
+void bit_reversal( const Complex *in, Complex *out, const unsigned int N ) 
 {
 	// Precompute bit-reversed indices for the range [0, N-1]
 	int bit_reversal_table[ N ];
@@ -50,12 +50,12 @@ void bit_reversal( Complex *in, Complex *out, int N )
 	for ( int i = 0; i < N; ++i )
 	{
 		int j = 0;
-		int ii = i;
+		int i_cpy = i;
 		for ( int bit = 0; bit < log2( N ); ++bit )
 		{
 			j <<= 1;
-			j |= ii & 1;
-			ii >>= 1;
+			j |= i_cpy & 1;
+			i_cpy >>= 1;
 		}
 		bit_reversal_table[ i ] = j;
 		//std::cout << (i == 0 ? "[" : ",") << bit_reversal_table[i] << (i == N-1 ? "]\n" : "");
@@ -71,10 +71,10 @@ void bit_reversal( Complex *in, Complex *out, int N )
 
 // FFT stage operation (butterfly computation)
 void butterfly(
-	const int stage, const int sampl_idx,
-	Complex *in1,  Complex *in2,
+	const unsigned int stage, const unsigned int sampl_idx,
+	const Complex *in1,  const Complex *in2,
 	Complex *out1, Complex *out2,
-	Complex *w
+	const Complex *w
 ) 
 {
 	/*
@@ -86,130 +86,146 @@ void butterfly(
 	*/
 
 	const int
-		w_re = w->real, w_im = w->imag,
-		in1_re = in1->real, in1_im = in1->imag,
-		in2_re = in2->real, in2_im = in2->imag;
+		w_real = w->real,     w_imag = w->imag,
+		in1_real = in1->real, in1_imag = in1->imag,
+		in2_real = in2->real, in2_imag = in2->imag;
 
-	const int prod_wr_i2r_qq = w_re * in2_re;
-	const int prod_wr_i2i_qq = w_re * in2_im;
-	const int prod_wi_i2i_qq = w_im * in2_im;
-	const int prod_wi_i2r_qq = w_im * in2_re;
+	int p1 = w_real * in2_real;
+	int p2 = w_imag * in2_imag;
+	int p3 = w_real * in2_imag;
+	int p4 = w_imag * in2_real;
 
-	const int prod_wr_i2r = DEQUANTIZE_I( prod_wr_i2r_qq );
-	const int prod_wr_i2i = DEQUANTIZE_I( prod_wr_i2i_qq );
-	const int prod_wi_i2i = DEQUANTIZE_I( prod_wi_i2i_qq );
-	const int prod_wi_i2r = DEQUANTIZE_I( prod_wi_i2r_qq );
+	p1 = DEQUANTIZE_I( p1 );
+	p2 = DEQUANTIZE_I( p2 );
+	p3 = DEQUANTIZE_I( p3 );
+	p4 = DEQUANTIZE_I( p4 );
 
 	Complex v =
 	{
-		prod_wr_i2r - prod_wi_i2i,
-		prod_wr_i2i + prod_wi_i2r,
+		p1 - p2,
+		p3 + p4
 	};
 	
-	out1->real = in1_re + v.real;
-	out1->imag = in1_im + v.imag;
-	out2->real = in1_re - v.real;
-	out2->imag = in1_im - v.imag;
+	out1->real = in1_real + v.real;
+	out1->imag = in1_imag + v.imag;
+	out2->real = in1_real - v.real;
+	out2->imag = in1_imag - v.imag;
 
-	/////////
-	/*
-	if ( stage == 0 )
-	{
-
-	printf( "stage 1 butterfly:\n" );
-	printf( "\tw = %08x + %08xj\n", w_re, w_im );
-	printf( "\tin1 = %08x + %08xj\n", in1_re, in1_im );
-	printf( "\tin2 = %08x + %08xj\n", in2_re, in2_im );
-
-	//printf( "\tr*r: %08x, dq: %08x", prod_wr_i2r_qq, prod_wr_i2r );
-	//printf( "\tr*i: %08x, dq: %08x", prod_wr_i2i_qq, prod_wr_i2i );
-	//printf( "\ti*i: %08x, dq: %08x", prod_wi_i2i_qq, prod_wi_i2i );
-	//printf( "\ti*r: %08x, dq: %08x\n", prod_wi_i2r_qq, prod_wi_i2r );
-
-	printf( "\tv.real = %08x - %08x = %08x\n", prod_wr_i2r, prod_wi_i2i, v.real );
-	printf( "\tv.imag = %08x + %08x = %08x\n", prod_wr_i2i, prod_wi_i2r, v.imag );
-	printf( "\tout1 = %08x + %08xj\n", out1->real, out1->imag );
-	printf( "\tout2 = %08x + %08xj\n", out2->real, out2->imag );
-	
-	}
-	*/
 }
 
+static inline void print_twiddles( const Complex **ctable, const unsigned int N );
+
+static inline void fft_cleanup(
+	Complex **x, Complex **ctable,
+	const unsigned int stages
+);
+
 // FFT function with feed-forward memory allocation
-void fft( Complex *in, Complex *out, const int N ) 
+void fft( Complex *in, Complex *out, const unsigned int N ) 
 {
 	assert( N > 0 );
 	assert( !( N & ( N-1 ) ) ); // sanity check: power of 2
 
-	const int HALF_N = N >> 1;
+	const unsigned int HALF_N = N >> 1;
 
-	const int NUM_STAGES = log2( N );
-	const int TOTAL_SIZE = N * (NUM_STAGES + 1);
+	const unsigned int STAGES = ( unsigned int ) log2( N );
+	// N inputs + N per-stage outputs
+	const unsigned int TOTAL_SIZE = N * ( STAGES + 1 );
 
-	Complex x[ TOTAL_SIZE ];
-	Complex ctable[ NUM_STAGES ][ HALF_N ];
-
+	// inputs and intermediate/final results
+	Complex *x[ 1 + STAGES ];
+	memset( x, 0x0, sizeof x );
+	// twiddle factors
+	Complex *ctable[ STAGES ];
 	memset( ctable, 0x0, sizeof ctable );
+	for ( unsigned int i=0; i<=STAGES; ++i )
+	{
+		x[ i ] = ( Complex * ) malloc( N * sizeof( Complex ) );
+		if ( !x[ i ] )
+		{
+			printf( "failed to allocate results cache\n" );
+			fft_cleanup( x, ctable, STAGES );
+		}
+	}
 
-	// Stage 0: Bit-reversed input stored in stage 0 memory
-	bit_reversal( in, x, N );
+	unsigned int stg_twdl_cnt = 1;
+	for ( unsigned int stage=0; stage<STAGES; ++stage )
+	{
+		if ( stage>0 ) { stg_twdl_cnt *= 2; }
+		ctable[ stage ] = ( Complex * ) malloc( stg_twdl_cnt * sizeof( Complex ) );
+		if ( !ctable[ stage ] )
+		{
+			printf( "failed to allocate twiddle cache" );
+			fft_cleanup( x, ctable, STAGES );
+		}
+	}
+
+	// Bit-reversed stage 0 inputs 
+	bit_reversal( in, x[ 0 ], N );
+
+	printf( "Index bit-reversed inputs:" );
+	for ( unsigned int i = 0; i < N; ++i )
+	{
+		printf(
+			"\t%08x+%08xj\n", 
+			i, x[ 0 ][ i ].real, x[ 0 ][ i ].imag
+		);
+	}
 
 	// OK
 
-	// reordered inputs
-	for ( int i = 0; i < N; ++i )
-	{
-		printf("X[%d] = %08x + %08xj\n", i, x[i].real, x[i].imag);
-	}
-
+	/*
+	 * step: distance between two samples in the same position within 
+	 * their respective groups of overlapping butterflies.
+	 * Example: in stage 2, every 4 butterflies overlap. the in1[0] of
+	 * one group is 8 samples away from the in1[0] of the next group.
+	 * Thus step = 8.
+	 */
+	unsigned int step = 1;
 	// FFT computation across stages
-	for ( int stage = 0; stage < NUM_STAGES; ++stage ) 
+	for ( unsigned int stage = 0; stage < STAGES; ++stage ) 
 	{
 		printf( "\n" );
 
-		//
-		// base offsets w.r.t. all samples and intermediate values
-		//
-		const int read_offset  = stage * N;
-		// this stage's outputs are next stage's inputs
-		const int write_offset = read_offset + N; 
+	 	// step begins as 2 for stage 0, and doubles per stage
+		step *= 2;
+		/*
+		 * In each stage, half step is the same as the number of twiddle factors
+		 * needed for this stage
+		 */
+		const unsigned int half_step = step / 2;
 
-		// step size doubles per stage
-		const int step = 1 << ( stage + 1 );
-		const int half_step = step / 2;
-
-		for ( int j = 0; j < half_step; ++j )
+		const float angle_step = -PI / half_step;
+		for ( unsigned int j = 0; j < half_step; ++j )
 		{
 			// Calculate the twiddle factor
-			const float angle_step = -PI / half_step;
-			float angle = j * angle_step;
+			const float angle = j * angle_step;
 			Complex w = { QUANTIZE_F( cos( angle ) ), QUANTIZE_F( sin( angle ) ) };
 			ctable[ stage ][ j ] = w;
 		}
 
-		/* step ( = butterfly group ) idx */
-		for ( int i = 0; i < N; i += step )
+		/* step ( = butterfly group ) base idx */
+		for ( unsigned int i = 0; i < N; i += step )
 		{
 			/* step-internal idx of a single complex value */
-			for ( int j = 0; j < half_step; ++j ) 
+			for ( unsigned int j = 0; j < half_step; ++j ) 
 			{
 				// Calculate read and write addresses for the current value
-				const int in1_idx  = read_offset  + i + j;
-				const int in2_idx  = in1_idx + half_step;
-				const int out1_idx = write_offset + i + j;
-				const int out2_idx = out1_idx + half_step;
+				const unsigned int in1_idx  = i + j;
+				const unsigned int in2_idx  = in1_idx + half_step;
+				const unsigned int out1_idx = i + j;
+				const unsigned int out2_idx = out1_idx + half_step;
 
-				Complex *const w = &ctable[ stage ][ j ];
+				const Complex *w = &ctable[ stage ][ j ];
 
 				// Perform the FFT stage operation
 				butterfly(
 					stage, i+j,
-					&x[ in1_idx ], &x[ in2_idx ],
-					&x[ out1_idx ], &x[ out2_idx ],
+					&x[ stage ][ in1_idx ],    &x[ stage ][ in2_idx ],
+					&x[ stage+1 ][ out1_idx ], &x[ stage+1 ][ out2_idx ],
 					w
 				);
 
-				//////////////////
 				/*
 				printf(
 					"Stage %d, i=%d, j=%d: "
@@ -228,43 +244,82 @@ void fft( Complex *in, Complex *out, const int N )
 				*/
 			}
 		}
+
+		
+		printf( "Stage %d outputs:\n", stage );
+		for ( unsigned int i=0; i<N; ++i )
+		{
+			printf( "\t%08x+%08xj\n", x[ stage+1 ][ i ].real, x[ stage+1 ][ i ].imag );
+		}
+
 	}
 
-	//////////////////////
-	///*
-	// Print the twiddle factor table for SystemVerilog
-	printf( "package twdls_pkg;\n\n" );
-	printf( "\tlocalparam int N_MAX     = %d;\n", N );
-	printf( "\tlocalparam int STAGE_MAX = $clog2( N_MAX );\n\n", N );
+	print_twiddles( ( const Complex ** ) ctable, N );
+
+	// Copy final outputs
+	for ( unsigned int i = 0; i < N; ++i )
+	{
+		out[ i ] = x[ STAGES ][ i ];
+	}
+
+	fft_cleanup( x, ctable, STAGES );
+
+}
+
+static inline void fft_cleanup(
+	Complex **x, Complex **ctable,
+	const unsigned int stages
+)
+{
+	if ( x[ 0 ] )
+	{
+		free( x[ 0 ] );
+		x[ 0 ] = NULL;
+	}
+	for ( unsigned int stage=0; stage<stages; ++stage )
+	{
+		if ( x[ stage+1 ] )    { free( x[ stage+1 ] ); x[ stage+1 ] = NULL; }
+		if ( ctable[ stage ] ) { free( ctable[ stage ] ); ctable[ stage ] = NULL; }
+	}
+
+}
+
+static inline void print_twiddles(
+	const Complex **ctable,
+	const unsigned int N
+)
+{
+	const unsigned int stages = ( unsigned int ) log2( N );
+	printf( "package twiddles_pkg;\n\n" );
+	printf( "\tlocalparam int N     = %d;\n", N );
+	printf( "\tlocalparam int STAGES = $clog2( N );\n\n" );
 	printf(
-		"\tlocalparam logic signed [ 0:STAGE_MAX-1 ] [ 0:( N_MAX/2 )-1 ] [ 0:1 ] [ 31:0 ]\n"
-		"\t\tTWDLS=\n"
+		"\tlocalparam logic signed [ 0:STAGES-1 ] [ 0:( N/2-1 ) ] [ 0:1 ] [ 31:0 ]\n"
+		"\t\tTWIDDLES=\n"
 		"\t'{\n"
 	);
-	for ( int i = 0; i < NUM_STAGES; i++ )
+	unsigned int half_step = 1;
+	for ( unsigned int stage = 0; stage < stages; ++stage )
 	{
 		printf( "\t\t'{" );
-		for ( int j = 0; j < HALF_N; ++j ) 
+		if ( stage > 0 ) { half_step *= 2; }
+		for ( unsigned int id = 0; id < half_step; ++id ) 
 		{
+			const char *sep = ( id==0 ? "" : "," );
+			const char *rowtab = ( id%4==0 ? "\n\t\t\t" : "" );
 			printf(
-				"%s%s{32'sh%08x,32'sh%08x}",
-				( j==0 ? "" : ", " ), ( j%4 ? "" : "\n\t\t\t" ), ctable[ i ][ j ].real, ctable[ i ][ j ].imag
+				"%s%s%d:'{32'sh%08x,32'sh%08x}",
+				sep, rowtab, id, ctable[ stage ][ id ].real, ctable[ stage ][ id ].imag
 			);
 		}
-		printf( "\n\t\t}%s\n", ( i==NUM_STAGES-1 ) ? "" : "," );
+		printf( ",\n\t\t\tdefault:'{32'sh00000000,32'sh00000000}" );
+		printf( "\n\t\t}%s\n", ( stage==stages-1 ) ? "" : "," );
 	}
 	printf(
 		"\t};\n\n"
-		"endpackage: twdls_pkg\n\n"
+		"endpackage: twiddles_pkg\n\n"
 	);
-	//*/
 
-	// Copy final output 
-	const int OUT_OFFSET = NUM_STAGES * N;
-	for ( int i = 0; i < N; ++i )
-	{
-		out[ i ] = x[ OUT_OFFSET + i ];
-	}
 }
 
 // Main function
@@ -283,7 +338,7 @@ int main( int argc, char *argv[] )
 		fprintf( stderr, "Number of inputs too large: %d\n", N_ );
 		exit( 2 );
 	}
-	int N = 1;
+	unsigned int N = 1;
 	N_ >>= 1;
 	while ( N_ > 0 )
 	{
@@ -301,19 +356,23 @@ int main( int argc, char *argv[] )
 	// Randomization scale factor (adjust to control noise level)
 	const double NOISE_SCALE = 0.05; 
 
-	for ( int i = 0; i < N; ++i ) 
+	int myrand = 42;
+
+	for ( unsigned int i = 0; i < N; ++i ) 
 	{
-		double noise_real = ( ( rand() % 1000 ) / 1000.0 - 0.5 ) * NOISE_SCALE;
-		double noise_imag = ( ( rand() % 1000 ) / 1000.0 - 0.5 ) * NOISE_SCALE;
+		//double noise_real = ( ( rand() % 1000 ) / 1000.0 - 0.5 ) * NOISE_SCALE;
+		//double noise_imag = ( ( rand() % 1000 ) / 1000.0 - 0.5 ) * NOISE_SCALE;
+		double noise_real = ( ( myrand % 1000 ) / 1000.0 - 0.5 ) * NOISE_SCALE;
+		double noise_imag = ( ( myrand % 1000 ) / 1000.0 - 0.5 ) * NOISE_SCALE;
 
 		X[i].real = QUANTIZE_F(cos(2 * PI * i / N) + noise_real);  // Cosine wave + noise
 		X[i].imag = QUANTIZE_F(sin(2 * PI * i / N) + noise_imag);  // Sine wave + noise
 	}
 
-	FILE *infile_re  = fopen( "../sim/infile_re.txt", "w" );
-	FILE *infile_im  = fopen( "../sim/infile_im.txt", "w" );
-	FILE *outfile_re = fopen( "../sim/outfile_re.txt", "w" );
-	FILE *outfile_im = fopen( "../sim/outfile_im.txt", "w" );
+	FILE *infile_re  = fopen( "infile_real.txt", "w" );
+	FILE *infile_im  = fopen( "infile_imag.txt", "w" );
+	FILE *outfile_re = fopen( "outfile_real.txt", "w" );
+	FILE *outfile_im = fopen( "outfile_imag.txt", "w" );
 	if (
 		!infile_re || !infile_im || !outfile_re || !outfile_im
 	)
@@ -322,7 +381,7 @@ int main( int argc, char *argv[] )
 	}
 
 	// write input to file
-	for ( int i = 0; i < N; ++i ) 
+	for ( unsigned int i = 0; i < N; ++i ) 
 	{
 		/////////////
 		/*
@@ -339,7 +398,7 @@ int main( int argc, char *argv[] )
 	fft( X, Y, N );
 
 	// write output to file
-	for ( int i = 0; i < N; ++i ) 
+	for ( unsigned int i = 0; i < N; ++i ) 
 	{
 		///////////////////
 		/*
