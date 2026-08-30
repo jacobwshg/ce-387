@@ -9,10 +9,12 @@ module cordic_stage
 )
 (
 	input  logic clk,
+
 	input  logic signed [ 15:0 ] x_in,
 	input  logic signed [ 15:0 ] y_in,
 	input  logic signed [ 15:0 ] z_in,
 	input  logic in_valid,
+
 	output logic signed [ 15:0 ] x_out, 
 	output logic signed [ 15:0 ] y_out, 
 	output logic signed [ 15:0 ] z_out, 
