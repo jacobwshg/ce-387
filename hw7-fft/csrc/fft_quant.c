@@ -40,6 +40,31 @@ typedef struct
 	int imag;
 } Complex;
 
+static inline void mul_cmplx(
+	const int a,
+	const int b,
+	const int c,
+	const int d,
+	int *out_real,
+	int *out_imag
+)
+{
+	if ( ( !out_real ) || !out_imag )
+	{
+		return;
+	}
+	int p1 = ( a + b ) * d;
+	int p2 = ( c + d ) * a;
+	int p3 = ( b - a ) * c;
+
+	p1 = DEQUANTIZE_I( p1 );
+	p2 = DEQUANTIZE_I( p2 );
+	p3 = DEQUANTIZE_I( p3 );
+
+	*out_real = p2 - p1;
+	*out_imag = p2 + p3;
+
+}
 
 // Bit reversal
 void bit_reversal( const Complex *in, Complex *out, const unsigned int N ) 
@@ -105,6 +130,14 @@ void butterfly(
 		p1 - p2,
 		p3 + p4
 	};
+
+	/*
+	Complex v = {};
+	mul_cmplx(
+		in2_real, in2_imag, w_real, w_imag,
+		&v.real, &v.imag
+	);
+	*/
 	
 	out1->real = in1_real + v.real;
 	out1->imag = in1_imag + v.imag;
@@ -163,7 +196,7 @@ void fft( Complex *in, Complex *out, const unsigned int N )
 	// Bit-reversed stage 0 inputs 
 	bit_reversal( in, x[ 0 ], N );
 
-	printf( "Index bit-reversed inputs:" );
+	printf( "Index bit-reversed inputs:\n" );
 	for ( unsigned int i = 0; i < N; ++i )
 	{
 		printf(
@@ -385,12 +418,12 @@ int main( int argc, char *argv[] )
 		X[i].imag = QUANTIZE_F(sin(2 * PI * i / N) + noise_imag);  // Sine wave + noise
 	}
 
-	FILE *infile_re  = fopen( "infile_real.txt", "w" );
-	FILE *infile_im  = fopen( "infile_imag.txt", "w" );
-	FILE *outfile_re = fopen( "outfile_real.txt", "w" );
-	FILE *outfile_im = fopen( "outfile_imag.txt", "w" );
+	FILE *infile_real  = fopen( "in_real.txt", "w" );
+	FILE *infile_imag  = fopen( "in_imag.txt", "w" );
+	FILE *outfile_real = fopen( "cmp_real.txt", "w" );
+	FILE *outfile_imag = fopen( "cmp_imag.txt", "w" );
 	if (
-		!infile_re || !infile_im || !outfile_re || !outfile_im
+		!infile_real || !infile_imag || !outfile_real || !outfile_imag
 	)
 	{
 		goto badio;
@@ -401,14 +434,14 @@ int main( int argc, char *argv[] )
 	{
 		/////////////
 		/*
-		fprintf(infile_re, "%.4f\n", DEQUANTIZE_F(X[i].real));
-		fprintf(infile_im, "%.4f\n", DEQUANTIZE_F(X[i].imag));
+		fprintf(infile_real, "%.4f\n", DEQUANTIZE_F(X[i].real));
+		fprintf(infile_imag, "%.4f\n", DEQUANTIZE_F(X[i].imag));
 		*/
-		fprintf( infile_re, "%08x\n", X[i].real );
-		fprintf( infile_im, "%08x\n", X[i].imag );
+		fprintf( infile_real, "%08x\n", X[i].real );
+		fprintf( infile_imag, "%08x\n", X[i].imag );
 	 }
-	fclose( infile_re );
-	fclose( infile_im );
+	fclose( infile_real );
+	fclose( infile_imag );
 
 	// run FFT
 	fft( X, Y, N );
@@ -418,29 +451,29 @@ int main( int argc, char *argv[] )
 	{
 		///////////////////
 		/*
-		fprintf(outfile_re, "%.4f\n", DEQUANTIZE_F(Y[i].real));
-		fprintf(outfile_im, "%.4f\n", DEQUANTIZE_F(Y[i].imag));
+		fprintf(outfile_real, "%.4f\n", DEQUANTIZE_F(Y[i].real));
+		fprintf(outfile_imag, "%.4f\n", DEQUANTIZE_F(Y[i].imag));
 		*/
-		fprintf( outfile_re, "%08x\n", Y[i].real );
-		fprintf( outfile_im, "%08x\n", Y[i].imag );
+		fprintf( outfile_real, "%08x\n", Y[i].real );
+		fprintf( outfile_imag, "%08x\n", Y[i].imag );
 	}
-	fclose( outfile_re );
-	fclose( outfile_im );
+	fclose( outfile_real );
+	fclose( outfile_imag );
 
 	return 0;
 
 	badio:
-		if ( !infile_re ) { fprintf( stderr, "Unable to open real input file\n" ); }
-		else fclose( infile_re );
+		if ( !infile_real ) { fprintf( stderr, "Unable to open real input file\n" ); }
+		else fclose( infile_real );
 
-		if ( !infile_im ) { fprintf( stderr, "Unable to open imag input file\n" ); }
-		else fclose( infile_im );
+		if ( !infile_imag ) { fprintf( stderr, "Unable to open imag input file\n" ); }
+		else fclose( infile_imag );
 
-		if ( !outfile_re ) { fprintf( stderr, "Unable to open real output file\n" ); }
-		else fclose( outfile_re );
+		if ( !outfile_real ) { fprintf( stderr, "Unable to open real output file\n" ); }
+		else fclose( outfile_real );
 
-		if ( !outfile_im ) { fprintf( stderr, "Unable to open imag output file\n" ); }
-		else fclose( outfile_im );
+		if ( !outfile_imag ) { fprintf( stderr, "Unable to open imag output file\n" ); }
+		else fclose( outfile_imag );
 
 		return 2;
 }
