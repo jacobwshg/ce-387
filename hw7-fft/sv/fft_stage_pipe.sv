@@ -5,7 +5,9 @@ module fft_stage #(
 	parameter int STAGE = 2,
 
 	// # stages in mul_cmplx retimed regs ( excluding input reg )
-	parameter int MUL_STAGES = 2
+	parameter int MUL_STAGES = 2,
+
+	parameter logic DBG = 1'b0
 )
 (
 	input  logic clk,
@@ -217,10 +219,10 @@ module fft_stage #(
 	/*
 	 * mul_cmplx input reg inputs
 	 */
-	assign mul_in_a = bfly_w_rd_real;
-	assign mul_in_b = bfly_w_rd_imag;
-	assign mul_in_c = fetch_din_real_r;
-	assign mul_in_d = fetch_din_imag_r;
+	assign mul_in_c = bfly_w_rd_real;
+	assign mul_in_d = bfly_w_rd_imag;
+	assign mul_in_a = fetch_din_real_r;
+	assign mul_in_b = fetch_din_imag_r;
 
 	/*
 	 * On clk edge c, partial products are clocked into mul_cmplx final 
@@ -436,6 +438,37 @@ module fft_stage #(
 
 		end
 	end	
+
+	generate
+	if ( DBG )
+	begin
+		always_ff @( negedge clk )
+		begin: dbg_dspl_proc
+			if ( in_rd_en )
+			begin
+				$display( "@ %0t stage %0d input  %h+%hj", $time, STAGE, din_real, din_imag  );
+			end
+			if ( out_wr_en )
+			begin
+				$display( "@ %0t stage %0d output %h+%hj", $time, STAGE, dout_real, dout_imag  );
+			end
+
+			if ( pipe_wr_en && fetch_valid_r )
+			begin
+				$display( "@ %0t stage %0d mul %h+%hj * %h+%hj", $time, STAGE, mul_in_a, mul_in_b, mul_in_c, mul_in_d );
+			end
+
+			if ( pipe_wr_en && add1_valid_r )
+			begin
+				$display(
+					"@ %0t stage %0d add1 clocked in1:%h+%hj, v: %h+%hj",
+					$time, STAGE, add1_in1_real_r, add1_in1_imag_r, add1_v_real_r, add1_v_imag_r
+				);
+			end
+
+		end: dbg_dspl_proc
+	end
+	endgenerate
 
 endmodule: fft_stage
 
