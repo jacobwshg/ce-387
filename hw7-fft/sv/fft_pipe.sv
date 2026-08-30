@@ -2,7 +2,9 @@
 module fft
 #(
 	parameter int DWIDTH = 32,
-	parameter int N = 32
+	parameter int N = 32,
+
+	parameter logic DBG = 1'b0
 )
 (
 	input  logic clk,
@@ -89,7 +91,8 @@ module fft
 			fft_stage #(
 				.DWIDTH( DWIDTH ),
 				.N( N ),
-				.STAGE( i )
+				.STAGE( i ),
+				.DBG( DBG )
 			) stage (
 				.clk( clk ), .rst( rst ),
 
