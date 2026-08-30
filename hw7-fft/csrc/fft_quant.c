@@ -97,9 +97,8 @@ void bit_reversal( const Complex *in, Complex *out, const unsigned int N )
 // FFT stage operation (butterfly computation)
 void butterfly(
 	const unsigned int stage, const unsigned int sampl_idx,
-	const Complex *in1,  const Complex *in2,
-	Complex *out1, Complex *out2,
-	const Complex *w
+	const Complex *in1,  const Complex *in2, const Complex *w,
+	Complex *out1, Complex *out2
 ) 
 {
 	/*
@@ -134,7 +133,8 @@ void butterfly(
 	/*
 	Complex v = {};
 	mul_cmplx(
-		in2_real, in2_imag, w_real, w_imag,
+		w_real, w_imag,
+		in2_real, in2_imag,
 		&v.real, &v.imag
 	);
 	*/
@@ -254,9 +254,9 @@ void fft( Complex *in, Complex *out, const unsigned int N )
 				// Perform the FFT stage operation
 				butterfly(
 					stage, i+j,
-					&x[ stage ][ in1_idx ],    &x[ stage ][ in2_idx ],
-					&x[ stage+1 ][ out1_idx ], &x[ stage+1 ][ out2_idx ],
-					w
+					&x[ stage ][ in1_idx ], &x[ stage ][ in2_idx ],
+					w,
+					&x[ stage+1 ][ out1_idx ], &x[ stage+1 ][ out2_idx ]
 				);
 
 				/*
