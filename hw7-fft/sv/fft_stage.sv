@@ -225,6 +225,8 @@ module fft_stage #(
 		out1[ 0:1 ] = out1_r[ 0:1 ];
 		out2[ 0:1 ] = out2_r[ 0:1 ];
 
+		out_valid = out_valid_r;
+
 		out_wr_en = 1'b0;
 		dout[ 0:1 ] = '{ default: 'shX };
 
@@ -337,7 +339,7 @@ module fft_stage #(
 					* Since we don't return to S_INIT, we read-ahead w in this
 					* state
 					*/
-					w_rd_addr = sample_id_next[ IN2_FLAGBIT_POS ];
+					w_rd_addr = sample_id_next[ MEM_ADDR_WIDTH-1:0 ];
 					w_rd_en   = 1'b1;
 					fsm_state_next = S_FETCH;
 				end
