@@ -5,7 +5,7 @@ import quant_pkg::DEQUANT;
 module fft_stage #(
 	parameter int DWIDTH = 32,
 	parameter int N = 32,
-	parameter int STAGE = 2
+	parameter int STAGE = 4
 )
 (
 	input  logic clk,
@@ -195,6 +195,27 @@ module fft_stage #(
 		end
 	end: mul_reg
 
+	generate
+	if ( STAGE===0 )
+	begin
+		// only a single twiddle and a single delay buf elem
+		assign w_rd_addr = 'h0;
+		assign dly_buf_addr = 'h0;
+	end
+	else
+	begin
+		/*
+		 * Used in S_INIT and S_OUT
+		 * In S_INIT, sample_id_next == sample_id_r
+		 */
+		assign w_rd_addr = sample_id_next[ MEM_ADDR_WIDTH-1:0 ];
+		/*
+		 * Used in S_MUL ( read out2/in1 ) and S_OUT ( write in1/out2 )
+		 */
+		assign dly_buf_addr = sample_id_r[ MEM_ADDR_WIDTH-1:0 ];
+	end
+	endgenerate
+
 	always_comb
 	begin
 		fsm_state_next = fsm_state_r;
@@ -203,24 +224,22 @@ module fft_stage #(
 
 		in_rd_en = 1'b0;
 
-		dly_buf_addr = sample_id_r[ MEM_ADDR_WIDTH-1:0 ];
-		dly_buf_din[ 0:1 ] = '{ default: 'shX };
+		dly_buf_din[ 0:1 ] = '{ default: 'sh0 };
 		dly_buf_rd_en = 1'b0;
 		dly_buf_wr_en = 1'b0;
 
-		w_rd_addr = 'hX;
 		w_rd_en = 1'b0;
 
 		is_in2 = ( 1'b1===sample_id_r[ IN2_FLAGBIT_POS ] );
 
 		in1[ 0:1 ] = in1_r[ 0:1 ];
-		in2[ 0:1 ] = '{ default: 'shX };
+		in2[ 0:1 ] = '{ default: 'sh0 };
 		v  [ 0:1 ] = v_r  [ 0:1 ];
 
-		dq_p1 = '{ default: 'shX };
-		dq_p2 = '{ default: 'shX };
-		dq_p3 = '{ default: 'shX };
-		dq_p4 = '{ default: 'shX };
+		dq_p1 = '{ default: 'sh0 };
+		dq_p2 = '{ default: 'sh0 };
+		dq_p3 = '{ default: 'sh0 };
+		dq_p4 = '{ default: 'sh0 };
 
 		out1[ 0:1 ] = out1_r[ 0:1 ];
 		out2[ 0:1 ] = out2_r[ 0:1 ];
@@ -228,13 +247,12 @@ module fft_stage #(
 		out_valid = out_valid_r;
 
 		out_wr_en = 1'b0;
-		dout[ 0:1 ] = '{ default: 'shX };
+		dout[ 0:1 ] = '{ default: 'sh0 };
 
 		case ( fsm_state_r )
 			S_INIT:
 			begin
-				// in2 path
-				w_rd_addr = sample_id_r[ MEM_ADDR_WIDTH-1:0 ];
+				// twiddle addr asserted
 				w_rd_en = 1'b1;
 
 				fsm_state_next = S_FETCH;
@@ -263,7 +281,6 @@ module fft_stage #(
 			S_MUL:
 			begin
 				// both paths: assert read addr
-				//dly_buf_addr = sample_id_r[ MEM_ADDR_WIDTH-1:0 ];
 				dly_buf_rd_en = 1'b1;
 
 				fsm_state_next = S_DQ;
@@ -337,9 +354,8 @@ module fft_stage #(
 
 					/*
 					* Since we don't return to S_INIT, we read-ahead w in this
-					* state
+					* state using incremented sample_id_next
 					*/
-					w_rd_addr = sample_id_next[ MEM_ADDR_WIDTH-1:0 ];
 					w_rd_en   = 1'b1;
 					fsm_state_next = S_FETCH;
 				end
