@@ -4,8 +4,8 @@ import quant_pkg::DEQUANT;
 
 module fft_stage #(
 	parameter int DWIDTH = 32,
-	parameter int N = 32,
-	parameter int STAGE = 4
+	parameter int N = 1024,
+	parameter int STAGE = 8
 )
 (
 	input  logic clk,
@@ -148,11 +148,6 @@ module fft_stage #(
 			fsm_state_r <= S_INIT;
 			sample_id_r <= 'h0;
 
-			in1_r [ 0:1 ] <= '{ default: 'sh0 };
-			v_r   [ 0:1 ] <= '{ default: 'sh0 };
-			out1_r[ 0:1 ] <= '{ default: 'sh0 };
-			out2_r[ 0:1 ] <= '{ default: 'sh0 };
-
 			out_valid_r <= 1'b0;
 		end
 		else
@@ -160,21 +155,51 @@ module fft_stage #(
 			fsm_state_r <= fsm_state_next;
 			sample_id_r <= sample_id_next;
 
-			in1_r [ 0:1 ] <= in1 [ 0:1 ];
-			v_r   [ 0:1 ] <= v   [ 0:1 ];
-			out1_r[ 0:1 ] <= out1[ 0:1 ];
-			out2_r[ 0:1 ] <= out2[ 0:1 ];
-
 			out_valid_r <= out_valid;
 		end
 
-		if ( fsm_state_r === S_DQ )
-		begin
-			dq_p1_r <= dq_p1;
-			dq_p2_r <= dq_p2;
-			dq_p3_r <= dq_p3;
-			dq_p4_r <= dq_p4;
-		end
+		case ( fsm_state_r )
+			S_FETCH:
+			begin
+				if( in_rd_en )
+				begin
+					if ( !is_in2 )
+					begin
+						in1_r[ 0:1 ] <= din[ 0:1 ];
+					end
+				end
+			end
+			S_DQ:
+			begin
+				dq_p1_r <= dq_p1;
+				dq_p2_r <= dq_p2;
+				dq_p3_r <= dq_p3;
+				dq_p4_r <= dq_p4;
+	
+				v_r[ 0:1 ] <= v[ 0:1 ];
+
+				if ( !is_in2 )
+				begin
+					out2_r[ 0:1 ] <= dly_buf_dout[ 0:1 ];
+				end
+				else
+				begin
+					in1_r[ 0:1 ] <= dly_buf_dout[ 0:1 ];
+				end
+			end
+			S_ADD:
+			begin
+				if ( is_in2 )
+				begin
+					out1_r[ 0:1 ] <= out1[ 0:1 ];
+					out2_r[ 0:1 ] <= out2[ 0:1 ];
+				end
+			end
+			default:
+			begin
+			end
+
+		endcase
 
 	end
 
@@ -224,7 +249,7 @@ module fft_stage #(
 
 		in_rd_en = 1'b0;
 
-		dly_buf_din[ 0:1 ] = '{ default: 'sh0 };
+		dly_buf_din[ 0:1 ] = '{ default: 'shx };
 		dly_buf_rd_en = 1'b0;
 		dly_buf_wr_en = 1'b0;
 
@@ -232,17 +257,18 @@ module fft_stage #(
 
 		is_in2 = ( 1'b1===sample_id_r[ IN2_FLAGBIT_POS ] );
 
-		in1[ 0:1 ] = in1_r[ 0:1 ];
-		in2[ 0:1 ] = '{ default: 'sh0 };
-		v  [ 0:1 ] = v_r  [ 0:1 ];
+		in1[ 0:1 ] = '{ default: 'shx };
+		in2[ 0:1 ] = '{ default: 'shx };
 
-		dq_p1 = '{ default: 'sh0 };
-		dq_p2 = '{ default: 'sh0 };
-		dq_p3 = '{ default: 'sh0 };
-		dq_p4 = '{ default: 'sh0 };
+		dq_p1 = '{ default: 'shx };
+		dq_p2 = '{ default: 'shx };
+		dq_p3 = '{ default: 'shx };
+		dq_p4 = '{ default: 'shx };
 
-		out1[ 0:1 ] = out1_r[ 0:1 ];
-		out2[ 0:1 ] = out2_r[ 0:1 ];
+		v  [ 0:1 ] = '{ default: 'shx };
+
+		out1[ 0:1 ] = '{ default: 'shx };
+		out2[ 0:1 ] = '{ default: 'shx };
 
 		out_valid = out_valid_r;
 
@@ -269,10 +295,16 @@ module fft_stage #(
 
 				if ( !in_empty )
 				begin
-					// in1 path
-					in1[ 0:1 ] = din[ 0:1 ];
-					// in2 path
-					in2[ 0:1 ] = din[ 0:1 ];
+					if ( !is_in2 )
+					begin
+						// in1 path
+						in1[ 0:1 ] = din[ 0:1 ];
+					end
+					else
+					begin
+						// in2 path
+						in2[ 0:1 ] = din[ 0:1 ];
+					end
 					in_rd_en = 1'b1;
 					fsm_state_next = S_MUL;
 				end
