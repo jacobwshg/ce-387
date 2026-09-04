@@ -379,6 +379,10 @@ module fft_stage #(
 					end
 					dly_buf_wr_en = 1'b1;	
 
+					/*
+					 * When the first in2 sample is encountered, pull
+					 * out_valid high, then clock it and allow to remain high
+					 */
 					out_valid = out_valid_r || sample_id_r[ IN2_FLAGBIT_POS ];
 					out_wr_en = 1'( out_valid );
 
@@ -398,6 +402,7 @@ module fft_stage #(
 			begin
 				fsm_state_next = S_INIT;
 				sample_id_next = 'h0;
+				out_valid = 1'b0;
 			end
 
 		endcase
