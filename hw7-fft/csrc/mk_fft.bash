@@ -1,5 +1,8 @@
 
 #!/bin/bash
 
-clang ./fft_quant.c -o fft -lm
+EXECPATH=fft
+
+rm -f ./$EXECPATH
+clang ./fft_quant.c -o ./$EXECPATH -lm
 
