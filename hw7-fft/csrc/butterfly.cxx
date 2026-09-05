@@ -65,12 +65,10 @@ butterfly(
 		p1, p2, p3, p4
 	);	
 
-	///*
 	p1 = dequantize( p1 );
 	p2 = dequantize( p2 );
 	p3 = dequantize( p3 );
 	p4 = dequantize( p4 );
-	//*/
 
 	std::printf(
 		"p1 dq = %x\n"
@@ -82,6 +80,61 @@ butterfly(
 
 	const std::int32_t
 		v_real { p1 - p4 },
+		v_imag { p2 + p3 };
+
+	std::printf(
+		"v = %x + %xj\n\n",
+		v_real, v_imag
+	);
+
+	out1_real = in1_real + v_real;
+	out1_imag = in1_imag + v_imag;
+	out2_real = in1_real - v_real;
+	out2_imag = in1_imag - v_imag;
+
+}
+
+
+static inline void
+butterfly_k(
+	const std::int32_t in1_real,
+	const std::int32_t in1_imag,
+	const std::int32_t in2_real,
+	const std::int32_t in2_imag,
+	const std::int32_t   w_real,
+	const std::int32_t   w_imag,
+
+	std::int32_t &out1_real,
+	std::int32_t &out1_imag,
+	std::int32_t &out2_real,
+	std::int32_t &out2_imag
+)
+{
+	std::int32_t
+		p1 { (   w_real +   w_imag ) * in2_imag },
+		p2 { ( in2_real + in2_imag ) *   w_real },
+		p3 { (   w_imag -   w_real ) * in2_real };
+
+	std::printf(
+		"p1 = (   w_real +   w_imag ) * in2_imag = %x\n"
+		"p2 = ( in2_real + in2_imag ) *   w_real = %x\n"
+		"p3 = (   w_imag -   w_real ) * in2_real = %x\n",
+		p1, p2, p3
+	);	
+
+	p1 = dequantize( p1 );
+	p2 = dequantize( p2 );
+	p3 = dequantize( p3 );
+
+	std::printf(
+		"p1 dq = %x\n"
+		"p2 dq = %x\n"
+		"p3 dq = %x\n\n",
+		p1, p2, p3
+	);
+
+	const std::int32_t
+		v_real { p2 - p1 },
 		v_imag { p2 + p3 };
 
 	std::printf(
@@ -129,7 +182,22 @@ main( int argc, char *argv[] )
 		in1.real, in1.imag, in2.real, in2.imag, w.real, w.imag
 	);
 
+	std::printf( "4-multiplier:\n" );
+
 	butterfly(
+		in1.real, in1.imag, in2.real, in2.imag, w.real, w.imag,
+		out1.real, out1.imag, out2.real, out2.imag
+	);
+
+	std::printf(
+		"out1: %x + %xj\n"
+		"out2: %x + %xj\n\n",
+		out1.real, out1.imag, out2.real, out2.imag
+	);
+
+	std::printf( "3-multiplier:\n" );
+
+	butterfly_k(
 		in1.real, in1.imag, in2.real, in2.imag, w.real, w.imag,
 		out1.real, out1.imag, out2.real, out2.imag
 	);
