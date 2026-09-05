@@ -18,7 +18,7 @@ int main( const int argc, const char *argv[] )
 
 	std::fprintf(
 		f,
-		"\tlocalparam logic [ 0:255*3-1 ] [ 7:0 ]\n"
+		"\tlocalparam logic [ 0:255*3 ] [ 7:0 ]\n"
 		"\tGRAYSCALE_TBL = \n"
 		"\t'{"
 	);
