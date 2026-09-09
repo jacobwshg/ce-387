@@ -1,8 +1,9 @@
 
 module fft_stage #(
 	parameter int DWIDTH = 32,
-	parameter int N = 16,
-	parameter int STAGE = 2,
+	parameter int FRACWIDTH = 14,
+	parameter int N = 1024,
+	parameter int STAGE = 8,
 
 	// # stages in mul_cmplx retimed regs ( excluding input reg )
 	parameter int MUL_STAGES = 2,
@@ -23,6 +24,7 @@ module fft_stage #(
 	output logic signed [ DWIDTH-1:0 ] dout_imag,
 	output logic out_wr_en
 );
+
 	import quant_pkg::DEQUANT;
 
 	/* mul_cmplx sideband depth ( 1 for input regs ) */
@@ -239,9 +241,17 @@ module fft_stage #(
 	 * synced and ready for add2.
 	 *
 	 */
-	assign dq_p1 = quant_pkg::DEQUANT( mul_out_p1 );
-	assign dq_p2 = quant_pkg::DEQUANT( mul_out_p2 );
-	assign dq_p3 = quant_pkg::DEQUANT( mul_out_p3 );
+	///*
+	dequantize_comb #( .DWIDTH( DWIDTH ), .FRACWIDTH( FRACWIDTH ) )
+		p1_dequant ( .din( mul_out_p1 ), .dout( dq_p1 ) );
+	dequantize_comb #( .DWIDTH( DWIDTH ), .FRACWIDTH( FRACWIDTH ) )
+		p2_dequant ( .din( mul_out_p2 ), .dout( dq_p2 ) );
+	dequantize_comb #( .DWIDTH( DWIDTH ), .FRACWIDTH( FRACWIDTH ) )
+		p3_dequant ( .din( mul_out_p3 ), .dout( dq_p3 ) );
+	//*/
+	//assign dq_p1 = quant_pkg::DEQUANT( mul_out_p1 );
+	//assign dq_p2 = quant_pkg::DEQUANT( mul_out_p2 );
+	//assign dq_p3 = quant_pkg::DEQUANT( mul_out_p3 );
 	assign dq_sample_id = mul_sample_id_r[ MUL_SBD_STAGES-1 ];
 	// We only care about bfly_in1_rd_addr when the sample in DQ is in2;
 	// it differs from the matching in1 only by having the flag bit as

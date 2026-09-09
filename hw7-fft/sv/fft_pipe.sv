@@ -2,7 +2,8 @@
 module fft
 #(
 	parameter int DWIDTH = 32,
-	parameter int N = 32,
+	parameter int FRACWIDTH = 14,
+	parameter int N = 256,
 
 	parameter logic DBG = 1'b0
 )
@@ -90,6 +91,7 @@ module fft
 			);
 			fft_stage #(
 				.DWIDTH( DWIDTH ),
+				.FRACWIDTH( FRACWIDTH ),
 				.N( N ),
 				.STAGE( i ),
 				.DBG( DBG )
