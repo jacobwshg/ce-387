@@ -10,12 +10,12 @@ module fifo_writer
 	input  logic wr_en,
 	input  logic [ DWIDTH-1:0 ] din,
 	// from reader
-	input  logic [ ADDR_WIDTH:0 ] rd_addr_g,
+	input  logic [ ADDR_WIDTH:0 ] rd_addr_g_in,
 
 	// to upstream
 	output logic full,
 	// to reader
-	output logic [ ADDR_WIDTH:0 ] wr_addr_g,
+	output logic [ ADDR_WIDTH:0 ] wr_addr_g_out,
 	// to RAM
 	output logic [ ADDR_WIDTH-1:0 ] mem_wr_addr,
 	output logic [ DWIDTH-1:0 ] mem_din,
@@ -62,7 +62,7 @@ module fifo_writer
 			wr_addr_r <= wr_addr_next;
 			wr_addr_g_r <= wr_addr_g_tmp[ ADDR_WIDTH:0 ];
 
-			sync_rd_addr_g_r[ 0 ] <= rd_addr_g;
+			sync_rd_addr_g_r[ 0 ] <= rd_addr_g_in;
 			sync_rd_addr_g_r[ 1 ] <= sync_rd_addr_g_r[ 0 ];
 			sync_rd_addr_r <= sync_rd_addr_tmp;
 		end
@@ -84,7 +84,7 @@ module fifo_writer
 	end
 
 	assign full = full_r;
-	assign wr_addr_g = wr_addr_g_r;
+	assign wr_addr_g_out = wr_addr_g_r;
 	assign mem_wr_addr = wr_addr_r[ ADDR_WIDTH-1:0 ];
 	assign mem_din = din;
 	assign mem_wr_en = ( !full_r ) && wr_en;
@@ -101,7 +101,7 @@ module fifo_reader
 	// from downstream
 	input  logic rd_en,
 	// from writer
-	input  logic [ ADDR_WIDTH:0 ] wr_addr_g,
+	input  logic [ ADDR_WIDTH:0 ] wr_addr_g_in,
 	// from RAM
 	input  logic [ DWIDTH-1:0 ] mem_dout,
 
@@ -109,7 +109,7 @@ module fifo_reader
 	output logic empty,
 	output logic [ DWIDTH-1:0 ] dout,
 	// to writer
-	output logic [ ADDR_WIDTH:0 ] rd_addr_g,
+	output logic [ ADDR_WIDTH:0 ] rd_addr_g_out,
 	// to RAM
 	output logic [ ADDR_WIDTH-1:0 ] mem_rd_addr,
 	output logic mem_rd_en
@@ -155,7 +155,7 @@ module fifo_reader
 			rd_addr_r <= rd_addr_next;
 			rd_addr_g_r <= rd_addr_g_tmp[ ADDR_WIDTH:0 ];
 
-			sync_wr_addr_g_r[ 0 ] <= wr_addr_g;
+			sync_wr_addr_g_r[ 0 ] <= wr_addr_g_in;
 			sync_wr_addr_g_r[ 1 ] <= sync_wr_addr_g_r[ 0 ];
 			sync_wr_addr_r <= sync_wr_addr_tmp;
 		end
@@ -174,7 +174,7 @@ module fifo_reader
 
 	assign empty = empty_r;
 	assign dout = mem_dout;
-	assign rd_addr_g = rd_addr_g_r;
+	assign rd_addr_g_out = rd_addr_g_r;
 	assign mem_rd_addr = rd_addr_next[ ADDR_WIDTH-1:0 ];
 	// whether to let BRAM clock read addr
 	assign mem_rd_en = 1'b1;
@@ -238,10 +238,10 @@ module fifo #(
 	) writer (
 		.clk( wr_clk ), .rst( wr_rst ),
 		.wr_en( wr_en ), .din( din ),
-		.rd_addr_g( rd_addr_g ),
+		.rd_addr_g_in( rd_addr_g ),
 
 		.full( full ),
-		.wr_addr_g( wr_addr_g ),
+		.wr_addr_g_out( wr_addr_g ),
 		.mem_wr_addr( mem_wr_addr ), .mem_din( mem_din ), .mem_wr_en( mem_wr_en )
 	);
 
@@ -252,11 +252,11 @@ module fifo #(
 	) reader (
 		.clk( rd_clk ), .rst( rd_rst ),
 		.rd_en( rd_en ),
-		.wr_addr_g( wr_addr_g ),
+		.wr_addr_g_in( wr_addr_g ),
 		.mem_dout( mem_dout ),
 
 		.empty( empty ), .dout( dout ),
-		.rd_addr_g( rd_addr_g ),
+		.rd_addr_g_out( rd_addr_g ),
 		.mem_rd_addr( mem_rd_addr ), .mem_rd_en( mem_rd_en )
 	);
 

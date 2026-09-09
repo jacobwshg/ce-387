@@ -6,13 +6,13 @@ module fifo_async_tb
 	parameter int DWIDTH = 32,
 	parameter int FIFO_DEPTH = 8, 
 
-	parameter int WR_PERIOD = 10,
+	parameter int WR_PERIOD = 8,
 	parameter int WR_DLY = 0,
 
-	parameter int RD_PERIOD = 20,
-	parameter int RD_DLY = 100,
+	parameter int RD_PERIOD = 14,
+	parameter int RD_DLY = 32,
 
-	parameter int TEST_CNT = 32,
+	parameter int TEST_CNT = 86,
 
 	parameter int TIMEOUT = 100000
 )();
