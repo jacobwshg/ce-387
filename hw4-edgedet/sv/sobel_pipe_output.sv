@@ -4,7 +4,7 @@ import globals_pkg :: FRAME_WIDTH;
 import globals_pkg :: SAFE_BYTE_WIDTH;
 import globals_pkg :: BYTE_WIDTH;
 
-module sobel_pipe_out
+module sobel_pipe_output
 #(
 	parameter int FRAME_HEIGHT = globals_pkg::FRAME_HEIGHT,
 	parameter int FRAME_WIDTH  = globals_pkg::FRAME_WIDTH
@@ -161,5 +161,5 @@ module sobel_pipe_out
 		end
 	end
 
-endmodule: sobel_pipe_out
+endmodule: sobel_pipe_output
 
