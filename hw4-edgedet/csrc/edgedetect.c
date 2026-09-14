@@ -100,8 +100,8 @@ void convert_to_grayscale(
 	for ( int i = 0; i < width*height; ++i )
 	{
 		uint16_t gsbyte = ( uint16_t ) data[ i ].r + data[ i ].g + data[ i ].b;
-		///gsbyte /= 3;
-		gsbyte = ( gsbyte * 85 ) >> 8;
+		gsbyte /= 3;
+		//gsbyte = ( gsbyte * 85 ) >> 8;
 		grayscale_data[ i ] = ( unsigned char ) gsbyte;
 		//printf("%3d: %02x %02x %02x  ->  %02x\n", i,data[i].r, data[i].g, data[i].b, grayscale_data[i]);
 	}
@@ -414,8 +414,8 @@ int main( int argc, char *argv[] )
 	write_grayscale_bmp("stage2_sobel.bmp", header, sobel_data);
 
 	/// Non-maximum suppression
-	non_maximum_suppressor(sobel_data, height, width, nms_data);
-	write_grayscale_bmp("stage3_nonmax_suppression.bmp", header, nms_data);
+	//non_maximum_suppressor(sobel_data, height, width, nms_data);
+	//write_grayscale_bmp("stage3_nonmax_suppression.bmp", header, nms_data);
 
 	/// Hysteresis
 	//hysteresis_filter(nms_data, height, width, h_data);
