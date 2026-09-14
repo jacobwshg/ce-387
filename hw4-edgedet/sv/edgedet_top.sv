@@ -18,7 +18,7 @@ module edgedet_top
 	input  logic rst,
 
 	input  logic in_wr_en,
-	input  logic [ 0:2 ] [ BYTE_WIDTH-1:0 ] in_din,
+	input  logic [ 0:2 ] [ BYTE_WIDTH-1:0 ] din,
 	output logic in_full,
 
 	input  logic out_rd_en,
@@ -49,7 +49,7 @@ module edgedet_top
 	logic sobel_out_empty;
 
 	assign in_gs_wr_en = in_wr_en;
-	assign in_gs_din = in_din;
+	assign in_gs_din = din;
 	assign in_full = in_gs_full;
 
 	assign sobel_out_rd_en = out_rd_en;
@@ -57,7 +57,7 @@ module edgedet_top
 	assign out_empty = sobel_out_empty;
 
 	fifo #(
-		.DWIDTH( BYTE_WIDTH ),
+		.DWIDTH( 3 * BYTE_WIDTH ),
 		.DEPTH ( FIFO_DEPTH )
 	) f_in_gs (
 		.clk( clk ),

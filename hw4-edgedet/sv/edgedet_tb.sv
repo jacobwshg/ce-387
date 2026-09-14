@@ -1,94 +1,120 @@
 
 `timescale 1 ns / 1 ns
 
-module edgedet_tb();
+import globals_pkg::FRAME_WIDTH;
+import globals_pkg::FRAME_HEIGHT;
+import globals_pkg::COL_ID_WIDTH;
+import globals_pkg::ROW_ID_WIDTH;
+import globals_pkg::BYTE_WIDTH;
+import globals_pkg::FIFO_DEPTH;
 
-	localparam string INFILE  = "image.bmp";
-	localparam string OUTFILE = "output.bmp";
-	localparam string CMPFILE = "stage2_sobel.bmp";
-	localparam CLOCK_PERIOD = 10;
+module edgedet_tb #(
+	parameter string INFILE  = "image.bmp",
+	parameter string OUTFILE = "sobel_output.bmp",
+	parameter string CMPFILE = "stage2_sobel.bmp",
 
-	logic clock = 1'b1;
-	logic reset = '0;
-	logic start = '0;
-	logic done  = '0;
+	parameter int CLOCK_PERIOD = 10,
 
-	logic in_gs_we;
-	logic [ 23:0 ] in_gs_din;
-	logic sobel_out_re;
+	parameter int FRAME_WIDTH  = globals_pkg::FRAME_WIDTH,
+	parameter int FRAME_HEIGHT = globals_pkg::FRAME_HEIGHT,
+	parameter int COL_ID_WIDTH = globals_pkg::COL_ID_WIDTH,
+	parameter int ROW_ID_WIDTH = globals_pkg::ROW_ID_WIDTH,
 
-	logic in_gs_full;
-	logic sobel_out_empty;
-	logic [ 7:0 ] sobel_out_dout;
+	parameter int DSPL_ERR_CNT = 10,
 
-	logic   hold_clock	= '0;
-	logic   in_write_done = '0;
-	logic   out_read_done = '0;
-	integer out_errors	= '0;
+	parameter int TIMEOUT = 10000000
 
-	localparam WIDTH  = 720;
-	localparam HEIGHT = 540;
+)();
+
 	localparam BMP_HEADER_SIZE = 54;
 	localparam BYTES_PER_PIXEL = 3;
-	localparam BMP_DATA_SIZE = WIDTH * HEIGHT * BYTES_PER_PIXEL;
+	localparam BMP_DATA_SIZE = FRAME_WIDTH * FRAME_HEIGHT * BYTES_PER_PIXEL;
 
+
+	logic clk = 1'b0;
+	logic rst;
+
+	logic in_wr_en = 1'b0;
+	logic [ 0:2 ] [ 7:0 ] in_din;
+	logic in_full;
+
+	logic out_rd_en = 1'b0;
+	logic [ 7:0 ] out_dout;
+	logic out_empty;
+
+	logic out_done = 1'b0;
+
+	int err_cnt = 0;
 	edgedet_top 
 	#(
-		.WIDTH (WIDTH),
-		.HEIGHT(HEIGHT)
-	) 
-	edgedet_top (
-		.clock(clock),
-		.reset(reset),
+		.FRAME_WIDTH ( FRAME_WIDTH ),
+		.FRAME_HEIGHT( FRAME_HEIGHT ),
+		.COL_ID_WIDTH( COL_ID_WIDTH ),
+		.ROW_ID_WIDTH( ROW_ID_WIDTH )
+	) dut (
+		.clk( clk ),
+		.rst( rst ),
 
-		.in_gs_we    ( in_gs_we ),
-		.in_gs_din   ( in_gs_din ),
-		.sobel_out_re( sobel_out_re ),
+		.in_wr_en( in_wr_en ),
+		.din( in_din ),
+		.in_full( in_full ),
 
-		.in_gs_full     ( in_gs_full ),
-		.sobel_out_empty( sobel_out_empty ),
-		.sobel_out_dout ( sobel_out_dout )
+		.out_rd_en( out_rd_en ),
+		.dout( out_dout ),
+		.out_empty( out_empty )
 	);
 
-	always begin
-		clock = 1'b1;
-		#(CLOCK_PERIOD/2);
-		clock = 1'b0;
-		#(CLOCK_PERIOD/2);
-	end
+	initial
+	begin: clk_proc
+		#0; clk = 1'b0;
+		while ( 1'b1 )
+		begin
+			#( CLOCK_PERIOD/2 ); clk = ~clk;
+		end
+	end: clk_proc
 
 	initial 
-	begin
-		@(posedge clock);
-		reset = 1'b1;
-		@(posedge clock);
-		reset = 1'b0;
-	end
+	begin: rst_proc
+		#0;
+
+		@( negedge clk );
+		rst = 1'b1;
+
+		wait ( 10 * CLOCK_PERIOD );
+		@( negedge clk );
+		rst = 1'b0;
+
+	end: rst_proc
 
 	initial
-	begin : driver
+	begin: timeout_proc
+		#TIMEOUT;
+		$display( "@%0t timeout", $time );
+		$stop;
+	end: timeout_proc
+
+	initial
+	begin: driver_proc
 		time start_time, end_time;
 
 		string diffcmd; 
 
-		@(negedge reset);
-		@(posedge clock);
+		@( posedge rst );
+		@( negedge rst );
+		@( posedge clk );
 		start_time = $time;
 
 		// start
 		$display("@ %0t: Beginning simulation...", start_time);
-		start = 1'b1;
-		@(posedge clock);
-		start = 1'b0;
 
-		wait(out_read_done);
+		wait( out_done );
 		end_time = $time;
 
 		// report metrics
 		$display();
 		$display("@ %0t: Simulation completed.", end_time);
 		$display("Total simulation cycle count: %0d", (end_time-start_time)/CLOCK_PERIOD);
-		$display("Total error count: %0d", out_errors);
+		$display( "Total error count: %0d", err_cnt );
 	
 		$display("---------------------------------------");
 		$display("Output file diff:");
@@ -98,64 +124,66 @@ module edgedet_tb();
 		$display("\nEnd diff");
 
 		// end the simulation
-		$finish;
-	end
+		$stop;
+
+	end: driver_proc
 
 	initial
-	begin : read_img
+	begin: input_proc
 
 		int infile;
 		int _rcnt;
-		logic [7:0] bmp_header [0:BMP_HEADER_SIZE-1];
+		logic [ 0:BMP_HEADER_SIZE-1 ] [ 7:0 ] bmp_header;
 
-		@ ( negedge reset );
+		#0;
 		$display( "@ %0t: Loading img %s...", $time, INFILE );
 		infile = $fopen( INFILE, "rb" );
-		in_gs_we = 1'b0;
-
+		in_wr_en = 1'b0;
 		// Skip BMP header
 		_rcnt = $fread( bmp_header, infile, 0, BMP_HEADER_SIZE );
 
-		// Read data from image file; kick off streaming
-		for( int i=0; i<BMP_DATA_SIZE; ) 
-		begin
-			@ ( negedge clock );
-			in_gs_we = 1'b0;
+		@( posedge rst );
+		@( negedge rst );
 
-			if ( !in_gs_full )
+		// Read data from image file; kick off streaming
+		for ( int i=0; ; ) 
+		begin
+			@( negedge clk );
+			in_wr_en = 1'b0;
+
+			if ( !in_full )
 			begin
-				_rcnt = $fread(
-					in_gs_din, infile, 
-					BMP_HEADER_SIZE+i, BYTES_PER_PIXEL
-				);
-				in_gs_we = 1'b1;
-				i += BYTES_PER_PIXEL;
+				in_wr_en = 1'b1;
+				in_din = 'h0;
+				if ( i<BMP_DATA_SIZE )
+				begin
+					_rcnt = $fread( in_din, infile, BMP_HEADER_SIZE+i, BYTES_PER_PIXEL );
+					i += BYTES_PER_PIXEL;
+				end
 			end
 		end
 
-		@ ( negedge clock );
-		in_gs_we = 1'b0;
+		@( negedge clk );
+		in_wr_en = 1'b0;
 		$fclose( infile );
-		in_write_done = 1'b1;
-	end
+	end: input_proc
 
 	initial 
-	begin : write_img
+	begin: output_proc
+
 		int _rcnt;
 		int outfile;
 		int cmpfile;
-		logic [23:0] cmp_dout;
-		logic [0:BMP_HEADER_SIZE-1] [7:0] bmp_header;
+		logic [ 0:2 ] [ 7:0 ] cmp_dout;
+		logic [ 0:BMP_HEADER_SIZE-1 ] [ 7:0 ] bmp_header;
 
-		@ ( negedge reset );
-		@ ( negedge clock );
+		#0;
+		out_done = 1'b0;
+		out_rd_en = 1'b0;
 
 		$display( "@ %0t: Comparing file %s...", $time, OUTFILE );
-	
 		outfile = $fopen( OUTFILE, "wb" );
 		cmpfile = $fopen( CMPFILE, "rb" );
-		sobel_out_re = 1'b0;
-	
 		// Copy the BMP header
 		_rcnt = $fread( bmp_header, cmpfile, 0, BMP_HEADER_SIZE );
 		foreach ( bmp_header[i] )
@@ -163,44 +191,50 @@ module edgedet_tb();
 			$fwrite( outfile, "%c", bmp_header[i] );
 		end
 
+		@( posedge rst );
+		@( negedge rst );
+
 		for ( int i=0; i<BMP_DATA_SIZE; )
 		begin
-			@ ( negedge clock );
-			sobel_out_re = 1'b0;
+			@ ( negedge clk );
+			out_rd_en = 1'b0;
 
-		/////////
-		//$display("@ %0t, out i: %0d\n", $time, i);
+			//$display("@ %0t, out i: %0d\n", $time, i);
 
-			if ( !sobel_out_empty )
+			if ( !out_empty )
 			begin
-				_rcnt = $fread(cmp_dout, cmpfile, BMP_HEADER_SIZE+i, BYTES_PER_PIXEL);
+				_rcnt = $fread( cmp_dout, cmpfile, BMP_HEADER_SIZE+i, BYTES_PER_PIXEL );
 
-				if ( cmp_dout != { 3 { sobel_out_dout } } ) 
+				if ( cmp_dout != { 3 { out_dout } } )
 				begin
-					out_errors += 1;
-					/*
-					$write(
-						"@ %0t: %s(%0d): ERROR: actual { 3 { %x } } !=  expected %x at address 0x%x.\n", 
-						$time, OUTFILE, i+1, sobel_out_dout, cmp_dout, i
-					);
-					*/
+					err_cnt += 1;
+					if ( err_cnt <= DSPL_ERR_CNT )
+					begin
+						$write(
+							"@ %0t: %s(%0d): ERROR: actual { 3 { %x } } !=  expected %x at address 0x%x.\n", 
+							$time, OUTFILE, i+1, out_dout, cmp_dout, i
+						);
+					end
 				end
 				$fwrite(
 					outfile, "%c%c%c", 
-					sobel_out_dout, sobel_out_dout, sobel_out_dout
+					out_dout, out_dout, out_dout
 				);
-				//$fwrite(outfile, "%u", hl_out_dout);
-				sobel_out_re = 1'b1;
+				out_rd_en = 1'b1;
 				i += BYTES_PER_PIXEL;
 			end
 		end
 
-		@ ( negedge clock );
-		sobel_out_re = 1'b0;
+		@( negedge clk );
+		out_rd_en = 1'b0;
 		$fclose( outfile );
 		$fclose( cmpfile );
-		out_read_done = 1'b1;
-	end
+
+		//$stop;
+
+		out_done = 1'b1;
+
+	end: output_proc
 
 endmodule: edgedet_tb
 
