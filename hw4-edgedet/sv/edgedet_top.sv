@@ -1,34 +1,38 @@
 
-import globals_pkg :: FRAME_WIDTH;
-import globals_pkg :: FRAME_HEIGHT;
-import globals_pkg :: BYTE_WIDTH;
-import globals_pkg :: RGB_WIDTH;
-import globals_pkg :: FIFO_DEPTH;
+import globals_pkg::FRAME_WIDTH;
+import globals_pkg::FRAME_HEIGHT;
+import globals_pkg::COL_ID_WIDTH;
+import globals_pkg::ROW_ID_WIDTH;
+import globals_pkg::BYTE_WIDTH;
+import globals_pkg::FIFO_DEPTH;
 
 module edgedet_top 
 #(
 	parameter FRAME_WIDTH  = globals_pkg::FRAME_WIDTH,
-	parameter FRAME_HEIGHT = globals_pkg::FRAME_HEIGHT
+	parameter FRAME_HEIGHT = globals_pkg::FRAME_HEIGHT,
+	parameter COL_ID_WIDTH = globals_pkg::COL_ID_WIDTH,
+	parameter ROW_ID_WIDTH = globals_pkg::ROW_ID_WIDTH
 )
 (
-	input  logic clock,
-	input  logic reset,
+	input  logic clk,
+	input  logic rst,
 
-	input  logic in_gs_wr_en,
-	input  logic [ RGB_WIDTH-1:0 ] in_gs_din,
-	input  logic sobel_out_rd_en,
+	input  logic in_wr_en,
+	input  logic [ 0:2 ] [ BYTE_WIDTH-1:0 ] in_din,
+	output logic in_full,
 
-	output logic in_gs_full,
-	output logic sobel_out_empty,
-	output logic [ BYTE_WIDTH-1:0 ] sobel_out_dout,
-
-	output logic sobel_done
+	input  logic out_rd_en,
+	output logic [ BYTE_WIDTH-1:0 ] dout,
+	output logic out_empty
 
 );
 
-	logic [ RGB_WIDTH-1:0 ] in_gs_dout;
-	logic in_gs_empty;
+	logic in_gs_wr_en;
+	logic [ 0:2 ] [ BYTE_WIDTH-1:0 ] in_gs_din;
+	logic in_gs_full;
 	logic in_gs_rd_en;
+	logic [ 0:2 ] [ BYTE_WIDTH-1:0 ] in_gs_dout;
+	logic in_gs_empty;
 
 	logic [ BYTE_WIDTH-1:0 ] gs_sobel_din;
 	logic gs_sobel_wr_en;
@@ -37,79 +41,85 @@ module edgedet_top
 	logic gs_sobel_rd_en;
 	logic gs_sobel_empty;
 
+	logic sobel_out_wr_en;
 	logic [ BYTE_WIDTH-1:0 ] sobel_out_din;
 	logic sobel_out_full;
-	logic sobel_out_wr_en;
+	logic sobel_out_rd_en;
+	logic [ BYTE_WIDTH-1:0 ] sobel_out_dout;
+	logic sobel_out_empty;
+
+	assign in_gs_wr_en = in_wr_en;
+	assign in_gs_din = in_din;
+	assign in_full = in_gs_full;
+
+	assign sobel_out_rd_en = out_rd_en;
+	assign dout = sobel_out_dout;
+	assign out_empty = sobel_out_empty;
 
 	fifo #(
-		.FIFO_BUFFER_SIZE( FIFO_DEPTH ),
-		.FIFO_DATA_WIDTH ( RGB_WIDTH )
+		.DWIDTH( BYTE_WIDTH ),
+		.DEPTH ( FIFO_DEPTH )
 	) f_in_gs (
-		.reset ( reset ),
+		.clk( clk ),
+		.rst( rst ),
 
-		.wr_clk( clock ),
-		.wr_en ( in_gs_wr_en ),
-		.din   ( in_gs_din ),
-		.full  ( in_gs_full ),
+		.wr_en( in_gs_wr_en ),
+		.din  ( in_gs_din ),
+		.full ( in_gs_full ),
 
-		.rd_clk( clock ),
-		.rd_en ( in_gs_rd_en ),
-		.dout  ( in_gs_dout ),
-		.empty ( in_gs_empty )
+		.rd_en( in_gs_rd_en ),
+		.dout ( in_gs_dout ),
+		.empty( in_gs_empty )
 	);
 
 	fifo #(
-		.FIFO_BUFFER_SIZE( FIFO_DEPTH ),
-		.FIFO_DATA_WIDTH ( BYTE_WIDTH )
+		.DWIDTH( BYTE_WIDTH ),
+		.DEPTH ( FIFO_DEPTH )
 	) f_gs_sobel (
-		.reset ( reset ),
+		.clk( clk ), .rst( rst ),
 
-		.wr_clk( clock ),
-		.wr_en ( gs_sobel_wr_en ),
-		.din   ( gs_sobel_din ),
-		.full  ( gs_sobel_full ),
+		.wr_en( gs_sobel_wr_en ),
+		.din  ( gs_sobel_din ),
+		.full ( gs_sobel_full ),
 
-		.rd_clk( clock ),
-		.rd_en ( gs_sobel_rd_en ),
-		.dout  ( gs_sobel_dout ),
-		.empty ( gs_sobel_empty )
+		.rd_en( gs_sobel_rd_en ),
+		.dout ( gs_sobel_dout ),
+		.empty( gs_sobel_empty )
 	);
 
 	fifo #(
-		.FIFO_BUFFER_SIZE( FIFO_DEPTH ),
-		.FIFO_DATA_WIDTH ( BYTE_WIDTH )
+		.DWIDTH( BYTE_WIDTH ),
+		.DEPTH ( FIFO_DEPTH )
 	) f_sobel_out (
-		.reset ( reset ),
+		.clk( clk ), .rst( rst ),
 
-		.wr_clk( clock ),
-		.wr_en ( sobel_out_wr_en ),
-		.din   ( sobel_out_din ),
-		.full  ( sobel_out_full ),
+		.wr_en( sobel_out_wr_en ),
+		.din  ( sobel_out_din ),
+		.full ( sobel_out_full ),
 
-		.rd_clk( clock ),
-		.rd_en ( sobel_out_rd_en ),
-		.dout  ( sobel_out_dout ),
-		.empty ( sobel_out_empty )
+		.rd_en( sobel_out_rd_en ),
+		.dout ( sobel_out_dout ),
+		.empty( sobel_out_empty )
 	);
 
-	grayscale gs (
-		.clk( clock ),
-		.rst( reset ),
+	grayscale
+	gs (
+		.clk( clk ), .rst( rst ),
 
 		.in_empty ( in_gs_empty ),
-		.in_dout  ( in_gs_dout ),
-		.out_full ( gs_sobel_full ),
-
+		.din      ( in_gs_dout ),
 		.in_rd_en ( in_gs_rd_en ),
-		.out_wr_en( gs_sobel_wr_en ),
-		.out_din  ( gs_sobel_din )
+
+		.out_full ( gs_sobel_full ),
+		.dout     ( gs_sobel_din ),
+		.out_wr_en( gs_sobel_wr_en )
 	);
 
-	sobel_pipe #(
-		.FRAME_HEIGHT( FRAME_HEIGHT ),
-		.FRAME_WIDTH ( FRAME_WIDTH )
+	sobel #(
+		.FRAME_WIDTH ( FRAME_WIDTH ), .FRAME_HEIGHT( FRAME_HEIGHT ),
+		.COL_ID_WIDTH( COL_ID_WIDTH ), .ROW_ID_WIDTH( ROW_ID_WIDTH )
 	) sobel (
-		.clk( clock ), .rst( reset ),
+		.clk( clk ), .rst( rst ),
 
 		.in_empty( gs_sobel_empty ),
 		.din     ( gs_sobel_dout ),
@@ -117,9 +127,7 @@ module edgedet_top
 
 		.out_full ( sobel_out_full ),
 		.dout     ( sobel_out_din ),
-		.out_wr_en( sobel_out_wr_en ),
-
-		.done( sobel_done )
+		.out_wr_en( sobel_out_wr_en )
 	);
 
 endmodule: edgedet_top

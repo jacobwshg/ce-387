@@ -1,212 +1,197 @@
 
-import globals_pkg :: FRAME_HEIGHT;
-import globals_pkg :: FRAME_WIDTH;
-import globals_pkg :: BYTE_WIDTH;
-import globals_pkg :: BOX_DIM;
-import globals_pkg :: box_t;
+import globals_pkg::BYTE_WIDTH;
+import globals_pkg::SOBEL_BOX_DIM;
 
 module sobel_pipe_fetch
 #(
-	parameter int FRAME_HEIGHT = globals_pkg::FRAME_HEIGHT,
-	parameter int FRAME_WIDTH  = globals_pkg::FRAME_WIDTH
+	parameter int FRAME_WIDTH  = 720,
+	parameter int FRAME_HEIGHT = 540,
+	parameter int COL_ID_WIDTH = $clog2( FRAME_WIDTH ),
+	parameter int ROW_ID_WIDTH = $clog2( FRAME_HEIGHT )
 )
 (
-	input logic clk, rst,
-	input logic pipe_wr_en,
+	input  logic clk,
+	input  logic rst,
+	input  logic pipe_en,
 
-	input logic in_empty, 
-	input logic [ BYTE_WIDTH-1:0 ] din,
+	input  logic [ BYTE_WIDTH-1:0 ] px_in,
+	input  logic in_valid, 
 
-	// to fifo
-	output logic in_rd_en,
-	// to next stage
-	output box_t box,
+	output logic [ 0:SOBEL_BOX_DIM-1 ] [ BYTE_WIDTH-1:0 ] box_right_col_out,
 	output logic out_valid
 );
 
-	localparam int ROW_IDX_WIDTH = $clog2( FRAME_HEIGHT );
-	localparam int COL_IDX_WIDTH = $clog2( FRAME_WIDTH );
+	localparam int ROWBUF_ADDR_WIDTH = COL_ID_WIDTH;
 
-	logic out_valid_c;
+	/* Row tags:
+	 * Used to index the box's logical top, middle, bottom rows or their
+	 * select signals for readability
+	 */
+	localparam int
+		TOP = 0, MIDDLE = 1, BOTTOM = 2;
 
-	//
-	// track position of BOTTOM RIGHT px in box
-	//
-	logic [ ROW_IDX_WIDTH:0 ] irow, irow_c;
-	logic [ COL_IDX_WIDTH:0 ] icol, icol_c;
+	/* Match grayscale byte i+1 ( fetched in next cycle if available );
+	 * generated from *_id_r */
+	logic [ ROW_ID_WIDTH-1:0 ] row_id_next;
+	logic [ COL_ID_WIDTH-1:0 ] col_id_next;
 
-	logic [ $clog2( BOX_DIM )-1:0 ]
-		top_row, mid_row, bot_row,
-		top_row_c, mid_row_c, bot_row_c;
+	/* Match grayscale byte i ( bottom right sample in box ) being fetched in
+ 	 * current cycle
+	 * *_id_r shall be at most FRAME_{WIDTH, HEIGHT}-1 ( never equal )
+	 * col_id_r will be asserted as rowbufs read addr
+	 */
+	logic [ ROW_ID_WIDTH-1:0 ] row_id_r;
+	logic [ COL_ID_WIDTH-1:0 ] col_id_r;
+	logic [ 0:SOBEL_BOX_DIM-1 ] [ $clog2( SOBEL_BOX_DIM )-1:0 ] box_rowsels_new;
 
-	box_t box_c;
+	/* Match grayscale byte i-1 ( fetched in prev cycle ).
+ 	 * Box top and bottom are decoded from rowbufs over this cycle
+	 */
+	logic [ BYTE_WIDTH-1:0 ] px_in_r;
+	logic [ COL_ID_WIDTH-1:0 ] col_id_sh_r;
+	logic valid_r;
+	logic [ 0:SOBEL_BOX_DIM-1 ] [ $clog2( SOBEL_BOX_DIM )-1:0 ] box_rowsels_r;
 
-	//
-	// combinational signals for bram access
-	//
-	logic [ COL_IDX_WIDTH:0 ] buf_rd_addr, buf_wr_addr;
-	logic buf_wr_en [ 0:BOX_DIM-1 ];
-	logic [ BYTE_WIDTH-1:0 ] buf_dout [ 0:BOX_DIM-1 ];
-	logic [ BYTE_WIDTH-1:0 ] buf_din;
+	/* Match grayscale byte i-2 as box bottom right */
+	logic [ 0:SOBEL_BOX_DIM-1 ] [ BYTE_WIDTH-1:0 ] rowbufs_dout_r;
+	logic [ BYTE_WIDTH-1:0 ] px_in_sh_r;
+	logic valid_sh_r;
+	logic [ 0:SOBEL_BOX_DIM-1 ] [ $clog2( SOBEL_BOX_DIM )-1:0 ] box_rowsels_sh_r;
+	/* Assembled from rowbufs output and new byte based on box row selects */
+	logic [ 0:SOBEL_BOX_DIM-1 ] [ BYTE_WIDTH-1:0 ] box_right_col_new;
+
+	/* Combinational signals for bram access */
+	logic [ ROWBUF_ADDR_WIDTH-1:0 ] rowbufs_wr_addr;
+	logic [ 0:SOBEL_BOX_DIM-1 ] rowbufs_wr_en;
+	logic [ BYTE_WIDTH-1:0 ] rowbufs_din;
+
+	logic [ ROWBUF_ADDR_WIDTH-1:0 ] rowbufs_rd_addr;
+	logic rowbufs_rd_en;
+	logic [ 0:SOBEL_BOX_DIM-1 ] [ BYTE_WIDTH-1:0 ] rowbufs_dout;
 
 	generate
-		//
-		// each bram line stores a row
-		//
-		for ( genvar i=0; i<BOX_DIM; ++i )
+		/* Each BRAM line caches one row */
+		for ( genvar i=0; i<SOBEL_BOX_DIM; ++i )
 		begin
 			bram #(
-				.BRAM_ADDR_WIDTH( COL_IDX_WIDTH ),
-				.BRAM_DATA_WIDTH( BYTE_WIDTH )
-			) rowbuf (
-				.clock  ( clk ),
-				.rd_addr( buf_rd_addr[ COL_IDX_WIDTH-1:0 ] ),
-				.wr_addr( buf_wr_addr[ COL_IDX_WIDTH-1:0 ] ),
-				.wr_en  ( buf_wr_en[ i ] ),
-				.dout   ( buf_dout [ i ] ),
-				.din    ( buf_din )
+				.DWIDTH( BYTE_WIDTH ),
+				.ADDR_WIDTH( ROWBUF_ADDR_WIDTH )
+			) row_buf (
+				.clk  ( clk ),
+
+				.wr_addr( rowbufs_wr_addr ),
+				.wr_en  ( rowbufs_wr_en[ i ] ),
+				.din    ( rowbufs_din ),
+
+				.rd_addr( rowbufs_rd_addr ),
+				.rd_en  ( rowbufs_rd_en ),
+				.dout   ( rowbufs_dout[ i ] )
 			);
 		end
 
 	endgenerate
 
-	//
-	// box is indexed in col-major order ( in terms of orig frame ), 
-	// so print [0][0] [1][0] [2][0], [0][1], ...
-	//
-	function automatic void
-	print_box( input box_t box );
-
-		$write( "box: " );
-
-		for ( int i=0; i<BOX_DIM; ++i )
-		begin
-			for ( int j=0; j<BOX_DIM; ++j )
-			begin
-				$write( "%2h ", box[ j ][ i ] );
-			end
-			$write( ", " );
-		end
-		$display( "" );
-
-	endfunction
-
-	always_comb
-	begin
-		//
-		// bottom row buf's [ icol ] will be written to at the end of this
-		// cycle
-		// bottom row buf's [ icol_c ] will be read from at the end of this
-		// cycLe
-		//
-		// icol_c has two purposes: cur rd addr, and next wr addr.
-		//
-
-		//
-		// pipe_wr_en should be decoupled from in_emptU
-		// if in_empty && !out_full, still enabKe pipe write
-		//		
-
-		out_valid_c = 1'b0;
-		in_rd_en = 1'b0;
-
-		icol_c = icol;
-		irow_c = irow;
-		{ top_row_c, mid_row_c, bot_row_c } = { top_row, mid_row, bot_row };
-		box_c = box;
-
-		buf_rd_addr = icol;
-		buf_wr_addr = icol;
-		buf_wr_en = '{ default: 'b0 };
-		buf_din = 'h0;
-
-		//
-		// if !in_empty, don't be in a hurry to get the next element yet;
-		// if downstream is full, we will lose an element
-		//
-		// if downstream gives fetch stage green light, then get a bottom-row element from fifo, 
-		// and read top row and bottom row elements from buf to match this element
-		//
-		//  when bottom row idx falls below frame bottom edge, still assert
-		//  "valid" to allow downstream to write the zero bottom edge
-		//
-		if ( pipe_wr_en && ( ( !in_empty ) || irow>=FRAME_HEIGHT ) )
-		begin
-
-			out_valid_c = 1'b1;
-
-			if ( icol === FRAME_WIDTH-1 )
-			begin
-				//
-				// the element read in at the start of this cycle is on the
-				// img right edge. in the next cycle, we should read from the left
-				// edge.
-				//
-				icol_c = 'h0;
-				irow_c = irow + 1'h1;
-				{ top_row_c, mid_row_c, bot_row_c } = { mid_row, bot_row, top_row };
-			end
-			else
-			begin
-				icol_c = icol + 1'h1;
-			end
-
-			//
-			// if bottom right px is still in frame, the corresponding fifo
-			// elem is valid; update box and buffer
-			//
-			if ( irow < FRAME_HEIGHT )
-			begin
-				in_rd_en = 1'b1;
-
-				box_c[ 0 ] = box[ 1 ];
-				box_c[ 1 ] = box[ 2 ];
-				// ensure box is defined as [ 0:BOX_DIM-1 ] to match rhs layout
-				box_c[ 2 ] = { buf_dout[ top_row ], buf_dout[ mid_row ], din };
-
-				//{ box_c 2 ][ 0 ], box_c[ 2 ][ 1 ], box_c[ 2 ][ 2 ] }
-				//	 = { buf_dout[ top_row ], buf_dout[ mid_row ], din };
-
-			//	$display(
-			//		"row %4d, \tcol %4d, \tgs px %2h",
-			//		irow, icol, din
-			//	);
-
-				//$write( "row %4d, \tcol %4d, \t", irow, icol );
-				//print_box( box_c );
-
-				buf_rd_addr = icol_c;
-				// buf_wr_addr doesn't change, always write to current col
-				buf_wr_en[ bot_row ] = 1'b1;
-				buf_din = din;
-
-			end
-		end
-
-	end
-
-	always_ff @ ( posedge clk, posedge rst )
+	always_ff @( posedge clk )
 	begin
 		if ( rst )
 		begin
-			out_valid <= 1'b0;
+			row_id_r <= 'h0;
+			col_id_r <= 'h0;
 
-			icol <= 'h0;
-			irow <= 'h0;
+			valid_r <= 1'b0;
+			/*
+			 * Since the row selects are shift-rotated, the order of the
+			 * initial values doesn't matter as long as they cover 0, 1, 2
+			 */
+			box_rowsels_r[ TOP ]    <= 2'h0;
+			box_rowsels_r[ MIDDLE ] <= 2'h1;
+			box_rowsels_r[ BOTTOM ] <= 2'h2;
 
-			top_row <= 2'h0; mid_row <= 2'h1; bot_row <= 2'h2;
-			box <= '{ default: 'h0 };
+			valid_sh_r <= 1'b0;
 		end
-		else
+		else if ( pipe_en )
 		begin
-			out_valid <= out_valid_c;
+			row_id_r <= row_id_next;
+			col_id_r <= col_id_next;
 
-			icol <= icol_c;
-			irow <= irow_c;
+			valid_r <= in_valid;
+			box_rowsels_r[ TOP:BOTTOM ] <= box_rowsels_new[ TOP:BOTTOM ];
 
-			{ top_row, mid_row, bot_row } <= { top_row_c, mid_row_c, bot_row_c };
-			box <= box_c;
+			valid_sh_r <= valid_r;
+
 		end
+
+		if ( pipe_en )
+		begin
+			px_in_r <= px_in;
+			col_id_sh_r <= col_id_r;
+
+			rowbufs_dout_r[ 0:SOBEL_BOX_DIM-1 ] <= rowbufs_dout[ 0:SOBEL_BOX_DIM-1 ];
+			px_in_sh_r <= px_in_r;
+			box_rowsels_sh_r[ TOP:BOTTOM ] <= box_rowsels_r[ TOP:BOTTOM ];
+		end
+
+	end 
+
+	assign out_valid = valid_sh_r;
+	assign box_right_col_out = box_right_col_new;
+
+	always_comb
+	begin
+		col_id_next = col_id_r;
+		row_id_next = row_id_r;
+		if ( in_valid )
+		begin
+			col_id_next = col_id_r + 1'h1;
+			if ( col_id_r===FRAME_WIDTH-1 )
+			begin
+				col_id_next = 'h0;
+				row_id_next = row_id_r + 1'h1;
+				if ( row_id_r === FRAME_HEIGHT-1 )
+				begin
+					row_id_next = 'h0;
+				end
+			end
+		end
+
+		rowbufs_rd_addr = col_id_r;
+		rowbufs_rd_en = pipe_en;
+		box_rowsels_new[ TOP:BOTTOM ] = box_rowsels_r[ TOP:BOTTOM ];
+		/* in_valid gating prevents multiple shifts for the same row-initial
+  		 * byte during bubbles, where col_id_r doesn't increment */
+		if ( in_valid && ( col_id_r==='h0 ) )
+		begin
+			
+			box_rowsels_new[ TOP:MIDDLE ] = box_rowsels_r[ MIDDLE:BOTTOM ];
+			box_rowsels_new[ BOTTOM ] = box_rowsels_r[ TOP ];
+		end
+
+		/*
+		 * Write to the buf line storing the box's bottom row. This can be
+		 * done in the same cycle as the read addr is being decoded. There is
+		 * no race for the buffered bottom-row pixel. In any case, we use the
+		 * upstream GS byte directly and ignore rowbuf output for the
+		 * box's bottom row.
+		 */
+		rowbufs_wr_addr = col_id_sh_r;
+		rowbufs_wr_en = 'b0;
+		if ( valid_r && pipe_en )
+		begin
+			/*
+			 * Only enable write for the buf line currently used as the box's
+			 * bottom row
+			 */
+			rowbufs_wr_en[ box_rowsels_r[ BOTTOM ] ] = 1'b1;
+		end
+		rowbufs_din = px_in_r;
+
+		/*
+		 * There are currently muxes on the output path, but the right col
+		 * elements should be registered right away by the next stage
+		 */
+		box_right_col_new[ TOP ] = rowbufs_dout_r[ box_rowsels_sh_r[ TOP ] ];
+		box_right_col_new[ MIDDLE ] = rowbufs_dout_r[ box_rowsels_sh_r[ MIDDLE ] ];
+		box_right_col_new[ BOTTOM ] = px_in_sh_r;
 
 	end
 

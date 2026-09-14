@@ -1,164 +1,190 @@
 
-import globals_pkg :: FRAME_HEIGHT;
-import globals_pkg :: FRAME_WIDTH;
-import globals_pkg :: SAFE_BYTE_WIDTH;
-import globals_pkg :: BYTE_WIDTH;
+import globals_pkg::BYTE_WIDTH;
+import globals_pkg::SAFE_BYTE_WIDTH;
 
 module sobel_pipe_output
 #(
-	parameter int FRAME_HEIGHT = globals_pkg::FRAME_HEIGHT,
-	parameter int FRAME_WIDTH  = globals_pkg::FRAME_WIDTH
+	parameter int FRAME_WIDTH  = 720,
+	parameter int FRAME_HEIGHT = 540,
+	parameter int COL_ID_WIDTH = $clog2( FRAME_WIDTH ),
+	parameter int ROW_ID_WIDTH = $clog2( FRAME_HEIGHT )
 )
 (
-	input logic clk, rst,
+	input  logic clk,
+	input  logic rst,
+	input  logic pipe_en,
 
-	input logic in_valid,
-	input logic signed [ SAFE_BYTE_WIDTH-1:0 ] hgrad, vgrad,
-	input logic out_full,
+	input  logic signed [ SAFE_BYTE_WIDTH-1:0 ] hgrad_in,
+	input  logic signed [ SAFE_BYTE_WIDTH-1:0 ] vgrad_in,
+	input  logic in_valid,
 
-	output logic pipe_wr_en,
-	output logic out_wr_en,
-	output logic [ BYTE_WIDTH-1:0 ] dout,
-
-	output logic done
+	output logic [ BYTE_WIDTH-1:0 ] px_out,
+	output logic out_valid
 
 );
-
-	localparam int ROW_IDX_WIDTH = $clog2( FRAME_HEIGHT );
-	localparam int COL_IDX_WIDTH = $clog2( FRAME_WIDTH );
 
 	typedef enum logic [ 2:0 ]
 	{
 		S_OOB, S_ZERO, S_VALID
 	} box_center_state_t;
-	box_center_state_t box_center_state, box_center_state_c; 
 
-	logic signed [ SAFE_BYTE_WIDTH-1:0 ] grad_abs_mean;
+	/* compute ( | hgrad | + | vgrad | ) / 2 */
+	function automatic logic signed [ SAFE_BYTE_WIDTH-1:0 ]
+	compute_grads_absmean(
+		input logic signed [ SAFE_BYTE_WIDTH-1:0 ] hgrad,
+		input logic signed [ SAFE_BYTE_WIDTH-1:0 ] vgrad
+	);
+		logic signed [ SAFE_BYTE_WIDTH-1:0 ] grads_absmean = 'h0;
+		grads_absmean = (
+			( hgrad[ SAFE_BYTE_WIDTH-1 ] ? -hgrad : hgrad ) 
+			+ ( vgrad[ SAFE_BYTE_WIDTH-1 ] ? -vgrad : vgrad )
+		) >>> 1;
+		return grads_absmean;
+	endfunction
 
-	//
-	// track position of CENTER px in box
-	//
-	logic signed [ ROW_IDX_WIDTH:0 ] irow, irow_c; 
-	logic signed [ COL_IDX_WIDTH:0 ] icol, icol_c; 
+	/*
+	 * Track position of CENTER px in box
+	 */
+	logic signed [ ROW_ID_WIDTH:0 ] row_id_next;
+	logic signed [ COL_ID_WIDTH:0 ] col_id_next;
 
-	always_comb
+	logic signed [ ROW_ID_WIDTH:0 ] row_id_r; 
+	logic signed [ COL_ID_WIDTH:0 ] col_id_r; 
+	logic signed [ SAFE_BYTE_WIDTH-1:0 ] grads_absmean;
+	box_center_state_t box_center_state; 
+
+	logic signed [ SAFE_BYTE_WIDTH-1:0 ] grads_absmean_r;
+	box_center_state_t box_center_state_r; 
+	logic in_valid_r;
+	logic [ BYTE_WIDTH-1:0 ] sobel_px;
+	logic px_valid;
+
+	logic [ BYTE_WIDTH-1:0 ] sobel_px_r;
+	logic px_valid_r;
+	
+	always_ff @ ( posedge clk )
 	begin
-		pipe_wr_en = 1'b0;
-
-		grad_abs_mean = 'h0;
-		out_wr_en = 1'b0;
-		dout = 'h0;
-
-		irow_c = irow;
-		icol_c = icol;
-		box_center_state_c = box_center_state;
-
-		if ( !out_full )
+		if ( rst )
 		begin
-			//
-			// pipe_wr_en indicates that out stage can consume register
-			// contents between compute and it, and they are safe to be
-			// overwritten; this corresponds to !out_full.
-			//
-			pipe_wr_en = 1'b1;
+			row_id_r <= -1;
+			col_id_r <= -1;
 
-			//
-			// if compute stage outputs correspond to gradients
-			// driven by a "valid" bottom right px ( even if the 
-			// center px is OOB or defaulted to zero ), advance px
-			// position
-			//
-			if ( in_valid )
-			begin
+			box_center_state_r <= S_OOB;
+			in_valid_r <= 1'b0;
 
-				if ( icol === FRAME_WIDTH-1 )
-				begin
-					icol_c = 0;
-					irow_c = irow + 1'h1;
-				end
-				else
-				begin
-					icol_c = icol + 1'h1;
-				end
+			px_valid_r <= 1'b0;
+		end
+		else if ( pipe_en )
+		begin
+			row_id_r <= row_id_next;
+			col_id_r <= col_id_next;
 
-				case ( box_center_state )
-					S_OOB:
-					begin
-						if ( irow_c === 1'h0 )
-						begin
-							// next px is on top frame edge
-							box_center_state_c = S_ZERO;
-						end
-					end
-					S_ZERO:
-					begin
-						dout = 'h0; // redundant given default assignment
-						out_wr_en = 1'b1;
-						if ( irow>1'h0 && irow<FRAME_HEIGHT-1 && icol_c===1'h1 )
-						begin
-							// next px is right of left frame edge
-							box_center_state_c = S_VALID;
-						end
-						if ( irow_c === FRAME_HEIGHT )
-						begin
-							// next px is below bottom frame edge
-							box_center_state_c = S_OOB;
-						end
-					end
-					S_VALID:
-					begin
-						grad_abs_mean = (
-							( hgrad[ SAFE_BYTE_WIDTH-1 ] ? -hgrad : hgrad ) 
-							+ ( vgrad[ SAFE_BYTE_WIDTH-1 ] ? -vgrad : vgrad )
-						) >>> 1;
-						// saturate
-						dout = (
-							| ( grad_abs_mean[ SAFE_BYTE_WIDTH-1:BYTE_WIDTH ] )
-							? 8'hFF
-							: grad_abs_mean[ BYTE_WIDTH-1:0 ]
-						);
-						out_wr_en = 1'b1;
+			box_center_state_r <= box_center_state;
+			in_valid_r <= in_valid;
 
-						if ( icol_c === FRAME_WIDTH-1 )
-						begin
-							// next px is on right frame edge
-							box_center_state_c = S_ZERO;
-						end
-					end
-				endcase
+			px_valid_r <= px_valid;
+		end
 
-				/*
-				if ( out_wr_en && ( irow > FRAME_HEIGHT-3 ) )
-				begin
-				$display(
-					"row %4d, \tcol %4d, state: %2d, \tsobel output %8h",
-					irow, icol, box_center_state, dout
-				);
-				end
-				*/
-
-			end
-
+		if ( pipe_en )
+		begin
+			grads_absmean_r <= grads_absmean;
+			sobel_px_r <= sobel_px;
 		end
 
 	end
 
-	assign done = irow_c > FRAME_HEIGHT-1;
+	assign px_out = sobel_px_r;
+	assign out_valid = px_valid_r;
 
-	always_ff @ ( posedge clk, posedge rst )
+	always_comb
+	begin: next_state_proc
+		box_center_state = box_center_state_r;
+
+		case ( box_center_state_r )
+			S_OOB:
+			begin
+				if ( row_id_r === 'h0 )
+				begin
+					box_center_state = S_ZERO;
+				end
+			end
+			S_ZERO:
+			begin
+				if ( row_id_r === 'h0 || row_id_r === FRAME_HEIGHT-1 )
+				begin
+					// next px is on top or bottom frame edge
+					box_center_state = S_ZERO;
+				end
+				else if ( col_id_r === 1'h1 )
+				begin
+					// next px is right of left frame edge
+					box_center_state = S_VALID;
+				end
+			end
+			S_VALID:
+			begin
+				if ( col_id_r === FRAME_WIDTH-1 )
+				begin
+					// next px is on right frame edge
+					box_center_state = S_ZERO;
+				end
+			end
+			default:
+			begin
+				box_center_state = S_OOB;
+			end
+		endcase
+	end: next_state_proc
+
+	always_comb
 	begin
-		if ( rst )
+		row_id_next = row_id_r;
+		col_id_next = col_id_r;
+		if ( in_valid )
 		begin
-			irow <= -1'h1;
-			icol <= -1'h1;
-			box_center_state <= S_OOB;
+			/* If compute stage outputs correspond to gradients
+			 * driven by a "valid" bottom right px ( even if the 
+			 * center px is OOB or defaulted to zero ), advance px
+			 * position */
+			col_id_next = col_id_r + 1'h1;
+			if ( col_id_r === FRAME_WIDTH-1 )
+			begin
+				col_id_next = 'h0;
+				row_id_next = row_id_r + 1'h1;
+				if ( row_id_r === FRAME_HEIGHT-1 )
+				begin
+					/* wrap to next frame */
+					row_id_next = 'h0;
+				end
+			end
 		end
-		else
-		begin
-			irow <= irow_c;
-			icol <= icol_c;
-			box_center_state <= box_center_state_c;
-		end
+
+		grads_absmean = compute_grads_absmean( hgrad_in, vgrad_in );
+
+		sobel_px = 'h0;
+		px_valid = 1'b0;
+		case ( box_center_state_r )
+			S_OOB:
+			begin
+			end
+			S_ZERO:
+			begin
+				px_valid = in_valid_r;
+			end
+			S_VALID:
+			begin
+				sobel_px = grads_absmean_r[ BYTE_WIDTH-1:0 ];
+				if ( |grads_absmean_r[ SAFE_BYTE_WIDTH-1:BYTE_WIDTH ] )
+				begin
+					/* saturate */
+					sobel_px = 8'hFF;
+				end
+				px_valid = in_valid_r;
+			end
+			default:
+			begin
+			end
+		endcase
 	end
 
 endmodule: sobel_pipe_output

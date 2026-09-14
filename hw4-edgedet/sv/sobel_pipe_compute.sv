@@ -1,62 +1,94 @@
 
-import globals_pkg :: BYTE_WIDTH;
-import globals_pkg :: SAFE_BYTE_WIDTH;
-import globals_pkg :: BOX_DIM;
-import globals_pkg :: box_t;
+import globals_pkg::BYTE_WIDTH;
+import globals_pkg::SAFE_BYTE_WIDTH;
+import globals_pkg::SOBEL_BOX_DIM;
+import globals_pkg::sobel_box_t;
+
+import globals_pkg::compute_sobel_hgrad;
+import globals_pkg::compute_sobel_vgrad;
 
 module sobel_pipe_compute(
 
-	input logic clk, rst,
-	input logic pipe_wr_en,
+	input logic  clk,
+	input logic  rst,
+	input logic  pipe_en,
 
-	input logic in_valid,
-	input box_t box,
+	input logic  [ 0:SOBEL_BOX_DIM-1 ] [ BYTE_WIDTH-1:0 ] box_right_col_in,
+	input logic  in_valid,
 
-	output logic signed [ SAFE_BYTE_WIDTH-1:0 ] hgrad, vgrad,
+	output logic signed [ SAFE_BYTE_WIDTH-1:0 ] hgrad_out,
+	output logic signed [ SAFE_BYTE_WIDTH-1:0 ] vgrad_out,
 	output logic out_valid
 );
 
-	logic out_valid_c;
-	logic signed [ SAFE_BYTE_WIDTH-1:0 ] hgrad_c, vgrad_c;
-
-	always_comb
-	begin
-		out_valid_c = 1'b0;
-
-		hgrad_c = 'h0;
-		vgrad_c = 'h0;
-
-		if ( pipe_wr_en && in_valid )
+	/* Box is indexed in col-major order ( in terms of orig frame ), 
+	 * so print [0][0] [1][0] [2][0], [0][1], ... */
+	function automatic void
+	PRINTBOX( input sobel_box_t box );
+		$write( "box: " );
+		for ( int i=0; i<SOBEL_BOX_DIM; ++i )
 		begin
-			out_valid_c = 1'b1;
-
-			vgrad_c =
-				- box[ 0 ][ 0 ] - ( box[ 1 ][ 0 ]<<<1 ) - ( box[ 2 ][ 0 ] )
-				+ box[ 0 ][ 2 ] + ( box[ 1 ][ 2 ]<<<1 ) + ( box[ 2 ][ 2 ] );
-			hgrad_c =
-				-   box[ 0 ][ 0 ]       +   box[ 2 ][ 0 ]
-				- ( box[ 0 ][ 1 ]<<<1 ) + ( box[ 2 ][ 1 ]<<<1 )
-				-   box[ 0 ][ 2 ]       +   box[ 2 ][ 2 ];
-
+			for ( int j=0; j<SOBEL_BOX_DIM; ++j )
+			begin
+				$write( "%2h ", box[ j ][ i ] );
+			end
+			$write( ", " );
 		end
-	end
+		$display( "" );
+	endfunction
 
-	always_ff @ ( posedge clk, posedge rst )
+	sobel_box_t box_new;
+
+	sobel_box_t box_r;
+	logic box_valid_r;
+	logic signed [ SAFE_BYTE_WIDTH-1:0 ] sobel_hgrad, sobel_vgrad;
+
+	logic signed [ SAFE_BYTE_WIDTH-1:0 ] sobel_hgrad_r, sobel_vgrad_r;
+	logic grads_valid_r;
+
+	always_ff @ ( posedge clk )
 	begin
 		if ( rst )
 		begin
-			out_valid <= 1'b0;
+			box_valid_r <= 1'b0;
 
-			hgrad <= 'h0;
-			vgrad <= 'h0;
+			grads_valid_r <= 1'b0;
 		end
-		else
+		else if ( pipe_en )
 		begin
-			out_valid <= out_valid_c;
+			box_valid_r <= in_valid;
 
-			hgrad <= hgrad_c;
-			vgrad <= vgrad_c;
+			grads_valid_r <= box_valid_r;
 		end
+
+		if ( pipe_en )
+		begin
+			box_r <= box_new;
+
+			sobel_hgrad_r <= sobel_hgrad;
+			sobel_vgrad_r <= sobel_vgrad;
+		end
+	end
+
+	assign hgrad_out = sobel_hgrad_r;
+	assign vgrad_out = sobel_vgrad_r;
+	assign out_valid = grads_valid_r;
+
+	always_comb
+	begin
+		box_new = box_r;
+		if ( in_valid )
+		begin
+			/*
+			 * Avoid shifting in same right col more than once
+			 * during bubbles
+			 */
+			box_new[ 0:1 ] = box_r[ 1:2 ];
+			box_new[ 2 ]   = box_right_col_in;
+		end
+
+		sobel_hgrad = compute_sobel_hgrad( box_r );
+		sobel_vgrad = compute_sobel_vgrad( box_r );
 	end
 
 endmodule: sobel_pipe_compute
