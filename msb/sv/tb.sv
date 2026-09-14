@@ -1,24 +1,34 @@
 
 `timescale 1 ns / 1 ns
 
-module msb_tb();
+module msb_tb #(
+	parameter int DWIDTH = 32,
+	parameter int N_MAX = 512
+
+)();
 
 	localparam int PERIOD = 10;
 
 	logic clk = 1'b0;
 	logic [ 31:0 ] n = 'h0;
-	logic [ 5:0 ]  i_msb_bs, i_msb_pe;
+	logic [ 5:0 ]  msb_pos_bs, msb_pos_pe;
 
-	bsrch_32 bs(
-		.clk  ( clk ),
-		.n    ( n ),
-		.i_msb( i_msb_bs )
+	find_msb_bsrch
+	#(
+		.DWIDTH( DWIDTH )
+	) bsrch (
+		.clk( clk ),
+		.n( n ),
+		.msb_pos( msb_pos_bs )
 	);
 
-	pri_enc pe(
-		.clk  ( clk ),
-		.n    ( n ),
-		.i_msb( i_msb_pe )
+	pri_enc #(
+		.DWIDTH( DWIDTH )
+	)
+	pe (
+		.clk( clk ),
+		.n( n ),
+		.msb_pos( msb_pos_pe )
 	);
 
 	always
@@ -31,22 +41,19 @@ module msb_tb();
 
 	initial
 	begin
-		localparam int NMAX = 512;
-
-		repeat( NMAX )
+		for ( n=0; n<=N_MAX; ++n )
 		begin
 			@ ( negedge clk );
 			$strobe( "@ %0t, n = %0d", $time, n );
-			n = n + 1;
 		end
 		#( PERIOD*2 );
-		$finish;
+		$stop;
 	end
 
 	always
 	begin
 		@ ( posedge clk );
-		$strobe( "@ %0t, i_msb_bs = %0d, i_msb_pe = %0d", $time, i_msb_bs, i_msb_pe );
+		$strobe( "@ %0t, msb_pos_bs = %0d, msb_pos_pe = %0d", $time, msb_pos_bs, msb_pos_pe );
 	end
 
 endmodule: msb_tb

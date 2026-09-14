@@ -6,14 +6,14 @@ module pri_enc
 (
 	input  logic clk,
 	input  logic [ DWIDTH-1:0 ] n,
-	output logic [ $clog2( DWIDTH ):0 ] i_msb
+	output logic [ $clog2( DWIDTH ):0 ] msb_pos
 );
 
-	logic [ DWIDTH-1:0 ] n_ff;
-	logic [ $clog2( DWIDTH ):0 ] i_msb_ff;
+	logic [ DWIDTH-1:0 ] n_r;
+	logic [ $clog2( DWIDTH ):0 ] msb_pos_r;
 
 	function automatic logic [ $clog2( DWIDTH ):0 ]
-	getmsb( input logic [ DWIDTH-1:0 ] val );
+	findmsb( input logic [ DWIDTH-1:0 ] val );
 		for ( int i = DWIDTH-1; i >= 0; --i )
 		begin
 			if ( val[ i ] === 1'b1 )
@@ -26,11 +26,11 @@ module pri_enc
 
 	always_ff @ ( posedge clk )
 	begin
-		n_ff     <= n;
-		i_msb_ff <= getmsb( n_ff );
+		n_r <= n;
+		msb_pos_r <= findmsb( n_r );
 	end
 
-	assign i_msb = i_msb_ff;
+	assign msb_pos = msb_pos_r;
 
 endmodule: pri_enc
 
