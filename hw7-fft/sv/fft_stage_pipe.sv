@@ -3,10 +3,10 @@ module fft_stage #(
 	parameter int DWIDTH = 32,
 	parameter int FRACWIDTH = 14,
 	parameter int N = 1024,
-	parameter int STAGE = 8,
+	parameter int STAGE = 7,
 
 	// # stages in mul_cmplx retimed regs ( excluding input reg )
-	parameter int MUL_STAGES = 2,
+	parameter int MUL_STAGES = 3,
 
 	parameter logic DBG = 1'b0
 )

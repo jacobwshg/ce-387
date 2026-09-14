@@ -29,17 +29,15 @@ module fft_top #(
 		out_wr_en, out_full;
 
 	fifo #(
-		.FIFO_DATA_WIDTH( 2 * DWIDTH ),
-		.FIFO_BUFFER_SIZE( FIFO_DEPTH )
+		.DWIDTH( 2 * DWIDTH ),
+		.DEPTH ( FIFO_DEPTH )
 	) fifo_in (
-		.reset( rst ),
+		.clk( clk ), .rst( rst ),
 
-		.wr_clk( clk ),
 		.wr_en( in_wr_en ),
 		.din( { in_din[ 0 ], in_din[ 1 ] } ),
 		.full( in_full ),
 
-		.rd_clk( clk ),
 		.rd_en( in_rd_en ),
 		.dout( { in_dout[ 0 ], in_dout[ 1 ] } ),
 		.empty( in_empty )
@@ -63,17 +61,15 @@ module fft_top #(
 	);
 
 	fifo #(
-		.FIFO_DATA_WIDTH( 2 * DWIDTH ),
-		.FIFO_BUFFER_SIZE( FIFO_DEPTH )
+		.DWIDTH( 2 * DWIDTH ),
+		.DEPTH ( FIFO_DEPTH )
 	) fifo_out (
-		.reset( rst ),
+		.clk( clk ), .rst( rst ),
 
-		.wr_clk( clk ),
 		.wr_en( out_wr_en ),
 		.din( { out_din[ 0 ], out_din[ 1 ] } ),
 		.full( out_full ),
 
-		.rd_clk( clk ),
 		.rd_en( out_rd_en ),
 		.dout( { out_dout[ 0 ], out_dout[ 1 ] } ),
 		.empty( out_empty )
