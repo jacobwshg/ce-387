@@ -18,7 +18,7 @@ package globals_pkg;
 
 	localparam int SOBEL_BOX_DIM = 3;
 
-	localparam int FIFO_DEPTH = 32;
+	localparam int FIFO_DEPTH = 8;
 
 	typedef logic [ 0:SOBEL_BOX_DIM-1 ] [ 0:SOBEL_BOX_DIM-1 ] [ BYTE_WIDTH-1:0 ]
 		sobel_box_t;
