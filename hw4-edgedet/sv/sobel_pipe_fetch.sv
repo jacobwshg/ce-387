@@ -143,11 +143,11 @@ module sobel_pipe_fetch
 		if ( in_valid )
 		begin
 			col_id_next = col_id_r + 1'h1;
-			if ( col_id_r===FRAME_WIDTH-1 )
+			if ( int'( col_id_r ) === FRAME_WIDTH-1 )
 			begin
 				col_id_next = 'h0;
 				row_id_next = row_id_r + 1'h1;
-				if ( row_id_r === FRAME_HEIGHT-1 )
+				if ( int'( row_id_r ) === FRAME_HEIGHT-1 )
 				begin
 					row_id_next = 'h0;
 				end

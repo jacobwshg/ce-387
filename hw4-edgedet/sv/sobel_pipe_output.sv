@@ -110,12 +110,12 @@ module sobel_pipe_output
 			end
 			S_ZERO:
 			begin
-				if ( row_id_r === 'h0 || row_id_r === FRAME_HEIGHT-1 )
+				if ( row_id_r === 'h0 || int'( row_id_r ) === FRAME_HEIGHT-1 )
 				begin
 					// next px is on top or bottom frame edge
 					box_center_state = S_ZERO;
 				end
-				else if ( col_id_r === 1'h1 )
+				else if ( col_id_r === ( 1+COL_ID_WIDTH )'( 1'h1 ) )
 				begin
 					// next px is right of left frame edge
 					box_center_state = S_VALID;
@@ -123,7 +123,7 @@ module sobel_pipe_output
 			end
 			S_VALID:
 			begin
-				if ( col_id_r === FRAME_WIDTH-1 )
+				if ( int'( col_id_r ) === FRAME_WIDTH-1 )
 				begin
 					// next px is on right frame edge
 					box_center_state = S_ZERO;
@@ -147,11 +147,11 @@ module sobel_pipe_output
 			 * center px is OOB or defaulted to zero ), advance px
 			 * position */
 			col_id_next = col_id_r + 1'h1;
-			if ( col_id_r === FRAME_WIDTH-1 )
+			if ( int'( col_id_r ) === FRAME_WIDTH-1 )
 			begin
 				col_id_next = 'h0;
 				row_id_next = row_id_r + 1'h1;
-				if ( row_id_r === FRAME_HEIGHT-1 )
+				if ( int'( row_id_r ) === FRAME_HEIGHT-1 )
 				begin
 					/* wrap to next frame */
 					row_id_next = 'h0;
