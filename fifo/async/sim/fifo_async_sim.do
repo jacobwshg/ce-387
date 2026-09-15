@@ -3,6 +3,7 @@ setenv LMC_TIMEUNIT -9
 vlib work
 vmap work work
 
+vlog -work work "../sv/bram.sv"
 vlog -work work "../sv/togray_comb.sv"
 vlog -work work "../sv/fromgray_comb.sv"
 vlog -work work "../sv/fifo_async.sv"
