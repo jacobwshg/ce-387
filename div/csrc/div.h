@@ -60,6 +60,7 @@ Div::div_stage(
 
 	const unsigned int d_shamt { n_msb_pos - d_msb_pos };
 	d_tmp = ( d_i << d_shamt );
+	std::int64_t delta_q { std::int64_t{ 1 } << d_shamt };
 
 	std::printf( "\n\t\td shamt: %u, shifted d: %ld", d_shamt, d_tmp );
 
@@ -69,7 +70,8 @@ Div::div_stage(
 	{
 		n_o = n_tmp;
 		d_o = d_i;
-		q_o = q_i | ( 1 << d_shamt );
+		q_o = q_i | delta_q;
+		std::printf( "\n\t\t new n>=0, q_o: %ld", q_o );
 		r_o = n_tmp;
 		sgn_o = sgn_i;
 		return;
@@ -77,13 +79,14 @@ Div::div_stage(
 
 	d_tmp >>= 1;
 	n_tmp = n_i - d_tmp;
+	delta_q >>= 1;
 	/*
 	 * Suppose that n_i < ( d_i<<shamt ), with both sides having the same MSB pos.
 	 * Then n_i > ( d_i<<( shamt-1 ) ), because its MSB pos is higher.
 	 */
 	n_o = n_tmp;
 	d_o = d_i;
-	q_o = q_i | ( ( 1<<d_shamt ) >> 1 );
+	q_o = q_i | delta_q;
 	r_o = n_tmp;
 	sgn_o = sgn_i;
 	return;

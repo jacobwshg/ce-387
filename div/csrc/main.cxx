@@ -28,7 +28,7 @@ div_stage_test( const std::int64_t n_, const std::int64_t d_, const unsigned int
 {
 	std::printf( "Div stage test: %ld / %ld\n", n_, d_ );
 
-	std::int64_t n { n_ }, d { d_ }, q {}, r {};
+	std::int64_t n { n_ }, d { d_ }, q { 0 }, r {};
 	bool sgn {};
 
 	const bool sgn_n { static_cast< bool >( ( n_>>63 ) & 0b1 ) };
