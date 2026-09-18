@@ -1,7 +1,7 @@
 
 module pri_enc
 #(
-	parameter DWIDTH = 32
+	parameter DWIDTH = 16
 )
 (
 	input  logic clk,

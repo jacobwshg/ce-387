@@ -1,7 +1,7 @@
 
 module find_msb_bsrch
 #(
-	parameter int DWIDTH = 32
+	parameter int DWIDTH = 16
 )
 (
 	input  logic clk,
@@ -9,8 +9,8 @@ module find_msb_bsrch
 	output logic [ $clog2( DWIDTH )-1:0 ] msb_pos
 );
 
-	parameter int BITPOS_WIDTH = $clog2( DWIDTH );
-	parameter int TMP_WIDTH = ( 2 ** BITPOS_WIDTH );
+	localparam int BITPOS_WIDTH = $clog2( DWIDTH );
+	localparam int TMP_WIDTH = ( 2 ** BITPOS_WIDTH );
 
 	logic [ DWIDTH-1:0 ] n_r;
 	logic [ BITPOS_WIDTH-1:0 ] msb_pos_r;
