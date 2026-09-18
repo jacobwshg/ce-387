@@ -1,7 +1,8 @@
 
 module div #(
-	parameter int DWIDTH = 16,
-	parameter int BITPOSWIDTH = $clog2( DWIDTH )
+	parameter int DWIDTH = 32,
+	parameter int BITPOSWIDTH = $clog2( DWIDTH ),
+	parameter logic FINDMSB_USE_BSRCH = 1'b1
 )(
 	input  logic clk,
 	input  logic rst,
@@ -35,7 +36,8 @@ module div #(
 	logic out_valid;
 
 	findmsb_comb #(
-		.DWIDTH( DWIDTH ), .BITPOSWIDTH( BITPOSWIDTH )
+		.DWIDTH( DWIDTH ), .BITPOSWIDTH( BITPOSWIDTH ),
+		.USE_BSRCH( FINDMSB_USE_BSRCH )
 	) find_d_msb (
 		.val( d_r ), .msb_pos( d_msbpos )
 	);

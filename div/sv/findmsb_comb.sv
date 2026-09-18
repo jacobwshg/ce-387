@@ -41,7 +41,8 @@ endmodule: findmsb_bsrch_comb
 module findmsb_comb
 #(
 	parameter int DWIDTH = 16,
-	parameter int BITPOSWIDTH = $clog2( DWIDTH )
+	parameter int BITPOSWIDTH = $clog2( DWIDTH ),
+	parameter logic USE_BSRCH = 1'b0
 )
 (
 	input  logic [ DWIDTH-1:0 ] val,
@@ -61,7 +62,7 @@ module findmsb_comb
 	endfunction: FINDMSB_LINEAR
 
 	generate
-		if ( DWIDTH <= 32 )
+		if ( !USE_BSRCH )
 		begin
 			assign msb_pos = FINDMSB_LINEAR( val );
 		end

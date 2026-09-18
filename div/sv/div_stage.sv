@@ -1,6 +1,6 @@
 
 module div_stage #(
-	parameter int DWIDTH = 16,
+	parameter int DWIDTH = 32,
 	parameter int BITPOSWIDTH = $clog2( DWIDTH ),
 	parameter int DSHAMT = DWIDTH-1
 )(
@@ -25,6 +25,7 @@ module div_stage #(
 	logic [ DWIDTH-1:0 ] n_r;
 	logic [ DWIDTH-1:0 ] d_r;
 	logic [ DWIDTH-1:0 ] d_lsh_r;
+	logic d_lsh_oflow_r;
 	logic [ DWIDTH-1:0 ] q_r;
 	logic [ DWIDTH-1:0 ] r_r;
 	logic valid_r;
@@ -58,6 +59,7 @@ module div_stage #(
 			n_r     <= n_in;
 			d_r     <= d_in;
 			d_lsh_r <= d_in << DSHAMT;
+			d_lsh_oflow_r <= ( int'( d_msbpos_in ) >= DWIDTH - DSHAMT );
 			q_r     <= q_in;
 			/* 
 			 * Underflow is possible, but in these cases we discard the
@@ -84,7 +86,7 @@ module div_stage #(
 
 		n_tmp = n_r;
 		q_tmp = q_r;
-		if ( int'( d_msbpos_r ) >= DWIDTH - DSHAMT )
+		if ( d_lsh_oflow_r )
 		begin
 			/* d overflows after upscaling; no implication on quotient */
 			/* do nothing */

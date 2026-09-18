@@ -5,6 +5,7 @@ module div_tb
 #(
 	parameter int DWIDTH = 32,
 	parameter int BITPOSWIDTH = $clog2( DWIDTH ),
+	parameter int FINDMSB_USE_BSRCH = 1'b0,
 
 	parameter int PERIOD = 10,
 
@@ -13,8 +14,8 @@ module div_tb
 
 	parameter int TEST_CNT = 20,
 
-	parameter int IN_DLY  = 55,
-	parameter int OUT_DLY = 75,
+	parameter int IN_DLY  = 0,
+	parameter int OUT_DLY = 0,
 	parameter int FIFO_DEPTH = 2,
 
 	parameter int TIMEOUT = 100000
@@ -84,7 +85,8 @@ module div_tb
 	//*/
 
 	div #(
-		.DWIDTH( DWIDTH ), .BITPOSWIDTH( BITPOSWIDTH )
+		.DWIDTH( DWIDTH ), .BITPOSWIDTH( BITPOSWIDTH ),
+		.FINDMSB_USE_BSRCH( FINDMSB_USE_BSRCH )
 	) dut (
 		.clk( clk ), .rst( rst ),
 
@@ -240,6 +242,7 @@ module div_tb
 
 			if ( !out_empty )
 			begin
+				/* read test samples matching current output idx */
 				n_test = test_n_vec[ i ];
 				d_test = test_d_vec[ i ];
 				q_ref  = n_test / d_test;
