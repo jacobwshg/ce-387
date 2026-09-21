@@ -145,7 +145,7 @@ module div_tb
 	initial
 	begin: info_proc
 		$display(
-			"*** Sobel COMPUTE stage test, test %d col samples ***", 
+			"*** DIV test, test %d col samples ***", 
 			TEST_CNT
 		);
 	end: info_proc
