@@ -57,7 +57,7 @@ module grayscale (
 			begin
 				if ( ~out_full )
 				begin
-					out_din = ( gs_sum * 85 ) >>> 8;
+					out_din = gs_sum / 3;
 					out_wr_en = 1'b1;
 					state_c = S_RD;
 				end
