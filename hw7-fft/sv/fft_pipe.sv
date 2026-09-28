@@ -42,14 +42,12 @@ module fft
 	 * The output FIFO for the entire module exposes its din, full and wr_en,
 	 * which are included at idx [ STAGE ] where applicable
 	 */
-	logic [ 0:STAGES-1 ] fifo_empty;
-	logic [ 0:STAGES-1 ] fifo_rd_en;
-	logic [ 0:STAGES   ] fifo_full;
-	logic [ 0:STAGES   ] fifo_wr_en;
-	logic signed [ 0:STAGES   ] [ DWIDTH-1:0 ]
-		fifo_din_real,  fifo_din_imag;
-	logic signed [ 0:STAGES-1 ] [ DWIDTH-1:0 ]
-		fifo_dout_real, fifo_dout_imag;
+	logic fifo_empty [ 0:STAGES-1 ];
+	logic fifo_rd_en [ 0:STAGES-1 ];
+	logic fifo_full  [ 0:STAGES   ];
+	logic fifo_wr_en [ 0:STAGES   ];
+	logic signed [ DWIDTH-1:0 ] fifo_din_real [ 0:STAGES ], fifo_din_imag [ 0:STAGES ];
+	logic signed [ DWIDTH-1:0 ] fifo_dout_real [ 0:STAGES-1 ], fifo_dout_imag [ 0:STAGES-1 ];
 
 	bit_reverse_buf #(
 		.DWIDTH( DWIDTH ),
