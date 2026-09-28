@@ -19,6 +19,8 @@
 
 #define PI 3.14159265358979323846
 
+#define N_MAX 8192
+
 static inline int
 DEQUANTIZE_I( const int i )
 {
@@ -200,8 +202,8 @@ void fft( Complex *in, Complex *out, const unsigned int N )
 	for ( unsigned int i = 0; i < N; ++i )
 	{
 		printf(
-			"\t%08x+%08xj\n", 
-			 x[ 0 ][ i ].real, x[ 0 ][ i ].imag
+			"\t[ %d ] %08x+%08xj\n", 
+			 i, x[ 0 ][ i ].real, x[ 0 ][ i ].imag
 		);
 	}
 
@@ -282,7 +284,10 @@ void fft( Complex *in, Complex *out, const unsigned int N )
 		printf( "Stage %d outputs:\n", stage );
 		for ( unsigned int i=0; i<N; ++i )
 		{
-			printf( "\t%08x+%08xj\n", x[ stage+1 ][ i ].real, x[ stage+1 ][ i ].imag );
+			printf(
+				"\t[ %d ] %08x+%08xj\n",
+				i, x[ stage+1 ][ i ].real, x[ stage+1 ][ i ].imag
+			);
 		}
 
 	}
@@ -382,10 +387,10 @@ int main( int argc, char *argv[] )
 	}
 	N_ = atoi( argv[1] );
 
-	if ( N_ > 4096 )
+	if ( N_ > 8192 )
 	{
 		fprintf( stderr, "Number of inputs too large: %d\n", N_ );
-		exit( 2 );
+		return 2;
 	}
 	unsigned int N = 1;
 	N_ >>= 1;
