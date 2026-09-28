@@ -3,7 +3,9 @@ module fft
 #(
 	parameter int DWIDTH = 32,
 	parameter int FRACWIDTH = 14,
-	parameter int N = 256,
+	parameter int N = 1024,
+
+	parameter int MUL_STAGES = 2,
 
 	parameter logic DBG = 1'b0
 )
@@ -94,6 +96,7 @@ module fft
 				.FRACWIDTH( FRACWIDTH ),
 				.N( N ),
 				.STAGE( i ),
+				.MUL_STAGES( MUL_STAGES ),
 				.DBG( DBG )
 			) stage (
 				.clk( clk ), .rst( rst ),

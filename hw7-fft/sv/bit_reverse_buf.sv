@@ -96,7 +96,10 @@ module bit_reverse_buf #(
 
 	always_ff @ ( posedge clk )
 	begin: wr_reg
-
+		/*
+		 * FSM is controls wr_pipe_en for write pipeline stages,
+		 * so its own state update is not gated by wr_pipe_en.
+		 */
 		if ( rst ) wr_frame_state_r <= S_FRAME_RUN;
 		else       wr_frame_state_r <= wr_frame_state_next;
 
@@ -286,10 +289,10 @@ module bit_reverse_buf #(
 				 * change to DONE on the upcoming edge too.
 				 *
 				 * This transition in particular is gated by rd_pipe_en,
-				 * else in case out_full=0, the state would change without
-				 * rd_frame_parity being clocked into rd_frame_parity_r. When
-				 * reader returns to RUN state, it will see the preserved parity 
-				 * flip again and switch undesirably to DONE state again.
+				 * else in case out_full=1 and rd_pipe_en=0, the state would change 
+				 * without rd_frame_parity being clocked into rd_frame_parity_r.
+				 * When reader returns to RUN state, it will see the preserved
+				 * parity flip again and switch undesirably to DONE state again.
 				 *
 				 */
 				if ( rd_pipe_en && ( rd_frame_parity !== rd_frame_parity_r ) )

@@ -2,11 +2,11 @@
 module fft_stage #(
 	parameter int DWIDTH = 32,
 	parameter int FRACWIDTH = 14,
-	parameter int N = 1024,
-	parameter int STAGE = 7,
+	parameter int N = 8192,
+	parameter int STAGE = 11,
 
 	// # stages in mul_cmplx retimed regs ( excluding input reg )
-	parameter int MUL_STAGES = 3,
+	parameter int MUL_STAGES = 2,
 
 	parameter logic DBG = 1'b0
 )
@@ -130,6 +130,15 @@ module fft_stage #(
 	logic out_dup;
 	logic [ SAMPLE_ID_WIDTH-1:0 ] out_prev_sample_id_r;
 	logic out_prev_wr_en_r;
+
+	/*
+	 * RAM and ROM addr register updates need to be gated by pipe_en. Else
+	 * when the pipeline stalls, addrs will be clocked and mem outputs will be
+	 * clocked during stall cycles without matching samples being clocked into 
+	 * datapath pipeline registers. When the pipeline recovers from the stall,
+	 * the main datapath sample will be paired with mem output meant to match 
+	 * the next sample.
+	 */
 
 	stage_twd_rom #(
 		.STAGE( STAGE ),
@@ -276,16 +285,16 @@ module fft_stage #(
 	 * "in1 - v" ( which is only valid for in2 samples ), but rather out2 buf
 	 * output. 
 	 * Thus the out2 buf addr should be clocked between add1 and add2, which
-	 * requires it be derived from dq_sample_id_r and be asserted over the
+	 * requires it be derived from dq_sample_id_r and be decoded over the
 	 * add1 cycle.
 	 *
 	 * For STAGE >= 1, when an out2 sample is in OUT stage, the incoming in1 
-	 * that outputs this out2 can only be as deep as add1. During the next
-	 * cycle, the out2 sample has written to out2 buf and retired, and the in1
-	 * can decode from the same address. But for STAGE = 0, when the out2 is in 
-	 * OUT, the in1 that uses it is already in ADD1; the out2 read by
-	 * this in1 is stale, and the true out2 must be forwarded from
-	 * add2_out2_*_r.
+	 * that outputs this out2 can only have progressed as deep as add1. 
+	 * During the next cycle, the out2 sample has written to out2 buf and 
+	 * retired, and the in1 can decode from the same address. But for 
+	 * STAGE = 0, when the out2 is in OUT, the in1 that uses it is already
+	 * in ADD1; the out2 read by this in1 is stale, and the true out2 must be 
+	 * forwarded from add2_out2_*_r.
 	 *
 	 */
 	assign add1_v_real = dq_p2_r - dq_p1_r;
