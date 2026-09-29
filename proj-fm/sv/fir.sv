@@ -2,15 +2,17 @@
 
 import globals_pkg::*;
 import quant_pkg::*;
+import constants_pkg::HP_COEFF_TAPS;
+import constants_pkg::HP_COEFFS;
 
 module fir #(
     parameter int DWIDTH = 32,
-    parameter int TAPS = 32,
+    parameter int TAPS = HP_COEFF_TAPS,
     parameter int DECIM = 8,
 
     parameter int MUL_CNT = 4,
 
-    parameter logic signed [ DWIDTH-1:0 ] X_COEFS [ 0:TAPS-1 ] = '{default:0}
+    parameter logic signed [ DWIDTH-1:0 ] X_COEFS [ 0:TAPS-1 ] = HP_COEFFS /*'{default:0}*/
 )(
     input logic clk,
     input logic rst,
@@ -214,4 +216,5 @@ module fir #(
         end
     end
 
-endmodule
+endmodule: fir
+

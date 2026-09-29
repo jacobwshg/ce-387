@@ -2,13 +2,16 @@
 
 import globals_pkg::*;
 import quant_pkg::*;
+import constants_pkg::IIR_COEFF_TAPS;
+import constants_pkg::IIR_X_COEFFS;
+import constants_pkg::IIR_Y_COEFFS;
 
 module iir #(
     parameter int DWIDTH = 32,
-    parameter int TAPS = 32,
+    parameter int TAPS = IIR_COEFF_TAPS,
     parameter int DECIM = 8,
-    parameter logic signed [ DWIDTH-1:0 ] X_COEFS [ 0:TAPS-1 ] = '{default:0},
-    parameter logic signed [ DWIDTH-1:0 ] Y_COEFS [ 0:TAPS-1 ] = '{default:0}
+    parameter logic signed [ DWIDTH-1:0 ] X_COEFS [ 0:TAPS-1 ] = IIR_X_COEFFS,
+    parameter logic signed [ DWIDTH-1:0 ] Y_COEFS [ 0:TAPS-1 ] = IIR_Y_COEFFS
 )(
     input logic clk,
     input logic rst,
@@ -110,4 +113,5 @@ module iir #(
         end
     end
 
-endmodule
+endmodule: iir
+
