@@ -20,7 +20,7 @@ module fft_stage_fsm #(
 	output logic out_wr_en
 );
 	localparam int
-		REAL = 0, IMAG = 1;
+		REAL = 1, IMAG = 0;
 
 	/*
 	 * Use 0-based stage index

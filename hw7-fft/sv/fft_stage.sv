@@ -48,10 +48,10 @@ module fft_stage #(
 		begin
 			logic signed [ 1:0 ] [ DWIDTH-1:0 ] stage_din;
 			logic signed [ 1:0 ] [ DWIDTH-1:0 ] stage_dout;
-			assign stage_din[ 0 ] = din_real;
-			assign stage_din[ 1 ] = din_imag;
-			assign dout_real = stage_dout[ 0 ];
-			assign dout_imag = stage_dout[ 1 ];
+			assign stage_din[ 1 ] = din_real;
+			assign stage_din[ 0 ] = din_imag;
+			assign dout_real = stage_dout[ 1 ];
+			assign dout_imag = stage_dout[ 0 ];
 			fft_stage_fsm #(
 				.DWIDTH( DWIDTH ),
 				.N( N ), .STAGE( STAGE )
