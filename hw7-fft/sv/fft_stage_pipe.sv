@@ -1,5 +1,5 @@
 
-module fft_stage #(
+module fft_stage_pipe #(
 	parameter int DWIDTH = 32,
 	parameter int FRACWIDTH = 14,
 	parameter int N = 8192,
@@ -489,5 +489,5 @@ module fft_stage #(
 	end
 	endgenerate
 
-endmodule: fft_stage
+endmodule: fft_stage_pipe
 

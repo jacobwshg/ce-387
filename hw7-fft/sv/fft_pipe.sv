@@ -5,6 +5,7 @@ module fft
 	parameter int FRACWIDTH = 14,
 	parameter int N = 1024,
 
+	parameter logic USE_STAGE_PIPE = 1'b1,
 	parameter int MUL_STAGES = 2,
 
 	parameter logic DBG = 1'b0
@@ -90,11 +91,12 @@ module fft
 				.empty( fifo_empty[ i ] )
 			);
 			fft_stage #(
-				.DWIDTH( DWIDTH ),
-				.FRACWIDTH( FRACWIDTH ),
-				.N( N ),
-				.STAGE( i ),
+				.DWIDTH( DWIDTH ), .FRACWIDTH( FRACWIDTH ),
+				.N( N ), .STAGE( i ),
+
+				.USE_PIPE( USE_STAGE_PIPE ),
 				.MUL_STAGES( MUL_STAGES ),
+
 				.DBG( DBG )
 			) stage (
 				.clk( clk ), .rst( rst ),
@@ -111,7 +113,6 @@ module fft
 			);
 		end
 	endgenerate
-
 
 endmodule: fft
 
