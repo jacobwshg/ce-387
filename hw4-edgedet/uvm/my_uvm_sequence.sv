@@ -1,58 +1,84 @@
+
 import uvm_pkg::*;
 
-
 class my_uvm_transaction extends uvm_sequence_item;
-    logic [23:0] image_pixel;
+	logic [ 0:2 ] [ 7:0 ] image_pixel;
 
-    function new(string name = "");
-        super.new(name);
-    endfunction: new
+	function new( string name = "" );
+		super.new( name );
+	endfunction: new
 
-    `uvm_object_utils_begin(my_uvm_transaction)
-        `uvm_field_int(image_pixel, UVM_ALL_ON)
-    `uvm_object_utils_end
+	`uvm_object_utils_begin( my_uvm_transaction )
+		`uvm_field_int( image_pixel, UVM_ALL_ON )
+	`uvm_object_utils_end
+
 endclass: my_uvm_transaction
 
+class my_uvm_sequence extends uvm_sequence#( my_uvm_transaction );
 
-class my_uvm_sequence extends uvm_sequence#(my_uvm_transaction);
-    `uvm_object_utils(my_uvm_sequence)
+	`uvm_object_utils( my_uvm_sequence )
 
-    function new(string name = "");
-        super.new(name);
-    endfunction: new
+	//virtual my_uvm_if vif;
 
-    task body();        
-        my_uvm_transaction tx;
-        int in_file, n_bytes=0, i=0;
-        logic [7:0] bmp_header [0:BMP_HEADER_SIZE-1];
-        logic [23:0] pixel;
+	function new( string name = "" );
+		super.new( name );
+	endfunction: new
 
-        `uvm_info("SEQ_RUN", $sformatf("Loading file %s...", IMG_IN_NAME), UVM_LOW);
+	task body();		
+		my_uvm_transaction tx;
 
-        in_file = $fopen(IMG_IN_NAME, "rb");
-        if ( !in_file ) begin
-            `uvm_fatal("SEQ_RUN", $sformatf("Failed to open file %s...", IMG_IN_NAME));
-        end
+		int	in_file;
+		int	n_bytes = 0;
+		int i = 0;
+		logic [ 7:0 ] bmp_header [ 0:BMP_HEADER_SIZE-1 ];
+		logic [ 0:2 ] [ 7:0 ] pixel;
 
-        // read BMP header
-        n_bytes = $fread(bmp_header, in_file, 0, BMP_HEADER_SIZE);
-        if ( !n_bytes ) begin
-            `uvm_fatal("SEQ_RUN", $sformatf("Failed read header data from %s...", IMG_IN_NAME));
-        end
+		`uvm_info( "SEQ_RUN", $sformatf( "Loading file %s...", IMG_IN_NAME ), UVM_LOW );
 
-        while ( !$feof(in_file) && i < BMP_DATA_SIZE ) begin
-            tx = my_uvm_transaction::type_id::create(.name("tx"), .contxt(get_full_name()));
-            start_item(tx);
-            n_bytes = $fread(pixel, in_file, BMP_HEADER_SIZE+i, BYTES_PER_PIXEL);
-            tx.image_pixel = pixel;
-            //`uvm_info("SEQ_RUN", tx.sprint(), UVM_LOW);
-            finish_item(tx);
-            i += BYTES_PER_PIXEL;
-        end
+		in_file = $fopen( IMG_IN_NAME, "rb" );
+		if ( !in_file )
+		begin
+			`uvm_fatal( "SEQ_RUN", $sformatf( "Failed to open file %s...", IMG_IN_NAME ) );
+		end
 
-        `uvm_info("SEQ_RUN", $sformatf("Closing file %s...", IMG_IN_NAME), UVM_LOW);
-        $fclose(in_file);
-    endtask: body
+		// read BMP header
+		n_bytes = $fread( bmp_header, in_file, 0, BMP_HEADER_SIZE );
+		if ( !n_bytes )
+		begin
+			`uvm_fatal( "SEQ_RUN", $sformatf( "Failed read header data from %s...", IMG_IN_NAME ) );
+		end
+
+		// read and stream infile image pixels 
+		while ( !$feof( in_file ) && i < BMP_DATA_SIZE )
+		begin
+			tx = my_uvm_transaction::type_id::create( .name( "tx" ), .contxt( get_full_name() ) );
+			start_item( tx );
+
+			tx.image_pixel = '{ default: 'h0 };
+			n_bytes = $fread( pixel, in_file, BMP_HEADER_SIZE+i, BYTES_PER_PIXEL );
+			tx.image_pixel = pixel;
+			i += BYTES_PER_PIXEL;
+
+			//`uvm_info("SEQ_RUN", tx.sprint(), UVM_LOW);
+			finish_item( tx );
+		end
+
+		// flush padding after reaching image EOF
+		forever
+			begin
+				//if ( vif.done ) break;
+
+				tx = my_uvm_transaction::type_id::create( .name( "tx" ), .contxt( get_full_name() ) );
+				start_item( tx );
+				tx.image_pixel = '{ default: 'h0 };
+				finish_item( tx );
+			end
+
+		`uvm_info( "SEQ_RUN", $sformatf( "Closing file %s...", IMG_IN_NAME ), UVM_LOW );
+		$fclose( in_file );
+	endtask: body
+
 endclass: my_uvm_sequence
 
 typedef uvm_sequencer#(my_uvm_transaction) my_uvm_sequencer;
+

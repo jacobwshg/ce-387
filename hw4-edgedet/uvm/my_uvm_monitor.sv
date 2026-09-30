@@ -67,7 +67,8 @@ class my_uvm_monitor_output extends uvm_monitor;
 
 		vif.out_rd_en = 1'b0;
 
-		forever begin
+		forever
+		begin
 			@( negedge vif.clock )
 			begin
 				if ( !vif.out_empty )
@@ -136,8 +137,10 @@ class my_uvm_monitor_compare extends uvm_monitor;
 	endfunction: build_phase
 
 	virtual task run_phase( uvm_phase phase );
-		int n_bytes=0, i=0;
-		logic [ 23:0 ] pixel;
+
+		int n_bytes = 0;
+		int i = 0;
+		logic [ 0:2 ] [ 7:0 ] pixel;
 		my_uvm_transaction tx_cmp;
 
 		// extend the run_phase 20 clock cycles
@@ -147,14 +150,14 @@ class my_uvm_monitor_compare extends uvm_monitor;
 		phase.raise_objection( .obj( this ) );
 
 		// wait for reset
-		@ ( posedge vif.reset )
-		@ ( negedge vif.reset )
+		@( posedge vif.reset );
+		@( negedge vif.reset );
 
 		tx_cmp = my_uvm_transaction::type_id::create(
 			.name( "tx_cmp" ), .contxt( get_full_name() )
 		);
 
-		// syncronize file read with fifo data
+		// synchronize file read with fifo data
 		while ( !$feof( cmp_file ) && i < BMP_DATA_SIZE )
 		begin
 			@ ( negedge vif.clock )
@@ -172,6 +175,7 @@ class my_uvm_monitor_compare extends uvm_monitor;
 		end		
 
 		// notify that run_phase has completed
+		vif.done = 1'b1;
 		phase.drop_objection( .obj(this) );
 	endtask: run_phase
 

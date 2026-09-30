@@ -15,6 +15,8 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 	my_uvm_transaction tx_out;
 	my_uvm_transaction tx_cmp;
 
+	localparam int DSPL_ERR_CNT = 5;
+
 	int err_cnt = 0;
 
 	function new( string name, uvm_component parent );
@@ -44,7 +46,6 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 			output_fifo.get( tx_out );
 			compare_fifo.get( tx_cmp );			
 			comparison();
-			//if ( err_cnt > 100 ) break;
 		end
 	endtask: run
 
@@ -55,20 +56,23 @@ class my_uvm_scoreboard extends uvm_scoreboard;
 			// use uvm_error to report errors and continue
 			// use uvm_fatal to halt the simulation on error
 			//
-
-			//`uvm_info( "SB_CMP", tx_out.sprint(), UVM_LOW );
-			//`uvm_info( "SB_CMP", tx_cmp.sprint(), UVM_LOW );
-			///*
-			`uvm_error(
-				"SB_CMP", 
-				$sformatf(
-					"Test: Failed! Expecting: %08x, Received: %08x",
-					tx_cmp.image_pixel, tx_out.image_pixel
-				)
-			);
-			//*/
 			++err_cnt;
+			if ( err_cnt <= DSPL_ERR_CNT )
+			begin
+				//`uvm_info( "SB_CMP", tx_out.sprint(), UVM_LOW );
+				//`uvm_info( "SB_CMP", tx_cmp.sprint(), UVM_LOW );
+				///*
+				`uvm_error(
+					"SB_CMP", 
+					$sformatf(
+						"Test: Failed! Expecting: %08x, Received: %08x",
+						tx_cmp.image_pixel, tx_out.image_pixel
+					)
+				);
+				//*/
+			end
 		end
 	endfunction: comparison
+
 endclass: my_uvm_scoreboard
 

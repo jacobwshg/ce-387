@@ -12,20 +12,20 @@ module my_uvm_tb;
 
 	edgedet_top #(
 		.FRAME_WIDTH ( FRAME_WIDTH ),
-		.FRAME_HEIGHT( FRAME_HEIGHT )
+		.FRAME_HEIGHT( FRAME_HEIGHT ),
+		.COL_ID_WIDTH( COL_ID_WIDTH ),
+		.ROW_ID_WIDTH( ROW_ID_WIDTH )
 	) edgedet_top (
-		.clock( vif.clock ),
-		.reset( vif.reset ),
+		.clk( vif.clock ),
+		.rst( vif.reset ),
 
-		.in_gs_wr_en    ( vif.in_wr_en ),
-		.in_gs_din      ( vif.in_din),
-		.sobel_out_rd_en( vif.out_rd_en ),
+		.in_wr_en( vif.in_wr_en ),
+		.din     ( vif.in_din ),
+		.in_full ( vif.in_full ),
 
-		.in_gs_full     ( vif.in_full ),
-		.sobel_out_empty( vif.out_empty ),
-		.sobel_out_dout ( vif.out_dout ),
-
-		.sobel_done( vif.done )
+		.out_rd_en( vif.out_rd_en ),
+		.dout     ( vif.out_dout ),
+		.out_empty( vif.out_empty )
 	);
 
 	initial begin
@@ -37,20 +37,31 @@ module my_uvm_tb;
 		run_test( "my_uvm_test" );
 	end
 
-	// reset
-	initial begin
-		vif.clock <= 1'b1;
-		vif.reset <= 1'b0;
-		@ ( posedge vif.clock );
-		vif.reset <= 1'b1;
-		@ ( posedge vif.clock );
-		vif.reset <= 1'b0;
+	// clock
+	initial
+	begin
+		#0;
+		vif.clock = 1'b0;
+		while ( 1'b1 )
+		begin
+			#( CLOCK_PERIOD/2 );
+			vif.clock = ~vif.clock;
+		end
 	end
 
-	// 10ns clock
-	always
-		#( CLOCK_PERIOD/2 )
-		vif.clock = ~vif.clock;
+	// reset
+	initial
+	begin
+		#0;
+		vif.reset = 1'b0;
+
+		@( negedge vif.clock );
+		vif.reset = 1'b1;
+		wait ( 10 * CLOCK_PERIOD );
+		@( negedge vif.clock );
+		vif.reset = 1'b0;
+	end
+
 endmodule
 
 

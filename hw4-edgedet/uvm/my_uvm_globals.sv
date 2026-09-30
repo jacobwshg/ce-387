@@ -10,6 +10,8 @@
 	//localparam int FRAME_HEIGHT = 350;
 	localparam int FRAME_WIDTH  = 720;
 	localparam int FRAME_HEIGHT = 540;
+	localparam int COL_ID_WIDTH = $clog2( FRAME_WIDTH );
+	localparam int ROW_ID_WIDTH = $clog2( FRAME_HEIGHT );
 
 	localparam int BMP_HEADER_SIZE = 54;
 	localparam int BYTES_PER_PIXEL = 3;
