@@ -177,8 +177,8 @@ module fft_stage_pipe #(
 	);
 
 	mul_cmplx #(
-		.STAGES( MUL_STAGES ),
-		.DWIDTH( DWIDTH )
+		.DWIDTH( DWIDTH ),
+		.STAGES( MUL_STAGES )
 	) mul_cmplx_pipe (
 		.clk( clk ), .rst( rst ), .wr_en( pipe_wr_en ),
 		.a( mul_in_a ), .b( mul_in_b ), .c( mul_in_c ), .d( mul_in_d ), 

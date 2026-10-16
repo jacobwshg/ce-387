@@ -9,8 +9,8 @@
 
 module mul_cmplx
 #(
-	parameter int STAGES = 5,
-	parameter int DWIDTH = 32
+	parameter int DWIDTH = 32,
+	parameter int STAGES = 5
 )
 (
 	input  logic clk, rst, wr_en,
