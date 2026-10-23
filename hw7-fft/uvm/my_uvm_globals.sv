@@ -3,14 +3,14 @@
 `define __GLOBALS__
 
 // UVM Globals
-localparam string INFILE_RE = "../sim/infile_re.txt";
-localparam string INFILE_IM = "../sim/infile_im.txt";
+localparam string INFILE_RE = "../sim/in_real.txt";
+localparam string INFILE_IM = "../sim/in_imag.txt";
 
-localparam string OUTFILE_RE = "../sim/output_real.txt";
-localparam string OUTFILE_IM = "../sim/output_imag.txt";
+localparam string OUTFILE_RE = "../sim/out_real.txt";
+localparam string OUTFILE_IM = "../sim/out_imag.txt";
 
-localparam string CMPFILE_RE = "../sim/outfile_re.txt";
-localparam string CMPFILE_IM = "../sim/outfile_im.txt";
+localparam string CMPFILE_RE = "../sim/cmp_real.txt";
+localparam string CMPFILE_IM = "../sim/cmp_imag.txt";
 
 localparam int CLOCK_PERIOD = 10;
 
