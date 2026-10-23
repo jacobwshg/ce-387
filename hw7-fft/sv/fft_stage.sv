@@ -26,7 +26,7 @@ module fft_stage #(
 
 	generate
 		if ( USE_PIPE )
-		begin
+		begin: gen_stage
 			fft_stage_pipe #(
 				.DWIDTH( DWIDTH ), .FRACWIDTH( FRACWIDTH ),
 				.N( N ), .STAGE( STAGE ),
@@ -43,9 +43,9 @@ module fft_stage #(
 				.dout_real( dout_real ), .dout_imag( dout_imag ),
 				.out_wr_en( out_wr_en )
 			);
-		end
+		end: gen_stage
 		else
-		begin
+		begin: gen_stage
 			logic signed [ 1:0 ] [ DWIDTH-1:0 ] stage_din;
 			logic signed [ 1:0 ] [ DWIDTH-1:0 ] stage_dout;
 			assign stage_din[ 1 ] = din_real;
@@ -66,7 +66,7 @@ module fft_stage #(
 				.dout( stage_dout ),
 				.out_wr_en( out_wr_en )
 			);
-		end
+		end: gen_stage
 	endgenerate
 
 endmodule: fft_stage

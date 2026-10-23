@@ -76,7 +76,7 @@ module fft
 	generate
 		genvar i;
 		for ( i=0; i<STAGES; ++i )
-		begin
+		begin: gen_infifo_and_stage
 			skidbuf #(
 				.DWIDTH( 2*DWIDTH )
 			) stage_input_fifo (
@@ -111,7 +111,7 @@ module fft
 				.dout_imag( fifo_din_imag[ i+1 ] ),
 				.out_wr_en( fifo_wr_en[ i+1 ] )
 			);
-		end
+		end: gen_infifo_and_stage
 	endgenerate
 
 endmodule: fft
